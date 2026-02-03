@@ -1,0 +1,85 @@
+{
+  "model_type": "Vision Transformer (ViT)",
+  "metrics": [
+    {
+      "class": "Ankle_boot",
+      "precision": 0.9687,
+      "recall": 0.9793,
+      "f1_score": 0.9740,
+      "support": 1930
+    },
+    {
+      "class": "Bag",
+      "precision": 0.9947,
+      "recall": 0.9947,
+      "f1_score": 0.9947,
+      "support": 1872
+    },
+    {
+      "class": "Coat",
+      "precision": 0.9466,
+      "recall": 0.9037,
+      "f1_score": 0.9246,
+      "support": 1962
+    },
+    {
+      "class": "Dress",
+      "precision": 0.9263,
+      "recall": 0.9504,
+      "f1_score": 0.9382,
+      "support": 1917
+    },
+    {
+      "class": "Pullover",
+      "precision": 0.9292,
+      "recall": 0.9126,
+      "f1_score": 0.9208,
+      "support": 1899
+    },
+    {
+      "class": "Sandal",
+      "precision": 0.9873,
+      "recall": 0.9889,
+      "f1_score": 0.9881,
+      "support": 1893
+    },
+    {
+      "class": "Shirt",
+      "precision": 0.7758,
+      "recall": 0.9092,
+      "f1_score": 0.8372,
+      "support": 1872
+    },
+    {
+      "class": "Sneaker",
+      "precision": 0.9765,
+      "recall": 0.9648,
+      "f1_score": 0.9706,
+      "support": 1849
+    },
+    {
+      "class": "T-shirt",
+      "precision": 0.9581,
+      "recall": 0.8404,
+      "f1_score": 0.8954,
+      "support": 1930
+    },
+    {
+      "class": "Trouser",
+      "precision": 0.9979,
+      "recall": 0.9904,
+      "f1_score": 0.9941,
+      "support": 1876
+    }
+  ],
+  "overall": {
+    "accuracy": 0.9431,
+    "macro_avg_precision": 0.9461,
+    "macro_avg_recall": 0.9434,
+    "macro_avg_f1": 0.9438,
+    "weighted_avg_precision": 0.9462,
+    "weighted_avg_recall": 0.9431,
+    "weighted_avg_f1": 0.9436,
+    "total_support": 19000
+  }
+}

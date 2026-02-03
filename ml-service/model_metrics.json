@@ -1,0 +1,105 @@
+{
+  "classes": [
+    "Ankle_boot",
+    "Bag",
+    "Coat",
+    "Dress",
+    "Pullover",
+    "Sandal",
+    "Shirt",
+    "Sneaker",
+    "T-shirt",
+    "Trouser"
+  ],
+  "metrics": [
+    {
+      "class": "Ankle_boot",
+      "precision": 0.9387060158910329,
+      "recall": 0.9397727272727273,
+      "f1_score": 0.9392390687109596,
+      "accuracy": 0.9397727272727273,
+      "support": 880
+    },
+    {
+      "class": "Bag",
+      "precision": 0.9871794871794872,
+      "recall": 0.9442586399108138,
+      "f1_score": 0.9652421652421652,
+      "accuracy": 0.9442586399108138,
+      "support": 897
+    },
+    {
+      "class": "Coat",
+      "precision": 0.7874743326488707,
+      "recall": 0.8928987194412107,
+      "f1_score": 0.8368794326241135,
+      "accuracy": 0.8928987194412107,
+      "support": 859
+    },
+    {
+      "class": "Dress",
+      "precision": 0.9105263157894737,
+      "recall": 0.7854710556186152,
+      "f1_score": 0.8433881779402803,
+      "accuracy": 0.7854710556186152,
+      "support": 881
+    },
+    {
+      "class": "Pullover",
+      "precision": 0.8597285067873304,
+      "recall": 0.7755102040816326,
+      "f1_score": 0.815450643776824,
+      "accuracy": 0.7755102040816326,
+      "support": 980
+    },
+    {
+      "class": "Sandal",
+      "precision": 0.9960369881109643,
+      "recall": 0.8481439820022497,
+      "f1_score": 0.9161603888213852,
+      "accuracy": 0.8481439820022497,
+      "support": 889
+    },
+    {
+      "class": "Shirt",
+      "precision": 0.609981515711645,
+      "recall": 0.7542857142857143,
+      "f1_score": 0.6745017884517118,
+      "accuracy": 0.7542857142857143,
+      "support": 875
+    },
+    {
+      "class": "Sneaker",
+      "precision": 0.8658777120315582,
+      "recall": 0.9680264608599779,
+      "f1_score": 0.9141072358146798,
+      "accuracy": 0.9680264608599779,
+      "support": 907
+    },
+    {
+      "class": "T-shirt",
+      "precision": 0.7997698504027618,
+      "recall": 0.7853107344632768,
+      "f1_score": 0.7924743443557581,
+      "accuracy": 0.7853107344632768,
+      "support": 885
+    },
+    {
+      "class": "Trouser",
+      "precision": 0.996742671009772,
+      "recall": 0.9693769799366421,
+      "f1_score": 0.9828693790149894,
+      "accuracy": 0.9693769799366421,
+      "support": 947
+    }
+  ],
+  "overall": {
+    "accuracy": 0.8664444444444445,
+    "macro_avg_precision": 0.8752023395562896,
+    "macro_avg_recall": 0.8663055217872861,
+    "macro_avg_f1": 0.8680312624752867,
+    "weighted_avg_precision": 0.8765536430150286,
+    "weighted_avg_recall": 0.8664444444444445,
+    "weighted_avg_f1": 0.8688074067891187
+  }
+}

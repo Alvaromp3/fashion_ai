@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+venv/
+__pycache__/
+*.pyc
+
+# Environment variables
+.env
+.env.local
+
+# Build outputs
+dist/
+build/
+*.log
+
+# Uploads
+backend/uploads/
+backend/temp/
+ml-service/temp/
+
+# Model files (pueden ser grandes)
+*.h5
+*.hdf5
+*.pkl
+*.keras
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+

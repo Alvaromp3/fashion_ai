@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+.git
+*.log
+temp/
+logs/
+# Models are downloaded from GitHub release, not copied
+*.h5
+*.hdf5
+*.keras

@@ -1,0 +1,11 @@
+# ML Service - dependencias base (CNN siempre; ViT si keras-hub carga)
+flask==3.0.0
+flask-cors==4.0.0
+tensorflow>=2.15.0,<2.17
+numpy>=1.24.3
+Pillow>=10.1.0
+werkzeug>=3.0.1
+scikit-learn>=1.3.2
+matplotlib>=3.7.2
+requests>=2.31.0
+keras-hub>=0.25.0

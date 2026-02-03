@@ -1,0 +1,16 @@
+{
+  "name": "fashion-ai",
+  "version": "1.0.0",
+  "description": "Fashion AI - Recomendador de Outfits",
+  "scripts": {
+    "start": "concurrently -n \"BACKEND,ML,FRONTEND\" -c \"blue,green,yellow\" \"npm run start:backend\" \"npm run start:ml\" \"npm run start:frontend\"",
+    "start:backend": "cd backend && npm run dev",
+    "start:ml": "cd ml-service && ./start.sh",
+    "start:frontend": "cd frontend && npm run dev",
+    "stop": "pkill -f 'node.*server.js' && pkill -f nodemon && pkill -f vite && pkill -f 'python.*app.py' && lsof -ti:3000,5001,5002 | xargs kill -9 2>/dev/null || true"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
+
