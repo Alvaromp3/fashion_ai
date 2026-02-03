@@ -1,49 +1,42 @@
 # Build with:
-#   docker build -f ml-service/Dockerfile \
-#     --build-arg GITHUB_REPO=YOUR_USER/fashion_program \
-#     --build-arg MODELS_RELEASE_TAG=models-v1.0 \
-#     -t fashion-ml ./ml-service
+#   docker build -f ml-service/Dockerfile -t fashion-ml ./ml-service
 #
-# For private repo, pass a token (do not commit it):
+# Optional build args (defaults: Alvaromp3/fashion_ai, v1.0.0):
+#   --build-arg GITHUB_REPO=Alvaromp3/fashion_ai
+#   --build-arg RELEASE_TAG=v1.0.0
+# For private repo:
 #   --build-arg GITHUB_TOKEN=ghp_xxx
 
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install deps for image handling and curl for downloading models
+# Install deps for image handling, curl and unzip for downloading/extracting models
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgl1-mesa-glx libglib2.0-0 curl \
+    libgl1-mesa-glx libglib2.0-0 curl unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# GitHub release: repo (owner/name) and release tag. Models are downloaded from there.
-ARG GITHUB_REPO
-ARG MODELS_RELEASE_TAG=models-v1.0
+# Download models from GitHub Releases (cnn_model_v1.zip, vit_model_v1.zip -> /app/models/)
+ARG GITHUB_REPO=Alvaromp3/fashion_ai
+ARG RELEASE_TAG=v1.0.0
 ARG GITHUB_TOKEN
 
-RUN if [ -z "$GITHUB_REPO" ]; then \
-    echo "Build-arg GITHUB_REPO is required. Example: --build-arg GITHUB_REPO=owner/fashion_program"; exit 1; \
-    fi && \
-    BASE="https://github.com/${GITHUB_REPO}/releases/download/${MODELS_RELEASE_TAG}" && \
-    if [ -n "$GITHUB_TOKEN" ]; then \
-    curl -sL -H "Authorization: token ${GITHUB_TOKEN}" -o /app/modelo_ropa.h5 "${BASE}/modelo_ropa.h5" && \
-    curl -sL -H "Authorization: token ${GITHUB_TOKEN}" -o /app/vision_transformer_moda_modelo.keras "${BASE}/vision_transformer_moda_modelo.keras"; \
-    else \
-    curl -sL -o /app/modelo_ropa.h5 "${BASE}/modelo_ropa.h5" && \
-    curl -sL -o /app/vision_transformer_moda_modelo.keras "${BASE}/vision_transformer_moda_modelo.keras"; \
-    fi && \
-    ls -la /app/modelo_ropa.h5 /app/vision_transformer_moda_modelo.keras
+COPY scripts/download_models.sh /app/scripts/download_models.sh
+RUN chmod +x /app/scripts/download_models.sh && \
+    GITHUB_REPO="$GITHUB_REPO" RELEASE_TAG="$RELEASE_TAG" GITHUB_TOKEN="$GITHUB_TOKEN" /app/scripts/download_models.sh
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt || pip install --no-cache-dir -r requirements-base.txt 2>/dev/null || true
 RUN pip install --no-cache-dir keras-hub 2>/dev/null || true
 
-# Copy app and optional metrics/images (models already in /app from download)
+# Copy app and optional metrics/images
 COPY app.py .
 COPY model_metrics.json model_metrics_vit.json .
 COPY confusion_matrix.png confusion_matrix_vit.png data_audit.png .
 
 ENV FLASK_APP=app.py
+ENV ML_CNN_PATH=/app/models/modelo_ropa.h5
+ENV ML_VIT_PATH=/app/models/vision_transformer_moda_modelo.keras
 EXPOSE 5001
 
 CMD ["python", "app.py"]
