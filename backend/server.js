@@ -15,6 +15,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/model/images', express.static(path.join(__dirname, '../ml-service')));
 
+// Load routes
 app.use('/api/prendas', require('./routes/prendas'));
 app.use('/api/outfits', require('./routes/outfits'));
 app.use('/api/classify', require('./routes/classify'));
@@ -43,6 +44,22 @@ app.get('/api/ml-health', async (req, res) => {
   }
 });
 
+const PORT = process.env.PORT || 5002;
+
+console.log(`[DEBUG] About to start server on port ${PORT}...`);
+
+// Start server immediately, don't wait for MongoDB
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
+
+server.on('error', (err) => {
+  console.error(`[ERROR] Server error:`, err);
+});
+
+console.log(`[DEBUG] Server listen() called`);
+
+// Connect to MongoDB (non-blocking)
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/fashion_ai', {
   serverSelectionTimeoutMS: 8000
 })
@@ -51,11 +68,5 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/fashion_a
 })
 .catch((error) => {
   console.error('Error connecting to MongoDB:', error);
-});
-
-const PORT = process.env.PORT || 5002;
-
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
 });
 

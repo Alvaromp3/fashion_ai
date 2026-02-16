@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-eval' 'unsafe-inline' http://localhost:* ws://localhost:*; connect-src 'self' http://localhost:* ws://localhost:*; style-src 'self' 'unsafe-inline';">
     <title>Fashion AI - Recomendador de Outfits</title>
   </head>
   <body style="margin:0;background:#f5f5f5;color:#171717;font-family:system-ui,sans-serif;">
@@ -17,12 +18,19 @@
       if (window.location.protocol === 'file:') {
         document.getElementById('root').innerHTML = '<div style="padding:2rem;text-align:center;background:#fef3c7;color:#92400e;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;font-family:system-ui,sans-serif;"><p style="margin:0;font-size:1.25rem;font-weight:600;">No abras el HTML como archivo</p><p style="margin:0;font-size:0.95rem;">En la terminal del proyecto ejecuta: <code style="background:#fff;padding:0.25rem 0.5rem;border-radius:4px;">./start-all.sh</code></p><p style="margin:0;font-size:0.875rem;">Luego abre:</p><a href="http://localhost:3000" style="font-size:1.1rem;color:#0ea5e9;font-weight:600;">http://localhost:3000</a></div>';
       } else {
+        window.addEventListener('error', function(e) {
+          console.error('Global error:', e.error);
+          var r = document.getElementById('root');
+          if (r && r.innerText.indexOf('Cargando Fashion') !== -1) {
+            r.innerHTML = '<div style="padding:2rem;text-align:center;background:#fee2e2;color:#991b1b;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;font-family:system-ui,sans-serif;"><p style="margin:0;font-size:1.1rem;font-weight:600;">Error: ' + (e.error?.message || 'Unknown') + '</p><p style="margin:0;font-size:0.85rem;">Revisa la consola (F12) para más detalles.</p><button onclick="window.location.reload()" style="padding:0.5rem 1rem;margin-top:1rem;cursor:pointer;background:#0ea5e9;color:white;border:none;border-radius:4px;">Recargar</button></div>';
+          }
+        });
         setTimeout(function() {
           var r = document.getElementById('root');
           if (r && r.innerText.indexOf('Cargando Fashion') !== -1) {
-            r.innerHTML = '<div style="padding:2rem;text-align:center;background:#fee2e2;color:#991b1b;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;font-family:system-ui,sans-serif;"><p style="margin:0;font-size:1.1rem;font-weight:600;">La app no cargó</p><p style="margin:0;font-size:0.9rem;">1. En la terminal del proyecto ejecuta: <code style="background:#fff;padding:0.2rem 0.4rem;border-radius:4px;">./stop-all.sh</code> y luego <code style="background:#fff;padding:0.2rem 0.4rem;border-radius:4px;">./start-all.sh</code></p><p style="margin:0;font-size:0.85rem;">2. Abre la consola del navegador (F12) y revisa si hay errores en rojo.</p><a href="http://localhost:3000" style="font-size:1rem;color:#0ea5e9;font-weight:600;">Reintentar → http://localhost:3000</a></div>';
+            r.innerHTML = '<div style="padding:2rem;text-align:center;background:#fee2e2;color:#991b1b;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;font-family:system-ui,sans-serif;"><p style="margin:0;font-size:1.1rem;font-weight:600;">La app no cargó</p><p style="margin:0;font-size:0.9rem;">1. En la terminal del proyecto ejecuta: <code style="background:#fff;padding:0.2rem 0.4rem;border-radius:4px;">./stop-all.sh</code> y luego <code style="background:#fff;padding:0.2rem 0.4rem;border-radius:4px;">./start-all.sh</code></p><p style="margin:0;font-size:0.85rem;">2. Abre la consola del navegador (F12) y revisa si hay errores en rojo.</p><button onclick="window.location.reload()" style="padding:0.5rem 1rem;margin-top:1rem;cursor:pointer;background:#0ea5e9;color:white;border:none;border-radius:4px;">Recargar</button></div>';
           }
-        }, 6000);
+        }, 8000);
       }
     </script>
     <script type="module" src="/src/main.jsx"></script>
