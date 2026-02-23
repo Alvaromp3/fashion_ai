@@ -5,8 +5,11 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
 
-CNN="$SCRIPT_DIR/modelo_ropa.h5"
-VIT="$SCRIPT_DIR/vision_transformer_moda_modelo.keras"
+# Rutas absolutas de modelos (ViT: vision_transformer_moda_modelo.keras; CNN: modelo_ropa.h5)
+CNN="${ML_CNN_PATH:-$SCRIPT_DIR/modelo_ropa.h5}"
+VIT="${ML_VIT_PATH:-$SCRIPT_DIR/vision_transformer_moda_modelo.keras}"
+[ -z "${CNN##/*}" ] || CNN="$SCRIPT_DIR/$CNN"
+[ -z "${VIT##/*}" ] || VIT="$SCRIPT_DIR/$VIT"
 
 if [ ! -f "$CNN" ]; then
   echo "❌ CNN no encontrado: $CNN"
@@ -25,5 +28,7 @@ if [ ! -d venv ]; then
 fi
 
 source venv/bin/activate
-echo "🚀 Iniciando ML service (puerto 5001)..."
+export ML_CNN_PATH="$CNN"
+export ML_VIT_PATH="$VIT"
+echo "🚀 Iniciando ML service (puerto 6001)..."
 exec python app.py

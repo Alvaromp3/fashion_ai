@@ -33,15 +33,15 @@ echo -e "${BLUE}Starting ML Service (Docker)...${NC}"
 docker compose -f docker-compose.ml.yml up -d
 
 mkdir -p "$SCRIPT_DIR/logs"
-echo -e "${BLUE}Starting Backend (5002)...${NC}"
+echo -e "${BLUE}Starting Backend (4000)...${NC}"
 cd "$SCRIPT_DIR/backend"
-npm run dev >> "$SCRIPT_DIR/logs/backend.log" 2>&1 &
+ML_SERVICE_URL=http://localhost:6001 node server.js >> "$SCRIPT_DIR/logs/backend.log" 2>&1 &
 echo -e "${BLUE}Starting Frontend (3000)...${NC}"
 cd "$SCRIPT_DIR/frontend"
 npm run dev >> "$SCRIPT_DIR/logs/frontend.log" 2>&1 &
 
 (sleep 15; if command -v curl >/dev/null 2>&1; then
-  HEALTH=$(curl -s --connect-timeout 3 --max-time 5 http://localhost:5001/health 2>/dev/null)
+  HEALTH=$(curl -s --connect-timeout 3 --max-time 5 http://localhost:6001/health 2>/dev/null)
   if echo "$HEALTH" | grep -q '"vit_model_loaded":true'; then
     echo -e "${GREEN}  ✓ CNN y ViT cargados (Docker)${NC}"
   elif echo "$HEALTH" | grep -q '"model_loaded":true'; then
@@ -52,9 +52,9 @@ fi) &
 echo ""
 echo -e "${GREEN}All services running (ML in Docker)${NC}"
 echo ""
-echo -e "  Backend:   http://localhost:5002"
-echo -e "  ML (Docker): http://localhost:5001"
-echo -e "  Frontend:  http://localhost:3000"
+echo -e "  Backend:    http://localhost:4000"
+echo -e "  ML (Docker): http://localhost:6001"
+echo -e "  Frontend:   http://localhost:3000"
 echo ""
 echo -e "${YELLOW}  Abre http://localhost:3000  |  Ctrl+C para parar${NC}"
 echo ""

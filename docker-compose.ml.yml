@@ -1,13 +1,5 @@
-# ML service: builds image and downloads CNN + ViT models from GitHub release.
-# Before building, publish the models once: ./scripts/publish-models-release.sh models-v1.0
-#
-# Set your repo (and optional tag) via env or edit build.args:
-#   export GITHUB_REPO=your-user/fashion_program
-#   export MODELS_RELEASE_TAG=models-v1.0   # optional, default models-v1.0
-#   docker compose -f docker-compose.ml.yml build
-#
-# For a private repo, pass a GitHub token when building:
-#   docker compose -f docker-compose.ml.yml build --build-arg GITHUB_TOKEN=ghp_xxx
+# ML en Docker: publica modelos con ./scripts/publish-models-release.sh models-v1.0
+# Luego: export GITHUB_REPO=tu-usuario/repo && docker compose -f docker-compose.ml.yml build
 
 services:
   ml:
@@ -16,8 +8,9 @@ services:
       context: ./ml-service
       dockerfile: Dockerfile
       args:
-        GITHUB_REPO: ${GITHUB_REPO:-}
+        GITHUB_REPO: ${GITHUB_REPO}
         MODELS_RELEASE_TAG: ${MODELS_RELEASE_TAG:-models-v1.0}
+        GITHUB_TOKEN: ${GITHUB_TOKEN:-}
     ports:
-      - "5001:5001"
+      - "6001:6001"
     container_name: fashion-ml

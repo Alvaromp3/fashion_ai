@@ -7,51 +7,27 @@ const path = require('path');
 const fs = require('fs');
 const sharp = require('sharp');
 
-const DATASET_PATH = '/Users/alvaromartin-pena/Desktop/fashion_dataset';
+const DATASET_PATH = process.env.DATASET_PATH || '';
 const MIN_CONFIDENCE_FOR_DATASET = 0.8;
 
-const classToFolderName = {
-  'Ankle_boot': 'Ankle_boot',
-  'Bag': 'Bag',
-  'Coat': 'Coat',
-  'Dress': 'Dress',
-  'Pullover': 'Pullover',
-  'Sandal': 'Sandal',
-  'Shirt': 'Shirt',
-  'Sneaker': 'Sneaker',
-  'T-shirt': 'T-shirt',
-  'Trouser': 'Trouser'
+const CLASS_TO_FOLDER = {
+  Ankle_boot: 'Ankle_boot', Bag: 'Bag', Coat: 'Coat', Dress: 'Dress',
+  Pullover: 'Pullover', Sandal: 'Sandal', Shirt: 'Shirt', Sneaker: 'Sneaker',
+  'T-shirt': 'T-shirt', Trouser: 'Trouser'
 };
 
 function copyToDataset(imagePath, clase_nombre, confianza) {
+  if (!DATASET_PATH || confianza < MIN_CONFIDENCE_FOR_DATASET) return false;
+  if (!clase_nombre || !CLASS_TO_FOLDER[clase_nombre]) return false;
   try {
-    if (confianza < MIN_CONFIDENCE_FOR_DATASET) {
-      return false;
-    }
-
-    if (!clase_nombre || !classToFolderName[clase_nombre]) {
-      return false;
-    }
-
-    const folderName = classToFolderName[clase_nombre];
-    const trainDir = path.join(DATASET_PATH, 'train_df', folderName);
-    
-    if (!fs.existsSync(trainDir)) {
-      fs.mkdirSync(trainDir, { recursive: true });
-    }
-
-    const timestamp = Date.now();
-    const random = Math.round(Math.random() * 1E9);
+    const trainDir = path.join(DATASET_PATH, 'train_df', CLASS_TO_FOLDER[clase_nombre]);
+    if (!fs.existsSync(path.dirname(trainDir))) return false;
+    fs.mkdirSync(trainDir, { recursive: true });
     const ext = path.extname(imagePath) || '.jpg';
-    const filename = `user_${timestamp}_${random}${ext}`;
-    const destPath = path.join(trainDir, filename);
-
+    const destPath = path.join(trainDir, `user_${Date.now()}_${Math.round(Math.random() * 1E9)}${ext}`);
     fs.copyFileSync(imagePath, destPath);
-    console.log(`Image copied to dataset: ${folderName}/${filename}`);
-    
     return true;
-  } catch (error) {
-    console.error('Error copying image to dataset:', error);
+  } catch {
     return false;
   }
 }
@@ -71,7 +47,7 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({
-  storage: storage,
+  storage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif|webp|heic|heif|bmp|tiff|tif/;
@@ -152,21 +128,25 @@ router.post('/upload', upload.single('imagen'), async (req, res) => {
     }
 
     const { tipo, color, confianza, clase_nombre } = req.body;
-    const confianzaValue = confianza ? parseFloat(confianza) : 0.5;
-    
+    let confianzaValue = confianza != null && confianza !== '' ? parseFloat(confianza) : 0.5;
+    if (Number.isNaN(confianzaValue) || confianzaValue < 0) confianzaValue = 0;
+    if (confianzaValue > 1) confianzaValue = 1;
+
+    const tipoValidos = ['superior', 'inferior', 'zapatos', 'accesorio', 'abrigo', 'vestido'];
+    const tipoFinal = tipo && tipoValidos.includes(String(tipo).toLowerCase()) ? String(tipo).toLowerCase() : 'superior';
+
     let ocasionArray = [];
     if (req.body.ocasion) {
       ocasionArray = Array.isArray(req.body.ocasion) 
         ? req.body.ocasion 
         : [req.body.ocasion];
     }
-    
     const ocasionesValidas = ['casual', 'formal', 'deportivo', 'fiesta', 'trabajo'];
     ocasionArray = ocasionArray.filter(oc => ocasionesValidas.includes(oc));
 
     const prenda = new Prenda({
       imagen_url,
-      tipo: tipo || 'desconocido',
+      tipo: tipoFinal,
       clase_nombre: clase_nombre || 'desconocido',
       color: color || 'desconocido',
       confianza: confianzaValue,
@@ -210,9 +190,11 @@ router.post('/upload', upload.single('imagen'), async (req, res) => {
       }
     }
     
+    const message = error.message || 'Error uploading the garment';
+    const isValidation = error.name === 'ValidationError';
     res.status(500).json({ 
-      error: 'Error uploading the garment',
-      details: error.message 
+      error: isValidation ? message : 'Error uploading the garment',
+      details: message 
     });
   }
 });

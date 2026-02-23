@@ -27,15 +27,22 @@ const MisPrendas = () => {
     setFetchError(null)
     setLoading(true)
     try {
-      const response = await axios.get('/api/prendas', { timeout: 12000 })
+      const healthRes = await axios.get('/api/health', { timeout: 4000 }).catch(() => null)
+      if (!healthRes || !healthRes.data) {
+        setPrendas([])
+        setFetchError('El backend no responde (puerto 4000). Ejecuta ./stop-all.sh y luego ./start-all.sh desde la raíz del proyecto. Si sigue fallando, revisa logs/backend.log.')
+        setLoading(false)
+        return
+      }
+      const response = await axios.get('/api/prendas', { timeout: 15000 })
       setPrendas(Array.isArray(response.data) ? response.data : [])
     } catch (error) {
       console.error('Error fetching garments:', error)
       setPrendas([])
       setFetchError(
         error.code === 'ECONNABORTED'
-          ? 'Timeout. Ensure the backend is running (port 5002) and MongoDB is available.'
-          : 'Could not load garments. Check that the backend and database are running.'
+          ? 'Timeout. Backend o MongoDB lentos. Comprueba que el backend esté en marcha (./start-all.sh) y que MongoDB Atlas sea accesible. Revisa logs/backend.log.'
+          : 'No se pudieron cargar las prendas. Comprueba que el backend esté corriendo y que backend/.env tenga MONGODB_URI correcto.'
       )
     } finally {
       setLoading(false)

@@ -1,11 +1,10 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 const axios = require('axios');
 
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 
@@ -15,14 +14,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/model/images', express.static(path.join(__dirname, '../ml-service')));
 
-// Load routes
-app.use('/api/prendas', require('./routes/prendas'));
-app.use('/api/outfits', require('./routes/outfits'));
-app.use('/api/classify', require('./routes/classify'));
-app.use('/api/model', require('./routes/model'));
-
 app.get('/api/health', (req, res) => {
-  const mongodb = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+  const mongoose = global.__mongoose;
+  const mongodb = mongoose && mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
   res.json({
     status: mongodb === 'connected' ? 'OK' : 'DEGRADED',
     message: 'Fashion AI Backend is running',
@@ -31,7 +25,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.get('/api/ml-health', async (req, res) => {
-  const mlUrl = process.env.ML_SERVICE_URL || 'http://localhost:5001';
+  const mlUrl = process.env.ML_SERVICE_URL || 'http://localhost:6001';
   try {
     const { data } = await axios.get(`${mlUrl}/health`, { timeout: 3000 });
     res.json({ available: true, ...data });
@@ -44,29 +38,23 @@ app.get('/api/ml-health', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 5002;
+const PORT = process.env.PORT || 4000;
 
-console.log(`[DEBUG] About to start server on port ${PORT}...`);
-
-// Start server immediately, don't wait for MongoDB
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  const mongoose = require('mongoose');
+  global.__mongoose = mongoose;
+  app.use('/api/prendas', require('./routes/prendas'));
+  app.use('/api/outfits', require('./routes/outfits'));
+  app.use('/api/classify', require('./routes/classify'));
+  app.use('/api/model', require('./routes/model'));
+  mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/fashion_ai', {
+    serverSelectionTimeoutMS: 8000
+  })
+    .then(() => console.log('Connected to MongoDB'))
+    .catch((err) => console.error('Error connecting to MongoDB:', err));
 });
 
 server.on('error', (err) => {
-  console.error(`[ERROR] Server error:`, err);
+  console.error('[ERROR] Server error:', err);
 });
-
-console.log(`[DEBUG] Server listen() called`);
-
-// Connect to MongoDB (non-blocking)
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/fashion_ai', {
-  serverSelectionTimeoutMS: 8000
-})
-.then(() => {
-  console.log('Connected to MongoDB');
-})
-.catch((error) => {
-  console.error('Error connecting to MongoDB:', error);
-});
-

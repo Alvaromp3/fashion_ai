@@ -76,8 +76,7 @@ const ModelExamples = () => {
               key={i}
               className={`dashboard-card rounded-2xl border-2 ${style.border} p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-opacity-80`}
               style={{
-                animation: isVisible ? 'fadeInUp 0.5s ease-out forwards' : 'none',
-                animationDelay: `${i * 40}ms`
+                animation: isVisible ? `fadeInUp 0.5s ease-out ${i * 40}ms forwards` : 'none'
               }}
             >
               <div className="flex items-start justify-between gap-3 mb-3">

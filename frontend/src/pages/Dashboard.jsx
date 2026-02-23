@@ -1,39 +1,61 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FaMagic, FaTshirt, FaArrowRight, FaBrain, FaImage, FaChartLine, FaStar } from 'react-icons/fa'
+import { FaMagic, FaTshirt, FaArrowRight, FaBrain, FaImage, FaChartLine, FaStar, FaUpload } from 'react-icons/fa'
 import axios from 'axios'
 import PrendaCard from '../components/PrendaCard'
 import OutfitCard from '../components/OutfitCard'
+import UploadModal from '../components/UploadModal'
 import { MusicReactiveHeroSection } from '../components/ui/music-reactive-hero-section'
 
 const Dashboard = () => {
   const [prendas, setPrendas] = useState([])
   const [outfits, setOutfits] = useState([])
   const [loading, setLoading] = useState(true)
+  const [showUploadModal, setShowUploadModal] = useState(false)
   const mainContentRef = useRef(null)
   const navigate = useNavigate()
 
   useEffect(() => {
-    fetchPrendas()
-    fetchOutfits()
+    let cancelled = false
+    const run = async () => {
+      try {
+        const healthRes = await axios.get('/api/health', { timeout: 4000 }).catch(() => null)
+        if (cancelled) return
+        if (!healthRes || !healthRes.data) {
+          setLoading(false)
+          return
+        }
+        const [prendasRes, outfitsRes] = await Promise.all([
+          axios.get('/api/prendas', { timeout: 15000 }).catch(() => ({ data: [] })),
+          axios.get('/api/outfits', { timeout: 15000 }).catch(() => ({ data: [] }))
+        ])
+        if (cancelled) return
+        setPrendas(Array.isArray(prendasRes?.data) ? prendasRes.data.slice(0, 6) : [])
+        setOutfits(Array.isArray(outfitsRes?.data) ? outfitsRes.data.slice(0, 3) : [])
+      } catch (e) {
+        if (!cancelled) console.error('Dashboard fetch error:', e)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    run()
+    return () => { cancelled = true }
   }, [])
 
   const fetchPrendas = async () => {
     try {
-      const response = await axios.get('/api/prendas', { timeout: 12000 })
+      const response = await axios.get('/api/prendas', { timeout: 15000 })
       setPrendas(Array.isArray(response.data) ? response.data.slice(0, 6) : [])
     } catch (error) {
       console.error('Error fetching garments:', error)
       setPrendas([])
-    } finally {
-      setLoading(false)
     }
   }
 
   const fetchOutfits = async () => {
     try {
-      const response = await axios.get('/api/outfits', { timeout: 12000 })
-      setOutfits(response.data.slice(0, 3))
+      const response = await axios.get('/api/outfits', { timeout: 15000 })
+      setOutfits(Array.isArray(response.data) ? response.data.slice(0, 3) : [])
     } catch (error) {
       console.error('Error fetching outfits:', error)
       setOutfits([])
@@ -265,6 +287,16 @@ const Dashboard = () => {
           </p>
         </footer>
       </main>
+
+      {showUploadModal && (
+        <UploadModal
+          onClose={() => setShowUploadModal(false)}
+          onSuccess={() => {
+            fetchPrendas()
+            setShowUploadModal(false)
+          }}
+        />
+      )}
     </div>
   )
 }

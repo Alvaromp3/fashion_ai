@@ -31,8 +31,8 @@ trap cleanup SIGINT SIGTERM
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 mkdir -p "$SCRIPT_DIR/logs"
 
-# Liberar puertos para evitar "port in use" (Vite usa 3000 estricto)
-for port in 3000 5001 5002; do
+# Liberar puertos (Frontend 3000, Backend 4000, ML 6001)
+for port in 3000 4000 6001; do
   pid=$(lsof -ti :$port 2>/dev/null)
   if [ -n "$pid" ]; then
     kill -9 $pid 2>/dev/null
@@ -57,20 +57,34 @@ else
   [ -d venv ] && echo -e "${GREEN}  Usando venv existente${NC}" || echo -e "${YELLOW}  Sin venv (crea uno en ml-service y ejecuta INSTALL_ML_DEPS=1 ./start-all.sh la primera vez)${NC}"
 fi
 
-# Backend y ML en paralelo
-echo -e "${BLUE}Starting Backend (5002) and ML Service (5001)...${NC}"
+# Backend (nohup para que no muera al cerrar la terminal)
+echo -e "${BLUE}Starting Backend (4000)...${NC}"
 cd "$SCRIPT_DIR/backend"
-npm run dev >> "$SCRIPT_DIR/logs/backend.log" 2>&1 &
+nohup node server.js >> "$SCRIPT_DIR/logs/backend.log" 2>&1 </dev/null &
 BACKEND_PID=$!
+disown 2>/dev/null || true
+sleep 2
+# ML Service (rutas absolutas de modelos para CNN y ViT)
+echo -e "${BLUE}Starting ML Service (6001)...${NC}"
 cd "$SCRIPT_DIR/ml-service"
-[ -x venv/bin/python ] && venv/bin/python app.py >> "$SCRIPT_DIR/logs/ml-service.log" 2>&1 &
-ML_PID=$!
-echo -e "${GREEN}Backend started (PID: $BACKEND_PID)${NC}"
-echo -e "${GREEN}ML Service started (PID: $ML_PID)${NC}"
+export ML_CNN_PATH="${ML_CNN_PATH:-$SCRIPT_DIR/ml-service/modelo_ropa.h5}"
+export ML_VIT_PATH="${ML_VIT_PATH:-$SCRIPT_DIR/ml-service/vision_transformer_moda_modelo.keras}"
+ML_PID=""
+if [ -x venv/bin/python ]; then
+  nohup env ML_CNN_PATH="$ML_CNN_PATH" ML_VIT_PATH="$ML_VIT_PATH" venv/bin/python app.py >> "$SCRIPT_DIR/logs/ml-service.log" 2>&1 </dev/null &
+  ML_PID=$!
+  disown 2>/dev/null || true
+  echo -e "${GREEN}Backend started (PID: $BACKEND_PID)${NC}"
+  echo -e "${GREEN}ML Service started (PID: $ML_PID). Wait ~1–2 min for models to load.${NC}"
+else
+  echo -e "${GREEN}Backend started (PID: $BACKEND_PID)${NC}"
+  echo -e "${YELLOW}ML Service not started: no venv in ml-service. Create one: cd ml-service && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt${NC}"
+  echo -e "${YELLOW}Then run ./start-all.sh again, or start ML manually: ./ml-service/run_ml.sh${NC}"
+fi
 
 # No bloquear: el ML tarda en cargar (TensorFlow + modelos). Curl con timeout para no colgar.
 (sleep 15; if command -v curl >/dev/null 2>&1; then
-  HEALTH=$(curl -s --connect-timeout 3 --max-time 5 http://localhost:5001/health 2>/dev/null)
+  HEALTH=$(curl -s --connect-timeout 3 --max-time 5 http://localhost:6001/health 2>/dev/null)
   if echo "$HEALTH" | grep -q '"vit_model_loaded":true'; then
     echo -e "${GREEN}  ✓ CNN y ViT cargados correctamente${NC}"
   elif echo "$HEALTH" | grep -q '"model_loaded":true'; then
@@ -78,29 +92,28 @@ echo -e "${GREEN}ML Service started (PID: $ML_PID)${NC}"
   fi
 fi) &
 
-# Frontend en modo dev (rápido; sin build). Para producción: BUILD=1 ./start-all.sh
+# Frontend: corregir carpetas mal nombradas en node_modules (p. ej. "dist 2" -> "dist") y arrancar
 echo -e "${BLUE}Starting Frontend (dev, port 3000)...${NC}"
-cd "$SCRIPT_DIR/frontend"
-if [ "${BUILD:-0}" = "1" ]; then
-  if ! npm run build >> "$SCRIPT_DIR/logs/frontend-build.log" 2>&1; then
-    echo -e "${YELLOW}Build falló. Arrancando en modo dev.${NC}"
-    npm run dev >> "$SCRIPT_DIR/logs/frontend.log" 2>&1 &
-  else
-    node serve.cjs >> "$SCRIPT_DIR/logs/frontend.log" 2>&1 &
-  fi
-else
-  npm run dev >> "$SCRIPT_DIR/logs/frontend.log" 2>&1 &
-fi
+[ -x "$SCRIPT_DIR/frontend/fix-npm-folders.sh" ] && "$SCRIPT_DIR/frontend/fix-npm-folders.sh" 2>/dev/null || true
+: > "$SCRIPT_DIR/logs/frontend.log"
+(cd "$SCRIPT_DIR/frontend" && node node_modules/vite/bin/vite.js --port 3000 --host 0.0.0.0 >> "$SCRIPT_DIR/logs/frontend.log" 2>&1) &
 FRONTEND_PID=$!
-echo -e "${GREEN}Frontend started (PID: $FRONTEND_PID). Abre http://localhost:3000 en ~5 s${NC}"
+sleep 15
+if lsof -i :3000 >/dev/null 2>&1; then
+  echo -e "${GREEN}Frontend started (PID: $FRONTEND_PID). Abre http://localhost:3000${NC}"
+else
+  echo -e "${YELLOW}Frontend did not bind to 3000. Last 20 lines of logs/frontend.log:${NC}"
+  tail -20 "$SCRIPT_DIR/logs/frontend.log" 2>/dev/null || true
+  echo -e "${YELLOW}Run manually: cd frontend && npm run dev (keep that terminal open)${NC}"
+fi
 
 echo ""
 echo -e "${GREEN}════════════════════════════════════════${NC}"
 echo -e "${GREEN}All services are running!${NC}"
 echo -e "${GREEN}════════════════════════════════════════${NC}"
 echo ""
-echo -e "  Backend:    http://localhost:5002"
-echo -e "  ML:        http://localhost:5001"
+echo -e "  Backend:    http://localhost:4000"
+echo -e "  ML:        http://localhost:6001"
 echo -e "  Frontend:  http://localhost:3000"
 echo ""
 echo -e "${YELLOW}  Abre http://localhost:3000 en el navegador.${NC}"

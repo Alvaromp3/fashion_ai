@@ -24,13 +24,14 @@ class_to_tipo = None
 tipo_por_indice = None
 KERAS_HUB_AVAILABLE = False
 
-# Rutas de modelos: SIEMPRE estas rutas absolutas
-_DEFAULT_CNN = '/Users/alvaromartin-pena/Desktop/fashion_ai_clean/ml-service/modelo_ropa.h5'
-_DEFAULT_VIT = '/Users/alvaromartin-pena/Desktop/fashion_ai_clean/ml-service/vision_transformer_moda_modelo.keras'
+# Rutas de modelos: CNN (modelo_ropa.h5) y ViT (vision_transformer_moda_modelo.keras).
+# Se pueden fijar con ML_CNN_PATH y ML_VIT_PATH (p. ej. en start-all.sh o run_ml.sh).
+_ML_DIR = os.path.dirname(os.path.abspath(__file__))
+_DEFAULT_CNN = os.path.join(_ML_DIR, 'modelo_ropa.h5')
+_DEFAULT_VIT = os.path.join(_ML_DIR, 'vision_transformer_moda_modelo.keras')
 CNN_MODEL_PATH = os.path.abspath(os.environ.get('ML_CNN_PATH', _DEFAULT_CNN))
 VIT_MODEL_PATH = os.path.abspath(os.environ.get('ML_VIT_PATH', _DEFAULT_VIT))
-# Si no existen en la ruta por defecto, intentar relativo al directorio de este script
-_ML_DIR = os.path.dirname(os.path.abspath(__file__))
+# Fallback si no existen en la ruta indicada
 if not os.path.exists(CNN_MODEL_PATH):
     CNN_MODEL_PATH = os.path.abspath(os.path.join(_ML_DIR, 'modelo_ropa.h5'))
 if not os.path.exists(VIT_MODEL_PATH):
@@ -477,7 +478,7 @@ def classify_vit():
         return jsonify({'error': f'Error processing image: {str(e)}'}), 500
 
 def _load_models_background():
-    """Carga modelos en segundo plano; el servidor ya está escuchando en 5001."""
+    """Carga modelos en segundo plano; el servidor ya está escuchando en 6001."""
     load_model()
     if model is not None:
         print("✅ CNN listo para clasificar.", flush=True)
@@ -488,7 +489,7 @@ def _load_models_background():
 
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5001))
+    port = int(os.environ.get('PORT', 6001))
     print("🚀 Fashion AI ML Service", flush=True)
     print(f"   CNN: {CNN_MODEL_PATH}", flush=True)
     print(f"   ViT: {VIT_MODEL_PATH}", flush=True)

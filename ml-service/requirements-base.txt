@@ -1,7 +1,7 @@
 # ML Service - dependencias base (CNN siempre; ViT si keras-hub carga)
 flask==3.0.0
 flask-cors==4.0.0
-tensorflow>=2.15.0,<2.17
+tensorflow>=2.15.0
 numpy>=1.24.3
 Pillow>=10.1.0
 werkzeug>=3.0.1

@@ -6,9 +6,11 @@ import MisOutfits from './pages/MisOutfits'
 import ConfusionMatrix from './pages/ConfusionMatrix'
 import ModelExamples from './pages/ModelExamples'
 
+const routerFuture = { v7_startTransition: true, v7_relativeSplatPath: true }
+
 function App() {
   return (
-    <Router>
+    <Router future={routerFuture}>
       <div
         className="min-h-screen app-shell"
         style={{ background: 'var(--content-bg)' }}

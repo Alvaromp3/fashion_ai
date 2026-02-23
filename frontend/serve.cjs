@@ -8,7 +8,7 @@ const path = require('path');
 const fs = require('fs');
 
 const PORT = 3000;
-const BACKEND = process.env.BACKEND_URL || 'http://localhost:5002';
+const BACKEND = process.env.BACKEND_URL || 'http://localhost:4000';
 const DIST = path.join(__dirname, 'dist');
 
 if (!fs.existsSync(DIST)) {

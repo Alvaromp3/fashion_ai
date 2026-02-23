@@ -3,21 +3,27 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: {
+    include: ['framer-motion'],
+  },
   server: {
     port: 3000,
-    host: true,
-    strictPort: true,
+    host: '0.0.0.0',
+    strictPort: false,
+    headers: {
+      'Content-Security-Policy': "script-src 'self' 'unsafe-inline' 'unsafe-eval'; object-src 'self'; base-uri 'self';"
+    },
     hmr: {
       protocol: 'ws',
       host: 'localhost'
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:5002',
+        target: 'http://localhost:4000',
         changeOrigin: true
       },
       '/uploads': {
-        target: 'http://localhost:5002',
+        target: 'http://localhost:4000',
         changeOrigin: true
       }
     }
@@ -27,11 +33,11 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:5002',
+        target: 'http://localhost:4000',
         changeOrigin: true
       },
       '/uploads': {
-        target: 'http://localhost:5002',
+        target: 'http://localhost:4000',
         changeOrigin: true
       }
     }

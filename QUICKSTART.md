@@ -107,10 +107,27 @@ npm run dev
 http://localhost:3000
 ```
 
+## ✅ Arranque con un solo comando
+
+Si quieres levantar todo de una vez (backend, ML y frontend):
+
+```bash
+# 1. Cerrar todo y liberar puertos
+./stop-all.sh
+
+# 2. Esperar 2–3 segundos y arrancar
+./start-all.sh
+
+# 3. Esperar ~15 s y comprobar
+./check-ports.sh
+```
+
+Luego abre **http://localhost:3000** en el navegador. Para parar todo: `Ctrl+C` en la terminal donde corre `start-all.sh`.
+
 ## ✅ Verificar que Todo Funciona
 
-1. **Backend**: `http://localhost:5002/api/health` → Debe responder `{"status":"OK"}`
-2. **ML Service**: `http://localhost:5001/health` → Debe responder `{"status":"OK"}`
+1. **Backend**: `http://localhost:4000/api/health` → Debe responder `{"status":"OK"}` o `{"status":"DEGRADED"}`
+2. **ML Service**: `http://localhost:6001/health` → Debe responder con estado del modelo
 3. **Frontend**: `http://localhost:3000` → Debe cargar la página
 
 ## 🐛 Problemas Comunes
@@ -122,7 +139,7 @@ http://localhost:3000
 
 ### "ML Service not responding"
 
-- Verifica que el servicio esté en puerto 5001
+- Verifica que el servicio ML esté en puerto 6001
 - Verifica que `modelo_ropa.h5` exista en `ml-service/`
 
 ### "Images not loading"

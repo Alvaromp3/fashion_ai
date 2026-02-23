@@ -1,6 +1,7 @@
 {
   "name": "fashion-ai-backend",
   "version": "1.0.0",
+  "type": "commonjs",
   "description": "Backend para Fashion AI - Recomendador de Outfits",
   "main": "server.js",
   "scripts": {
@@ -9,11 +10,7 @@
     "start:all": "../start-all.sh",
     "stop:all": "../stop-all.sh"
   },
-  "keywords": [
-    "fashion",
-    "ai",
-    "outfits"
-  ],
+  "keywords": ["fashion", "ai", "outfits"],
   "author": "",
   "license": "ISC",
   "dependencies": {

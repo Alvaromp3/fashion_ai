@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { FaTimes, FaUpload, FaSpinner, FaCalendar, FaBrain, FaNetworkWired } from 'react-icons/fa'
 import axios from 'axios'
+
+const ML_UNAVAILABLE_HINT = 'Run ./start-all.sh from the project root and wait ~1–2 min for models to load. If it still fails, check logs/ml-service.log.'
 
 const UploadModal = ({ onClose, onSuccess }) => {
   const [file, setFile] = useState(null)
@@ -12,6 +14,43 @@ const UploadModal = ({ onClose, onSuccess }) => {
   const [usedModel, setUsedModel] = useState(null)
   const [selectedOccasions, setSelectedOccasions] = useState([])
   const [error, setError] = useState(null)
+  const [mlStatus, setMlStatus] = useState('checking') // 'checking' | 'available' | 'unavailable'
+
+  const [vitReady, setVitReady] = useState(false)
+
+  const checkMlHealth = () => {
+    setMlStatus('checking')
+    axios.get('/api/ml-health', { timeout: 5000 })
+      .then((res) => {
+        if (res?.data?.available) {
+          setMlStatus('available')
+          setVitReady(Boolean(res?.data?.vit_model_loaded))
+          setError((prev) => (prev && prev.includes('ML service not available')) ? null : prev)
+        } else {
+          setMlStatus('unavailable')
+          setVitReady(false)
+        }
+      })
+      .catch(() => { setMlStatus('unavailable'); setVitReady(false) })
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    axios.get('/api/ml-health', { timeout: 5000 })
+      .then((res) => {
+        if (cancelled) return
+        if (res?.data?.available) {
+          setMlStatus('available')
+          setVitReady(Boolean(res?.data?.vit_model_loaded))
+          setError((prev) => (prev && prev.includes('ML service not available')) ? null : prev)
+        } else {
+          setMlStatus('unavailable')
+          setVitReady(false)
+        }
+      })
+      .catch(() => { if (!cancelled) { setMlStatus('unavailable'); setVitReady(false) } })
+    return () => { cancelled = true }
+  }, [])
 
   const occasions = [
     { value: 'casual', label: 'Casual', desc: 'Everyday wear' },
@@ -71,13 +110,15 @@ const UploadModal = ({ onClose, onSuccess }) => {
           setUsedModel('cnn')
           const isFallbackResponse = fallback.data?.clase_nombre === 'desconocido' && fallback.data?.confianza === 0.5 && fallback.data?.warning
           setError(isFallbackResponse
-            ? 'ML service not responding. Start the ML service (port 5001).'
-            : 'ViT not available; CNN was used instead.')
+            ? 'ML service not responding. Start the ML service (port 6001).'
+            : 'ViT (vision_transformer_moda_modelo.keras) not ready yet; CNN was used. Wait ~1 min for ViT to load and try "Classify (ViT)" again, or check logs/ml-service.log.')
         } catch (fallbackErr) {
-          setError(fallbackErr.response?.data?.error || 'Classification failed. Is the ML service running on port 5001?')
+          const errMsg = fallbackErr.response?.data?.error || 'ML service not available.'
+          setError(errMsg.includes('ML service') ? `${errMsg} ${ML_UNAVAILABLE_HINT}` : errMsg)
         }
       } else {
-        setError(res?.error || 'Classification failed. Please try again.')
+        const msg = res?.error || 'Classification failed. Please try again.'
+        setError(msg === 'ML service not available' ? `${msg} ${ML_UNAVAILABLE_HINT}` : msg)
       }
     } finally {
       setClassifying(false)
@@ -104,7 +145,8 @@ const UploadModal = ({ onClose, onSuccess }) => {
       selectedOccasions.forEach(oc => formData.append('ocasion', oc))
 
       await axios.post('/api/prendas/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity
       })
 
       setFile(null)
@@ -113,8 +155,11 @@ const UploadModal = ({ onClose, onSuccess }) => {
       setSelectedOccasions([])
       setError(null)
       onSuccess()
-    } catch (error) {
-      setError(error.response?.data?.error || 'Error saving the garment. Please try again.')
+    } catch (err) {
+      const data = err.response?.data
+      const msg = data?.error || 'Error saving the garment. Please try again.'
+      const details = data?.details && data.details !== msg ? ` (${data.details})` : ''
+      setError(msg + details)
     } finally {
       setLoading(false)
     }
@@ -229,6 +274,38 @@ const UploadModal = ({ onClose, onSuccess }) => {
                 </div>
               </div>
             </>
+          )}
+
+          {/* ML service status */}
+          {mlStatus === 'checking' && (
+            <div className="bg-gray-100 border border-gray-200 rounded-xl px-4 py-2 text-gray-600 text-sm flex items-center gap-2">
+              <FaSpinner className="animate-spin flex-shrink-0" />
+              <span>Checking ML service…</span>
+            </div>
+          )}
+          {mlStatus === 'unavailable' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-amber-800 text-sm">
+              <p className="font-medium">ML service not available</p>
+              <p className="mt-1">{ML_UNAVAILABLE_HINT}</p>
+              <p className="mt-2 text-xs text-amber-700">To see errors in the terminal: <code className="bg-amber-100 px-1 rounded">./ml-service/run_ml.sh</code></p>
+              <button
+                type="button"
+                onClick={checkMlHealth}
+                className="mt-3 px-3 py-1.5 bg-amber-200 hover:bg-amber-300 text-amber-900 rounded-lg text-sm font-medium"
+              >
+                Check again
+              </button>
+            </div>
+          )}
+          {mlStatus === 'available' && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2 text-emerald-800 text-sm flex items-center gap-2">
+              <FaBrain className="flex-shrink-0" />
+              <span>
+                {vitReady
+                  ? 'ML service ready — CNN and ViT (vision_transformer_moda_modelo.keras) available.'
+                  : 'ML service ready — CNN available; ViT still loading (wait ~1 min) or check logs/ml-service.log.'}
+              </span>
+            </div>
           )}
 
           {error && <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-800 text-sm">{error}</div>}

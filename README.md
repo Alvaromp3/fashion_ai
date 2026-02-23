@@ -39,9 +39,9 @@ npm install
 Create a `.env` file (use `.env.example` if available):
 
 ```env
-PORT=5002
+PORT=4000
 MONGODB_URI=mongodb://localhost:27017/fashion_ai
-ML_SERVICE_URL=http://localhost:5001
+ML_SERVICE_URL=http://localhost:6001
 NODE_ENV=development
 ```
 
@@ -77,14 +77,14 @@ npm install
 
 Run all three parts (from the project root or in separate terminals).
 
-**Backend (default port 5002):**
+**Backend (default port 4000):**
 
 ```bash
 cd backend
 npm run dev
 ```
 
-**ML service (default port 5001):**
+**ML service (default port 6001):**
 
 ```bash
 cd ml-service
@@ -99,7 +99,7 @@ cd frontend
 npm run dev
 ```
 
-The app is available at `http://localhost:3000`. The frontend proxies `/api` and `/uploads` to the backend (default `http://localhost:5002`).
+The app is available at `http://localhost:3000`. The frontend proxies `/api` and `/uploads` to the backend (default `http://localhost:4000`).
 
 ## Publishing models as a GitHub release and building Docker
 
@@ -194,7 +194,7 @@ fashion_program/
 
 ## Troubleshooting
 
-- **Classification or recommendations fail:** Ensure the backend is running on port 5002 and the ML service on port 5001. Check backend and ML logs for errors.
+- **Classification or recommendations fail:** Ensure the backend is running on port 4000 and the ML service on port 6001. Check backend and ML logs for errors.
 - **MongoDB errors:** Confirm MongoDB is running and `MONGODB_URI` in `.env` is correct.
 - **Images not loading:** If not using Cloudinary, ensure `backend/uploads/` exists and the backend serves `/uploads` correctly.
 

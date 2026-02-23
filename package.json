@@ -7,7 +7,7 @@
     "start:backend": "cd backend && npm run dev",
     "start:ml": "cd ml-service && ./start.sh",
     "start:frontend": "cd frontend && npm run dev",
-    "stop": "pkill -f 'node.*server.js' && pkill -f nodemon && pkill -f vite && pkill -f 'python.*app.py' && lsof -ti:3000,5001,5002 | xargs kill -9 2>/dev/null || true"
+    "stop": "pkill -f 'node.*server.js' && pkill -f nodemon && pkill -f vite && pkill -f 'python.*app.py' && for p in 3000 4000 6001; do lsof -ti :$p | xargs kill -9 2>/dev/null; done; true"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
