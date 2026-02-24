@@ -1,10 +1,28 @@
-import { useState, useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
-import { FaMagic, FaSave, FaTrash, FaCog, FaStar } from 'react-icons/fa'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { FaMagic, FaSave, FaTrash, FaCog, FaStar, FaHeart, FaShareAlt, FaBalanceScale } from 'react-icons/fa'
+import html2canvas from 'html2canvas/dist/html2canvas.esm.js'
 import axios from 'axios'
 import OutfitCard from '../components/OutfitCard'
 import OutfitCardSkeleton from '../components/OutfitCardSkeleton'
 import PreferenciasModal from '../components/PreferenciasModal'
+import PrendaModal from '../components/PrendaModal'
+import CompareOutfitsModal from '../components/CompareOutfitsModal'
+
+const FAVORITES_KEY = 'fashion-ai-outfit-favorites'
+
+const getOutfitId = (outfit) =>
+  [outfit.superior?._id, outfit.superiorSecundario?._id, outfit.inferior?._id, outfit.zapatos?._id, outfit.abrigo?._id]
+    .filter(Boolean).join('-')
+
+const getComboKey = (outfit) => {
+  const s = outfit.superior?._id
+  const s2 = outfit.superiorSecundario?._id
+  const i = outfit.inferior?._id
+  const z = outfit.zapatos?._id
+  if (!s || !i || !z) return ''
+  return s2 ? `${s}-${s2}-${i}-${z}` : `${s}-${i}-${z}`
+}
 
 const MisOutfits = () => {
   const [outfits, setOutfits] = useState([])
@@ -17,7 +35,44 @@ const MisOutfits = () => {
   const [error, setError] = useState(null)
   const [lastPreferences, setLastPreferences] = useState(null)
   const [showSurpriseChoice, setShowSurpriseChoice] = useState(false)
+  const [selectedPrenda, setSelectedPrenda] = useState(null)
+  const [compareSelection, setCompareSelection] = useState([])
+  const [favorites, setFavorites] = useState(() => {
+    try {
+      const raw = localStorage.getItem(FAVORITES_KEY)
+      return raw ? JSON.parse(raw) : []
+    } catch { return [] }
+  })
+  const [filterFavoritos, setFilterFavoritos] = useState(false)
+  const [shareFeedback, setShareFeedback] = useState(null)
+  const [shareLoading, setShareLoading] = useState(false)
+  const featuredCardRef = useRef(null)
+  const cardRefs = useRef({})
   const location = useLocation()
+  const navigate = useNavigate()
+
+  // Quitar ?outfit= de la URL para no confundir (solo generamos imagen, no enlace)
+  useEffect(() => {
+    if (location.pathname === '/outfits' && location.search) {
+      navigate(location.pathname, { replace: true })
+    }
+  }, [location.pathname, location.search, navigate])
+
+  const toggleFavorite = useCallback((outfitId) => {
+    setFavorites(prev => {
+      const next = prev.includes(outfitId) ? prev.filter(id => id !== outfitId) : [...prev, outfitId]
+      try { localStorage.setItem(FAVORITES_KEY, JSON.stringify(next)) } catch (e) {}
+      return next
+    })
+  }, [])
+
+  const toggleCompare = (index) => {
+    setCompareSelection(prev => {
+      if (prev.includes(index)) return prev.filter(i => i !== index)
+      if (prev.length >= 2) return [prev[1], index]
+      return [...prev, index]
+    })
+  }
 
   useEffect(() => {
     fetchOutfits()
@@ -37,7 +92,7 @@ const MisOutfits = () => {
     }
   }
 
-  const handleGenerate = async (preferencias) => {
+  const handleGenerate = async (preferencias, append = false, excludeKeys = []) => {
     setError(null)
     setGenerating(true)
     const prefs = preferencias ?? lastPreferences ?? {}
@@ -51,17 +106,83 @@ const MisOutfits = () => {
       if (prefs.topPreference && prefs.topPreference !== 'any') params.append('topPreference', prefs.topPreference)
       if (prefs.incluirAbrigo) params.append('incluirAbrigo', 'true')
       if (prefs.layeredTop) params.append('layeredTop', 'true')
+      if (excludeKeys.length) params.append('exclude', excludeKeys.join(','))
 
       const url = `/api/outfits/recommend${params.toString() ? '?' + params : ''}`
       const response = await axios.get(url)
-      setRecommendations(response.data)
+      setRecommendations(append ? (prev => [...prev, ...response.data]) : response.data)
     } catch (err) {
       console.error('Error generating outfits:', err)
       const msg = err.response?.data?.error || 'Could not generate outfits. Make sure you have at least one top, one bottom, and one pair of shoes.'
       setError(msg)
-      setRecommendations([])
+      if (!append) setRecommendations([])
     } finally {
       setGenerating(false)
+    }
+  }
+
+  const handleGenerateMore = () => {
+    const keys = recommendations.map(getComboKey).filter(Boolean)
+    handleGenerate(lastPreferences ?? {}, true, keys)
+  }
+
+  const handleShare = async (outfit, index, elementFromClick) => {
+    const el = elementFromClick ?? cardRefs.current[index]
+    if (!el) {
+      setShareFeedback('error')
+      setTimeout(() => setShareFeedback(null), 3000)
+      return
+    }
+    setShareLoading(true)
+    setShareFeedback(null)
+    try {
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#1e293b',
+        logging: false,
+        allowTaint: true,
+        imageTimeout: 0
+      })
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          setShareLoading(false)
+          setShareFeedback('error')
+          setTimeout(() => setShareFeedback(null), 3000)
+          return
+        }
+        const fileName = `outfit-fashion-ai-${index + 1}.jpg`
+        const file = new File([blob], fileName, { type: 'image/jpeg' })
+        const url = URL.createObjectURL(blob)
+
+        const tryShare = () => {
+          if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            return navigator.share({ files: [file], title: 'Outfit Fashion AI', text: 'Mi outfit recomendado' }).then(() => true).catch(() => false)
+          }
+          return Promise.resolve(false)
+        }
+
+        tryShare().then((shared) => {
+          if (!shared) {
+            const a = document.createElement('a')
+            a.href = url
+            a.download = fileName
+            a.rel = 'noopener'
+            document.body.appendChild(a)
+            a.click()
+            document.body.removeChild(a)
+          }
+          URL.revokeObjectURL(url)
+          setShareFeedback(index)
+          setShareLoading(false)
+          setTimeout(() => setShareFeedback(null), 3000)
+        })
+      }, 'image/jpeg', 0.9)
+    } catch (err) {
+      console.error('Error generating share image:', err)
+      setShareLoading(false)
+      setShareFeedback('error')
+      setTimeout(() => setShareFeedback(null), 3000)
     }
   }
 
@@ -176,6 +297,22 @@ const MisOutfits = () => {
           onGenerate={handleGenerate}
         />
 
+        {selectedPrenda && (
+          <PrendaModal
+            prenda={selectedPrenda.prenda}
+            label={selectedPrenda.label}
+            onClose={() => setSelectedPrenda(null)}
+          />
+        )}
+
+        {compareSelection.length === 2 && recommendations[compareSelection[0]] && recommendations[compareSelection[1]] && (
+          <CompareOutfitsModal
+            outfitA={recommendations[compareSelection[0]]}
+            outfitB={recommendations[compareSelection[1]]}
+            onClose={() => setCompareSelection([])}
+          />
+        )}
+
         {showSurpriseChoice && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-200">
@@ -239,35 +376,148 @@ const MisOutfits = () => {
               </div>
             ) : recommendations.length > 0 ? (
               <div>
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
                   <h2 className="text-xl font-semibold text-white">Your recommendations</h2>
-                  <span className="text-sm text-slate-400">{recommendations.length} outfit{recommendations.length !== 1 ? 's' : ''}</span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {recommendations.map((outfit, index) => (
-                    <div
-                      key={index}
-                      className="animate-fade-in dashboard-card rounded-2xl border overflow-hidden shadow-sm hover:shadow-xl transition-shadow"
-                      style={{ animationDelay: `${index * 100}ms`, animationFillMode: 'backwards' }}
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setFilterFavoritos(f => !f)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${filterFavoritos ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50' : 'bg-slate-600/50 text-slate-300 border border-slate-500 hover:bg-slate-500/50'}`}
                     >
-                      <OutfitCard outfit={outfit} />
-                      <div className="p-4 border-t border-slate-600 bg-slate-700/30">
-                        <button
-                          type="button"
-                          onClick={() => handleSaveOutfit(outfit)}
-                          className={`w-full py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
-                            savedId === [outfit.superior._id, outfit.superiorSecundario?._id, outfit.inferior._id, outfit.zapatos._id, outfit.abrigo?._id].filter(Boolean).join('-')
-                              ? 'bg-slate-600 text-white'
-                              : 'bg-white text-slate-900 hover:bg-slate-100'
-                          }`}
-                        >
-                          <FaSave />
-                          <span>{savedId === [outfit.superior._id, outfit.superiorSecundario?._id, outfit.inferior._id, outfit.zapatos._id, outfit.abrigo?._id].filter(Boolean).join('-') ? 'Saved!' : 'Save outfit'}</span>
-                        </button>
+                      <FaHeart className="text-sm" />
+                      Favoritos
+                    </button>
+                    <span className="text-sm text-slate-400">{recommendations.length} outfit{recommendations.length !== 1 ? 's' : ''}</span>
+                  </div>
+                </div>
+
+                {/* Look del día: outfit con mayor puntuación destacado */}
+                {!filterFavoritos && recommendations.length > 0 && (() => {
+                  const sorted = [...recommendations].sort((a, b) => (b.puntuacion ?? 0) - (a.puntuacion ?? 0))
+                  const featured = sorted[0]
+                  const featuredIndex = recommendations.indexOf(featured)
+                  const outfitIdFeatured = getOutfitId(featured)
+                  const isJustSavedFeat = savedId === outfitIdFeatured
+                  return (
+                    <div className="mb-8 animate-fade-in">
+                      <p className="text-sm font-medium text-slate-400 mb-3 uppercase tracking-wide">Recomendación del día</p>
+                      <div ref={featuredCardRef} data-outfit-card className="dashboard-card rounded-2xl border-2 border-amber-500/40 overflow-hidden shadow-lg bg-gradient-to-b from-slate-700/60 to-slate-800/60">
+                        <OutfitCard outfit={featured} onPrendaClick={(prenda, label) => setSelectedPrenda({ prenda, label })} showPuntuacion showPorQueCombina />
+                        <div className="p-5 border-t border-slate-600/80 bg-slate-800/40 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleSaveOutfit(featured)}
+                            className={`flex-1 min-w-[140px] py-3.5 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+                              isJustSavedFeat ? 'bg-emerald-600 text-white cursor-default' : 'bg-white text-slate-900 hover:bg-slate-100 shadow-sm'
+                            }`}
+                          >
+                            <FaSave className={isJustSavedFeat ? 'text-emerald-200' : ''} />
+                            {isJustSavedFeat ? 'Guardado' : 'Guardar'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              const card = e.currentTarget.closest('[data-outfit-card]')
+                              handleShare(featured, featuredIndex, card)
+                            }}
+                            disabled={shareLoading}
+                            className="px-4 py-3.5 rounded-xl font-medium bg-slate-600 text-slate-200 hover:bg-slate-500 flex items-center gap-2 disabled:opacity-70"
+                          >
+                            <FaShareAlt /> {shareFeedback === featuredIndex ? '¡Descargado!' : shareLoading ? 'Generando…' : 'Compartir imagen'}
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  ))}
+                  )
+                })()}
+
+                {filterFavoritos && favorites.filter(id => recommendations.some(o => getOutfitId(o) === id)).length === 0 && (
+                  <p className="text-slate-400 mb-4">Aún no tienes favoritos. Pulsa el corazón en una recomendación.</p>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {recommendations
+                    .filter(o => !filterFavoritos || favorites.includes(getOutfitId(o)))
+                    .map((outfit, index) => {
+                      const outfitId = getOutfitId(outfit)
+                      const isJustSaved = savedId === outfitId
+                      const isFavorite = favorites.includes(outfitId)
+                      const isCompareSelected = compareSelection.includes(recommendations.indexOf(outfit))
+                      const realIndex = recommendations.indexOf(outfit)
+                      return (
+                        <div
+                          key={realIndex}
+                          ref={(el) => { cardRefs.current[realIndex] = el }}
+                          data-outfit-card
+                          className="relative animate-fade-in dashboard-card rounded-2xl border border-slate-600/80 overflow-hidden shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 bg-gradient-to-b from-slate-700/50 to-slate-800/50"
+                          style={{ animationDelay: `${index * 100}ms`, animationFillMode: 'backwards' }}
+                        >
+                          <div className="absolute top-3 right-3 z-10 flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleCompare(realIndex)}
+                              className={`p-2 rounded-lg transition-colors ${isCompareSelected ? 'bg-amber-500/80 text-white' : 'bg-slate-700/80 text-slate-300 hover:bg-slate-600'}`}
+                              title="Comparar"
+                            >
+                              <FaBalanceScale className="text-sm" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => toggleFavorite(outfitId)}
+                              className={`p-2 rounded-lg transition-colors ${isFavorite ? 'text-rose-400' : 'text-slate-400 hover:text-rose-400'}`}
+                              title={isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+                            >
+                              <FaHeart className={isFavorite ? 'fill-current' : ''} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                const card = e.currentTarget.closest('[data-outfit-card]')
+                                handleShare(outfit, realIndex, card)
+                              }}
+                              disabled={shareLoading}
+                              className="p-2 rounded-lg text-slate-400 hover:text-white bg-slate-700/80 hover:bg-slate-600 transition-colors disabled:opacity-70"
+                              title="Descargar imagen del outfit"
+                            >
+                              <FaShareAlt className="text-sm" />
+                            </button>
+                          </div>
+                          <OutfitCard
+                            outfit={outfit}
+                            onPrendaClick={(prenda, label) => setSelectedPrenda({ prenda, label })}
+                            showPuntuacion
+                            showPorQueCombina
+                          />
+                          <div className="p-5 border-t border-slate-600/80 bg-slate-800/40">
+                            <button
+                              type="button"
+                              onClick={() => handleSaveOutfit(outfit)}
+                              className={`w-full py-3.5 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2.5 ${
+                                isJustSaved ? 'bg-emerald-600 text-white cursor-default' : 'bg-white text-slate-900 hover:bg-slate-100 shadow-sm hover:shadow'
+                              }`}
+                            >
+                              <FaSave className={isJustSaved ? 'text-emerald-200' : ''} />
+                              <span>{isJustSaved ? 'Guardado' : 'Guardar outfit'}</span>
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
                 </div>
+
+                {recommendations.length > 0 && (
+                  <div className="mt-8 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={handleGenerateMore}
+                      disabled={generating}
+                      className="px-6 py-3 rounded-xl font-medium bg-slate-600 text-slate-200 hover:bg-slate-500 border border-slate-500 disabled:opacity-60 flex items-center gap-2"
+                    >
+                      <FaMagic />
+                      Ya vi estos; generar 3 más
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="dashboard-card text-center py-20 px-6 rounded-2xl border border-slate-500 shadow-sm">
@@ -319,17 +569,17 @@ const MisOutfits = () => {
                   {outfits.map((outfit) => (
                     <div
                       key={outfit._id}
-                      className="dashboard-card rounded-2xl border border-slate-500 overflow-hidden shadow-sm hover:shadow-xl transition-shadow"
+                      className="dashboard-card rounded-2xl border border-slate-600/80 overflow-hidden shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 bg-gradient-to-b from-slate-700/50 to-slate-800/50"
                     >
-                      <OutfitCard outfit={outfit} onDelete={fetchOutfits} />
-                      <div className="p-4 border-t border-slate-600 bg-slate-700/30">
+                      <OutfitCard outfit={outfit} onDelete={fetchOutfits} onPrendaClick={(prenda, label) => setSelectedPrenda({ prenda, label })} />
+                      <div className="p-5 border-t border-slate-600/80 bg-slate-800/40">
                         <button
                           type="button"
                           onClick={() => handleDelete(outfit._id)}
-                          className="w-full py-3 rounded-xl font-medium text-red-200 bg-red-900/40 border border-red-500/60 hover:bg-red-800/50 flex items-center justify-center gap-2 transition-colors"
+                          className="w-full py-3.5 rounded-xl font-semibold text-red-200 bg-red-900/40 border border-red-500/50 hover:bg-red-800/50 hover:border-red-400/60 flex items-center justify-center gap-2 transition-all duration-200"
                         >
                           <FaTrash />
-                          Delete
+                          Eliminar
                         </button>
                       </div>
                     </div>

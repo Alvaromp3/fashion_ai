@@ -3,6 +3,129 @@ const router = express.Router();
 const Outfit = require('../models/Outfit');
 const Prenda = require('../models/Prenda');
 
+// --- Modelo de puntuación: predice compatibilidad del outfit (formalidad + color + preferencias + variación) ---
+const FORMALITY = {
+  'T-shirt': 1, 'Pullover': 2, 'Shirt': 3, 'Coat': 4, 'Dress': 4,
+  'Trouser': 2, 'Sneaker': 1, 'Ankle_boot': 3, 'desconocido': 2
+};
+const COLOR_PALETTES = [
+  ['negro', 'blanco', 'gris'],
+  ['azul', 'blanco', 'negro'],
+  ['rojo', 'negro', 'blanco'],
+  ['verde', 'blanco', 'beige'],
+  ['beige', 'blanco', 'marrón'],
+  ['gris', 'negro', 'blanco'],
+  ['azul', 'gris', 'blanco'],
+  ['negro', 'gris'],
+  ['blanco', 'beige'],
+  ['azul', 'blanco']
+];
+
+function hashString(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) - h) + str.charCodeAt(i) | 0;
+  }
+  return Math.abs(h);
+}
+
+function scoreOutfitCompatibility(superior, superiorSecundario, inferior, zapato, preferencias, comboKey) {
+  const explicaciones = [];
+  let score = 25; // base
+
+  const top = superiorSecundario || superior;
+  const piezas = [superior, inferior, zapato];
+  if (superiorSecundario) piezas.push(superiorSecundario);
+
+  const getFormality = (p) => FORMALITY[p?.clase_nombre] ?? FORMALITY.desconocido;
+  const formalityTop = Math.max(getFormality(superior), getFormality(superiorSecundario));
+  const formalityBottom = getFormality(inferior);
+  const formalityShoe = getFormality(zapato);
+  const diff = Math.abs(formalityTop - formalityBottom) + Math.abs(formalityTop - formalityShoe);
+  if (diff === 0) {
+    score += 18;
+    explicaciones.push('Formality level matches perfectly');
+  } else if (diff <= 1) {
+    score += 10;
+    explicaciones.push('Coherent formality');
+  } else if (diff >= 3) {
+    score -= 8;
+    explicaciones.push('Mixed formality levels');
+  }
+
+  const colores = piezas.map(p => (p.color || '').toLowerCase().trim()).filter(Boolean);
+  const hasUnknown = colores.some(c => !c || c === 'desconocido');
+  let colorScore = 0;
+  const inPalette = COLOR_PALETTES.find(pal => colores.every(c => !c || c === 'desconocido' || pal.some(p => c.includes(p) || p.includes(c))));
+  if (inPalette && colores.length >= 2 && !hasUnknown) {
+    colorScore = 28;
+    explicaciones.push('Colors that match perfectly');
+  } else if (inPalette || (colores.length >= 2 && new Set(colores).size <= 2)) {
+    colorScore = 15;
+    if (!explicaciones.some(e => e.includes('match'))) explicaciones.push('Good color harmony');
+  } else if (colores.length >= 2 && new Set(colores).size >= 3) {
+    colorScore = 5;
+  }
+
+  if (preferencias.colores?.length > 0) {
+    const tienePreferido = (preferencias.colores || []).some(cp =>
+      piezas.some(p => (p.color || '').toLowerCase().includes(String(cp).toLowerCase()))
+    );
+    if (tienePreferido) {
+      score += 14;
+      explicaciones.push('Includes your preferred colors');
+    }
+  }
+  score += colorScore;
+
+  if (preferencias.ocasion) {
+    const occ = preferencias.ocasion;
+    let add = 0;
+    if (occ === 'formal' && (top?.clase_nombre === 'Shirt' || top?.clase_nombre === 'Coat' || top?.clase_nombre === 'Dress')) add = 16;
+    else if (occ === 'deportivo' && (superior?.clase_nombre === 'T-shirt' || zapato?.clase_nombre === 'Sneaker')) add = 16;
+    else if (occ === 'casual' && ['T-shirt', 'Pullover'].includes(superior?.clase_nombre)) add = 12;
+    else if (occ === 'fiesta' && (top?.clase_nombre === 'Dress' || !['negro', 'gris'].includes((top?.color || '').toLowerCase()))) add = 14;
+    else if (occ === 'trabajo' && (top?.clase_nombre === 'Shirt' || top?.clase_nombre === 'Coat')) add = 16;
+    if (add) {
+      score += add;
+      explicaciones.push(`Perfect for ${occ} occasion`);
+    }
+  }
+
+  if (preferencias.estilo) {
+    const est = preferencias.estilo;
+    const topColor = (top?.color || '').toLowerCase();
+    const botColor = (inferior?.color || '').toLowerCase();
+    const neutrals = ['negro', 'blanco', 'gris', 'beige'];
+    let add = 0;
+    if (est === 'minimalista' && neutrals.includes(topColor) && neutrals.includes(botColor)) add = 12;
+    else if (est === 'colorido' && (!neutrals.includes(topColor) || !neutrals.includes(botColor))) add = 12;
+    else if (est === 'elegante' && (['Coat', 'Dress'].includes(top?.clase_nombre) || zapato?.clase_nombre === 'Ankle_boot')) add = 12;
+    else if (est === 'moderno' && (superior?.clase_nombre === 'T-shirt' || zapato?.clase_nombre === 'Sneaker')) add = 10;
+    if (add) {
+      score += add;
+      if (est === 'minimalista') explicaciones.push('Minimalist and elegant style');
+      else if (est === 'colorido') explicaciones.push('Colorful and vibrant look');
+      else if (est === 'elegante') explicaciones.push('Elegant and sophisticated combination');
+      else if (est === 'moderno') explicaciones.push('Modern and current look');
+    }
+  }
+
+  if (superiorSecundario) {
+    score += 8;
+    explicaciones.push('Layered look (pullover + T-shirt)');
+  }
+
+  const variation = hashString(comboKey) % 16;
+  score += variation;
+
+  if (score >= 75) explicaciones.push('High harmony score');
+  if (explicaciones.length === 0) explicaciones.push('Classic and versatile combination');
+
+  const puntuacion = Math.max(38, Math.min(97, Math.round(score)));
+  return { puntuacion, explicaciones };
+}
+
 router.get('/recommend', async (req, res) => {
   try {
     const preferencias = {
@@ -32,6 +155,14 @@ router.get('/recommend', async (req, res) => {
 
     const outfits = [];
     const combinacionesUsadas = new Set();
+    // Excluir combinaciones ya mostradas (para "generar 3 más")
+    const excludeRaw = req.query.exclude;
+    if (excludeRaw) {
+      try {
+        const keys = typeof excludeRaw === 'string' ? excludeRaw.split(',') : [];
+        keys.forEach(k => combinacionesUsadas.add(k.trim()));
+      } catch (e) { /* ignore */ }
+    }
 
     let superioresTshirt = superiores.filter(p => p.clase_nombre === 'T-shirt');
     let superioresPullover = superiores.filter(p => p.clase_nombre === 'Pullover');
@@ -106,127 +237,16 @@ router.get('/recommend', async (req, res) => {
       if (combinacionesUsadas.has(comboKey)) continue;
       combinacionesUsadas.add(comboKey);
 
-      let puntuacion = 20;
-      const explicaciones = [];
-      const piezas = [superior, inferior, zapato];
-      if (superiorSecundario) piezas.push(superiorSecundario);
-
-      if (preferencias.colores.length > 0) {
-        const coloresOutfit = piezas.map(p => p.color?.toLowerCase?.() || '');
-        const tieneColorPreferido = preferencias.colores.some(colorPref =>
-          coloresOutfit.some(color => color && (color.includes(colorPref.toLowerCase()) || colorPref.toLowerCase().includes(color)))
-        );
-        if (tieneColorPreferido) {
-          puntuacion += 25;
-          explicaciones.push('Includes your preferred colors');
-        }
-      }
-
-      const coloresCompatibles = [
-        ['negro', 'blanco', 'gris'],
-        ['azul', 'blanco', 'negro'],
-        ['rojo', 'negro', 'blanco'],
-        ['verde', 'blanco', 'beige'],
-        ['beige', 'blanco', 'marrón'],
-        ['gris', 'negro', 'blanco'],
-        ['azul', 'gris', 'blanco']
-      ];
-      const colores = piezas.map(p => (p.color || '').toLowerCase());
-      const esCompatible = coloresCompatibles.some(combo =>
-        colores.every(color => combo.includes(color) || color === 'desconocido')
+      const { puntuacion, explicaciones } = scoreOutfitCompatibility(
+        superior, superiorSecundario, inferior, zapato, preferencias, comboKey
       );
-      if (esCompatible) {
-        puntuacion += 30;
-        explicaciones.push('Colors that match perfectly');
-      }
-
-      if (preferencias.ocasion) {
-        const topForOccasion = superiorSecundario || superior;
-        let adecuadoOcasion = false;
-        switch (preferencias.ocasion) {
-          case 'formal':
-            if (topForOccasion.clase_nombre === 'Shirt' || topForOccasion.clase_nombre === 'Coat' || topForOccasion.clase_nombre === 'Dress') {
-              puntuacion += 25;
-              adecuadoOcasion = true;
-            }
-            break;
-          case 'deportivo':
-            if (superior.clase_nombre === 'T-shirt' || zapato.clase_nombre === 'Sneaker') {
-              puntuacion += 25;
-              adecuadoOcasion = true;
-            }
-            break;
-          case 'casual':
-            if (superior.clase_nombre === 'T-shirt' || superior.clase_nombre === 'Pullover' || (superiorSecundario && superiorSecundario.clase_nombre === 'Pullover')) {
-              puntuacion += 20;
-              adecuadoOcasion = true;
-            }
-            break;
-          case 'fiesta':
-            if (topForOccasion.clase_nombre === 'Dress' || (topForOccasion.color !== 'negro' && topForOccasion.color !== 'gris')) {
-              puntuacion += 25;
-              adecuadoOcasion = true;
-            }
-            break;
-          case 'trabajo':
-            if (topForOccasion.clase_nombre === 'Shirt' || topForOccasion.clase_nombre === 'Coat') {
-              puntuacion += 25;
-              adecuadoOcasion = true;
-            }
-            break;
-        }
-        if (adecuadoOcasion) {
-          explicaciones.push(`Perfect for ${preferencias.ocasion} occasion`);
-        }
-      }
-
-      if (preferencias.estilo) {
-        const topForStyle = superiorSecundario || superior;
-        switch (preferencias.estilo) {
-          case 'minimalista':
-            if (['negro', 'blanco', 'gris', 'beige'].includes((topForStyle.color || '').toLowerCase()) &&
-                ['negro', 'blanco', 'gris', 'beige'].includes((inferior.color || '').toLowerCase())) {
-              puntuacion += 20;
-              explicaciones.push('Minimalist and elegant style');
-            }
-            break;
-          case 'colorido':
-            if (!['negro', 'blanco', 'gris'].includes((topForStyle.color || '').toLowerCase()) ||
-                !['negro', 'blanco', 'gris'].includes((inferior.color || '').toLowerCase())) {
-              puntuacion += 20;
-              explicaciones.push('Colorful and vibrant look');
-            }
-            break;
-          case 'elegante':
-            if (topForStyle.clase_nombre === 'Coat' || topForStyle.clase_nombre === 'Dress' || zapato.clase_nombre === 'Ankle_boot') {
-              puntuacion += 20;
-              explicaciones.push('Elegant and sophisticated combination');
-            }
-            break;
-          case 'moderno':
-            if (superior.clase_nombre === 'T-shirt' || zapato.clase_nombre === 'Sneaker') {
-              puntuacion += 20;
-              explicaciones.push('Modern and current look');
-            }
-            break;
-        }
-      }
-
-      if (superior.tipo && inferior.tipo && zapato.tipo) puntuacion += 10;
-      if (superiorSecundario) {
-        explicaciones.push('Layered look (pullover + T-shirt)');
-      }
-      if (puntuacion >= 70) {
-        explicaciones.push('High harmony score');
-      }
-      if (explicaciones.length === 0) {
-        explicaciones.push('Classic and versatile combination');
-      }
 
       let abrigo = null;
+      let finalPuntuacion = puntuacion;
       if (preferencias.incluirAbrigo && abrigos.length > 0) {
         abrigo = abrigos[Math.floor(Math.random() * abrigos.length)];
         explicaciones.push('Includes coat');
+        finalPuntuacion = Math.min(97, puntuacion + 4);
       }
 
       outfits.push({
@@ -235,7 +255,7 @@ router.get('/recommend', async (req, res) => {
         inferior,
         zapatos: zapato,
         abrigo: abrigo || undefined,
-        puntuacion: Math.min(100, puntuacion),
+        puntuacion: finalPuntuacion,
         explicaciones
       });
     }
