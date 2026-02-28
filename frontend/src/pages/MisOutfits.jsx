@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { FaMagic, FaSave, FaTrash, FaCog, FaStar, FaHeart, FaShareAlt, FaBalanceScale } from 'react-icons/fa'
-import html2canvas from 'html2canvas/dist/html2canvas.esm.js'
+import html2canvas from 'html2canvas'
 import axios from 'axios'
 import OutfitCard from '../components/OutfitCard'
 import OutfitCardSkeleton from '../components/OutfitCardSkeleton'

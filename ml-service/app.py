@@ -72,11 +72,11 @@ def load_model():
                 print(f"✅ CNN model loaded: {model_path} ({os.path.getsize(model_path) / (1024*1024):.2f} MB)")
             except Exception as e2:
                 import traceback
-                print(f"❌ CNN load error: {e1}", flush=True)
+                print(f"CNN load error: {e1}", flush=True)
                 traceback.print_exc()
                 model = None
     else:
-        print(f"❌ CNN not found: {model_path}", flush=True)
+        print(f"CNN not found: {model_path}", flush=True)
         model = None
 
     vit_model_path = os.path.abspath(os.path.realpath(VIT_MODEL_PATH))
@@ -160,11 +160,11 @@ def load_model():
         else:
             vit_model = None
             err_msg = str(vit_last_error) if vit_last_error else "unknown"
-            print(f"⚠️ ViT no cargó; solo CNN. Error: {err_msg[:150]}", flush=True)
+            print(f"ViT did not load; CNN only. Error: {err_msg[:150]}", flush=True)
             if not KERAS_HUB_AVAILABLE:
                 print("   pip install keras-hub para ViT", flush=True)
     else:
-        print(f"❌ ViT not found: {vit_model_path}", flush=True)
+        print(f"ViT not found: {vit_model_path}", flush=True)
         vit_model = None
     
     class_names = ['Ankle_boot', 'Bag', 'Coat', 'Dress', 'Pullover', 'Sandal', 'Shirt', 'Sneaker', 'T-shirt', 'Trouser']
@@ -485,21 +485,21 @@ def _load_models_background():
     if vit_model is not None:
         print("✅ ViT listo para clasificar.", flush=True)
     elif os.path.exists(VIT_MODEL_PATH):
-        print("⚠️ ViT no cargó; solo CNN. pip install keras-hub para ViT.", flush=True)
+        print("ViT did not load; CNN only. pip install keras-hub for ViT.", flush=True)
 
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 6001))
-    print("🚀 Fashion AI ML Service", flush=True)
+    print("Fashion AI ML Service", flush=True)
     print(f"   CNN: {CNN_MODEL_PATH}", flush=True)
     print(f"   ViT: {VIT_MODEL_PATH}", flush=True)
     if not os.path.exists(CNN_MODEL_PATH):
-        print(f"❌ CNN no encontrado: {CNN_MODEL_PATH}", flush=True)
+        print(f"CNN not found: {CNN_MODEL_PATH}", flush=True)
         sys.exit(1)
     if not os.path.exists(VIT_MODEL_PATH):
-        print(f"❌ ViT no encontrado: {VIT_MODEL_PATH}", flush=True)
+        print(f"ViT not found: {VIT_MODEL_PATH}", flush=True)
         sys.exit(1)
-    print(f"🌐 Binding to http://0.0.0.0:{port} (models loading in background)...", flush=True)
+    print(f"Binding to http://0.0.0.0:{port} (models loading in background)...", flush=True)
     t = threading.Thread(target=_load_models_background, daemon=True)
     t.start()
     app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
