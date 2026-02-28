@@ -14,6 +14,10 @@ build/
 *.log
 logs/
 
+# Vite cache
+frontend/vite.config.js.timestamp-*.mjs
+node_modules/.vite/
+
 # Uploads
 backend/uploads/
 backend/temp/
@@ -35,3 +39,5 @@ ml-service/temp/
 .DS_Store
 Thumbs.db
 
+# Duplicate lockfiles
+**/package-lock 2.json

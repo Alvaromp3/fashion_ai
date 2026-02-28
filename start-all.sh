@@ -87,9 +87,9 @@ sleep 1
 
 # Frontend: arrancar pronto para que Vite tenga tiempo (arranca en paralelo con ML)
 echo -e "${BLUE}Starting Frontend (3000)...${NC}"
-if [ ! -f "$SCRIPT_DIR/frontend/node_modules/vite/package.json" ]; then
-  echo -e "${YELLOW}  Instalando dependencias del frontend (npm install)...${NC}"
-  (cd "$SCRIPT_DIR/frontend" && npm install --legacy-peer-deps 2>&1) | tail -5
+if [ ! -f "$SCRIPT_DIR/frontend/node_modules/vite/package.json" ] || [ ! -f "$SCRIPT_DIR/frontend/node_modules/esbuild/package.json" ]; then
+  echo -e "${YELLOW}  Installing frontend dependencies (npm install)...${NC}"
+  (cd "$SCRIPT_DIR/frontend" && npm install --legacy-peer-deps 2>&1) | tail -8
   echo -e "${GREEN}  Frontend deps OK${NC}"
 fi
 if lsof -ti :3000 >/dev/null 2>&1; then
