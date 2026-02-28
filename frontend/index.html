@@ -2,7 +2,8 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Fashion AI - Recomendador de Outfits</title>
   </head>
@@ -10,27 +11,12 @@
     <div id="root">
       <div style="padding:2rem;text-align:center;background:#1e293b;color:#f8fafc;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;font-family:system-ui,sans-serif;">
         <p style="margin:0;font-size:1.25rem;">Cargando Fashion AI…</p>
-        <p style="margin:0;font-size:0.875rem;color:#94a3b8;">Si ves esto más de 10 s: ejecuta <code style="background:#334155;padding:0.2rem 0.5rem;border-radius:4px;">./start-all.sh</code> en la terminal del proyecto.</p>
-        <p style="margin:0;font-size:0.8rem;color:#64748b;">Abre <a href="http://localhost:3000" style="color:#38bdf8;">http://localhost:3000</a> (no uses file://)</p>
+        <p style="margin:0;font-size:0.875rem;color:#94a3b8;">Abre <a href="http://localhost:3000" style="color:#38bdf8;">http://localhost:3000</a> (no uses file://)</p>
       </div>
     </div>
     <script>
       if (window.location.protocol === 'file:') {
-        document.getElementById('root').innerHTML = '<div style="padding:2rem;text-align:center;background:#fef3c7;color:#92400e;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;font-family:system-ui,sans-serif;"><p style="margin:0;font-size:1.25rem;font-weight:600;">No abras el HTML como archivo</p><p style="margin:0;font-size:0.95rem;">En la terminal del proyecto ejecuta: <code style="background:#fff;padding:0.25rem 0.5rem;border-radius:4px;">./start-all.sh</code></p><p style="margin:0;font-size:0.875rem;">Luego abre:</p><a href="http://localhost:3000" style="font-size:1.1rem;color:#0ea5e9;font-weight:600;">http://localhost:3000</a></div>';
-      } else {
-        window.addEventListener('error', function(e) {
-          console.error('Global error:', e.error);
-          var r = document.getElementById('root');
-          if (r && r.innerText.indexOf('Cargando Fashion') !== -1) {
-            r.innerHTML = '<div style="padding:2rem;text-align:center;background:#fee2e2;color:#991b1b;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;font-family:system-ui,sans-serif;"><p style="margin:0;font-size:1.1rem;font-weight:600;">Error: ' + (e.error?.message || 'Unknown') + '</p><p style="margin:0;font-size:0.85rem;">Revisa la consola (F12) para más detalles.</p><button onclick="window.location.reload()" style="padding:0.5rem 1rem;margin-top:1rem;cursor:pointer;background:#0ea5e9;color:white;border:none;border-radius:4px;">Recargar</button></div>';
-          }
-        });
-        setTimeout(function() {
-          var r = document.getElementById('root');
-          if (r && r.innerText.indexOf('Cargando Fashion') !== -1) {
-            r.innerHTML = '<div style="padding:2rem;text-align:center;background:#fee2e2;color:#991b1b;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;font-family:system-ui,sans-serif;"><p style="margin:0;font-size:1.1rem;font-weight:600;">La app no cargó</p><p style="margin:0;font-size:0.9rem;">1. En la terminal del proyecto ejecuta: <code style="background:#fff;padding:0.2rem 0.4rem;border-radius:4px;">./stop-all.sh</code> y luego <code style="background:#fff;padding:0.2rem 0.4rem;border-radius:4px;">./start-all.sh</code></p><p style="margin:0;font-size:0.85rem;">2. Abre la consola del navegador (F12) y revisa si hay errores en rojo.</p><button onclick="window.location.reload()" style="padding:0.5rem 1rem;margin-top:1rem;cursor:pointer;background:#0ea5e9;color:white;border:none;border-radius:4px;">Recargar</button></div>';
-          }
-        }, 8000);
+        document.getElementById('root').innerHTML = '<div style="padding:2rem;text-align:center;background:#fef3c7;color:#92400e;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;font-family:system-ui,sans-serif;"><p style="margin:0;font-size:1.25rem;font-weight:600;">No abras el HTML como archivo</p><p style="margin:0;font-size:0.95rem;">Ejecuta en la terminal: <code style="background:#fff;padding:0.25rem 0.5rem;border-radius:4px;">./start-all.sh</code></p><a href="http://localhost:3000" style="font-size:1.1rem;color:#0ea5e9;font-weight:600;">http://localhost:3000</a></div>';
       }
     </script>
     <script type="module" src="/src/main.jsx"></script>

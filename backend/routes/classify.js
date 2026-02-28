@@ -28,6 +28,12 @@ const upload = multer({
   }
 });
 
+/**
+ * Run classification via ML service; handles HEIC conversion and cleanup.
+ * @param {import('express').Request} req - Must have req.file (multer)
+ * @param {import('express').Response} res
+ * @param {string} endpoint - e.g. '/classify' or '/classify-vit'
+ */
 async function processAndClassify(req, res, endpoint) {
   let convertedFilePath = null;
 
@@ -96,5 +102,28 @@ async function processAndClassify(req, res, endpoint) {
 
 router.post('/', upload.single('imagen'), (req, res) => processAndClassify(req, res, '/classify'));
 router.post('/vit', upload.single('imagen'), (req, res) => processAndClassify(req, res, '/classify-vit'));
+
+/** POST /api/classify/vit-base64 — Mirror: classify from data URL (no multipart) */
+router.post('/vit-base64', async (req, res) => {
+  const imageDataUrl = req.body?.imageDataUrl ?? req.body?.image_data_url ?? '';
+  if (!imageDataUrl || typeof imageDataUrl !== 'string' || !imageDataUrl.startsWith('data:image/')) {
+    return res.status(400).json({ error: 'imageDataUrl (data:image/...) required' });
+  }
+  const tempDir = path.join(__dirname, '../temp');
+  if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+  const tempPath = path.join(tempDir, 'mirror-vit-' + Date.now() + '.jpg');
+  try {
+    const base64 = imageDataUrl.replace(/^data:image\/\w+;base64,/, '');
+    const buf = Buffer.from(base64, 'base64');
+    await sharp(buf).jpeg({ quality: 90 }).toFile(tempPath);
+    req.file = { path: tempPath, originalname: 'frame.jpg', mimetype: 'image/jpeg' };
+    await processAndClassify(req, res, '/classify-vit');
+  } catch (e) {
+    if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+    res.status(500).json({ error: e.message || 'Error processing image' });
+  } finally {
+    if (fs.existsSync(tempPath)) try { fs.unlinkSync(tempPath); } catch (_) {}
+  }
+});
 
 module.exports = router;

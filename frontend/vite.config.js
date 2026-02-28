@@ -13,12 +13,14 @@ export default defineConfig({
     port: 3000,
     host: '0.0.0.0',
     strictPort: true,
-    headers: {
-      'Content-Security-Policy': "script-src 'self' 'unsafe-inline' 'unsafe-eval'; object-src 'self'; base-uri 'self';"
+    watch: {
+      usePolling: true,
+      interval: 1000
     },
     hmr: {
       protocol: 'ws',
-      host: 'localhost'
+      host: 'localhost',
+      overlay: false
     },
     proxy: {
       '/api': {

@@ -5,6 +5,7 @@ import MisPrendas from './pages/MisPrendas'
 import MisOutfits from './pages/MisOutfits'
 import ConfusionMatrix from './pages/ConfusionMatrix'
 import ModelExamples from './pages/ModelExamples'
+import Mirror from './pages/Mirror'
 
 const routerFuture = { v7_startTransition: true, v7_relativeSplatPath: true }
 
@@ -23,6 +24,7 @@ function App() {
             <Route path="/outfits" element={<MisOutfits />} />
             <Route path="/modelo/confusion-matrix" element={<ConfusionMatrix />} />
             <Route path="/modelo/ejemplos" element={<ModelExamples />} />
+            <Route path="/mirror" element={<Mirror />} />
           </Routes>
         </div>
       </div>

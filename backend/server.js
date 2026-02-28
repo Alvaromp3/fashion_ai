@@ -6,11 +6,14 @@ const axios = require('axios');
 
 dotenv.config({ path: path.join(__dirname, '.env') });
 
+const openrouter = require('./config/openrouter');
 const app = express();
+app.locals.openrouter = openrouter;
 
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Mirror puede enviar frames (base64) para evaluación visual.
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/model/images', express.static(path.join(__dirname, '../ml-service')));
 
@@ -42,12 +45,18 @@ const PORT = process.env.PORT || 4000;
 
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  if (openrouter.isConfigured) {
+    console.log('OpenRouter: configurado (apiKey cargada desde .env)');
+  } else {
+    console.warn('OpenRouter: OPENROUTER_API_KEY no definida en .env');
+  }
   const mongoose = require('mongoose');
   global.__mongoose = mongoose;
   app.use('/api/prendas', require('./routes/prendas'));
   app.use('/api/outfits', require('./routes/outfits'));
   app.use('/api/classify', require('./routes/classify'));
   app.use('/api/model', require('./routes/model'));
+  app.use('/api/mirror', require('./routes/mirror'));
   mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/fashion_ai', {
     serverSelectionTimeoutMS: 8000
   })

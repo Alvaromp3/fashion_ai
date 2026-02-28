@@ -119,9 +119,9 @@ else
   echo -e "${YELLOW}ML not started: no venv in ml-service. Create: cd ml-service && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt${NC}"
 fi
 
-# Dar tiempo a Vite a levantar (evita esperas largas en el health check)
-echo -e "${BLUE}Waiting for services (Vite ~10s)...${NC}"
-sleep 10
+# Dar tiempo a Vite a compilar y levantar (primera vez puede tardar 15s+)
+echo -e "${BLUE}Waiting for services (Vite ~15s)...${NC}"
+sleep 15
 
 # Checks con reintentos
 echo -e "${BLUE}Health check...${NC}"
@@ -149,7 +149,7 @@ wait_http() {
 OK=1
 wait_http "Backend"  "http://127.0.0.1:4000/api/health" "200" 25 1 || OK=0
 wait_http "ML"       "http://127.0.0.1:6001/health"     "200" 60 1 || OK=0
-wait_http "Frontend" "http://127.0.0.1:3000/"           "200" 60 1 || OK=0
+wait_http "Frontend" "http://127.0.0.1:3000/"           "200" 90 1 || OK=0
 
 if [ "$OK" = "1" ]; then
   HEALTH=$(curl -s -4 --connect-timeout 2 --max-time 4 http://127.0.0.1:6001/health 2>/dev/null || echo "")
@@ -185,7 +185,15 @@ echo -e "  Backend:    http://localhost:4000"
 echo -e "  ML:        http://localhost:6001"
 echo -e "  Frontend:  http://localhost:3000"
 echo ""
-echo -e "${YELLOW}  Abre http://localhost:3000 en el navegador.${NC}"
+if [ "$OK" = "1" ]; then
+  if command -v open >/dev/null 2>&1; then
+    open "http://localhost:3000" 2>/dev/null && echo -e "${GREEN}  Navegador abierto en http://localhost:3000${NC}" || echo -e "${YELLOW}  Abre http://localhost:3000 en el navegador.${NC}"
+  elif command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "http://localhost:3000" 2>/dev/null && echo -e "${GREEN}  Navegador abierto.${NC}" || echo -e "${YELLOW}  Abre http://localhost:3000 en el navegador.${NC}"
+  else
+    echo -e "${YELLOW}  Abre http://localhost:3000 en el navegador.${NC}"
+  fi
+fi
 echo ""
 echo -e "${BLUE}  CÓMO CERRAR TODO:${NC}"
 echo -e "  · En esta terminal: ${GREEN}Ctrl+C${NC} (para backend, ML y frontend)."
