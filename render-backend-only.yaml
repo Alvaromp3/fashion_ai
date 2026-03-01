@@ -1,0 +1,22 @@
+# Path B: Backend only (ML runs on Hugging Face Space).
+# Use this when ML is on HF Space. Deploy: Render Dashboard → New → Blueprint → Connect repo → select this file.
+# Set all env vars in Render Dashboard — see docs/SETUP_CHECKLIST.md.
+
+services:
+  - type: web
+    name: fashion-ai-backend
+    runtime: node
+    rootDir: backend
+
+    buildCommand: npm ci
+    startCommand: npm start
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      # Add in Render Dashboard:
+      # MONGODB_URI, AUTH0_DOMAIN, AUTH0_AUDIENCE, CORS_ORIGINS,
+      # ML_SERVICE_URL=https://YOUR_USER-fashion-ai-ml.hf.space
+      # Optional: ML_VIT_SERVICE_URL, R2_*, CLOUDINARY_*, OPENROUTER_API_KEY

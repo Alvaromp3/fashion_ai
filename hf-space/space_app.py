@@ -43,6 +43,18 @@ app.add_middleware(
 )
 
 
+@app.get("/")
+def root():
+    """Root route so the Space URL doesn't return 404 in the browser."""
+    return {
+        "message": "Fashion AI ML API",
+        "docs": "/docs",
+        "health": "/health",
+        "classify": "POST /classify (CNN)",
+        "classify_vit": "POST /classify-vit (ViT)",
+    }
+
+
 @app.get("/health")
 def health():
     """Same response shape as Flask /health for backend /api/ml-health."""

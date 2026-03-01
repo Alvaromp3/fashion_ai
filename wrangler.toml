@@ -1,0 +1,9 @@
+# Cloudflare Wrangler config for Fashion AI
+# Used by: npx wrangler r2 bucket create/list, npx wrangler pages deploy
+# Set CLOUDFLARE_ACCOUNT_ID in env or below for non-interactive use.
+
+name = "fashion-ai"
+# account_id = "your-account-id"   # Optional: set here or export CLOUDFLARE_ACCOUNT_ID
+
+# R2 bucket used by the backend for image uploads (see backend .env R2_BUCKET_NAME).
+# Create with: npm run cloudflare:r2-create   or   npx wrangler r2 bucket create fashion-ai-uploads

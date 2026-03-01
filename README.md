@@ -110,6 +110,17 @@ npm run dev
 
 The app is available at `http://localhost:3000`. The frontend proxies `/api` and `/uploads` to the backend (default `http://localhost:4000`).
 
+## Deployment (free tier)
+
+To host the app for free: **ML** on Hugging Face Spaces, **frontend** on Cloudflare Pages, **backend** on Render, **images** on Cloudflare R2. See:
+
+- **[docs/HOST_THE_REST.md](docs/HOST_THE_REST.md)** — short guide to host backend (Render) + frontend (Pages) after ML is on HF.
+- **[docs/SETUP_CHECKLIST.md](docs/SETUP_CHECKLIST.md)** — full ordered checklist with every env var and where to set it.
+- **[docs/CLOUDFLARE_SETUP.md](docs/CLOUDFLARE_SETUP.md)** — Cloudflare **Wrangler CLI**: create R2 bucket (`npm run cloudflare:r2-create`) and deploy Pages (`npm run cloudflare:pages-deploy`).
+- **[docs/CLOUDFLARE_PROTECTIONS.md](docs/CLOUDFLARE_PROTECTIONS.md)** — Cloudflare-side protections so you never get charged (no payment method, R2 cap in app, optional cron check).
+- **[docs/DEPLOY_NOW.md](docs/DEPLOY_NOW.md)** — Path A (Render + Pages) or Path B (HF Space + R2).
+- **[docs/COST_AND_LIMITS.md](docs/COST_AND_LIMITS.md)** — free-tier limits and how to avoid charges.
+
 ## Publishing models as a GitHub release and building Docker
 
 The ML models (CNN and ViT) are not stored in the repo. You can publish them once as a GitHub release so that the Docker image can download them at build time.

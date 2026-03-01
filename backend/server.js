@@ -8,6 +8,7 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 
 const openrouter = require('./config/openrouter');
 const { requireAuth, requireAdmin } = require('./middleware/auth');
+const { apiLimiter, classifyLimiter, uploadLimiterConditional } = require('./middleware/freeTierLimits');
 const app = express();
 app.locals.openrouter = openrouter;
 
@@ -20,6 +21,7 @@ app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/model/images', express.static(path.join(__dirname, '../ml-service')));
+app.use('/api', apiLimiter);
 
 app.get('/api/health', (req, res) => {
   const mongoose = global.__mongoose;
@@ -56,9 +58,9 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   }
   const mongoose = require('mongoose');
   global.__mongoose = mongoose;
-  app.use('/api/prendas', requireAuth, require('./routes/prendas'));
+  app.use('/api/prendas', requireAuth, uploadLimiterConditional, require('./routes/prendas'));
   app.use('/api/outfits', requireAuth, require('./routes/outfits'));
-  app.use('/api/classify', requireAuth, require('./routes/classify'));
+  app.use('/api/classify', requireAuth, classifyLimiter, require('./routes/classify'));
   app.use('/api/model', requireAuth, requireAdmin, require('./routes/model'));
   app.use('/api/mirror', requireAuth, require('./routes/mirror'));
   app.use('/api/me', requireAuth, require('./routes/me'));

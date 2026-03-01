@@ -168,3 +168,5 @@ For now, **Option A (Render backend + HF Space + R2)** is the simplest and fits 
 - [ ] R2 bucket created; public URL or custom domain set as `R2_PUBLIC_URL`.
 
 Once this is done, you have **Hugging Face Spaces (FastAPI) + Cloudflare Pages + Cloudflare R2** as the main free stack, with an optional Render (or other) backend to tie them together.
+
+**Cost and limits:** See **[COST_AND_LIMITS.md](COST_AND_LIMITS.md)** for free-tier limits and how to avoid charges.

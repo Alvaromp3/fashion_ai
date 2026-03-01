@@ -90,6 +90,8 @@ Choose one path. **Path A** is fastest (everything on Render + Pages). **Path B*
 
 ## Path B: Recommended (HF Space + Render + Pages + R2)
 
+**Step-by-step checklist:** Use **[SETUP_CHECKLIST.md](SETUP_CHECKLIST.md)** for a single ordered list (R2 → Render → Pages → Auth0/CORS) with every env var and where to set it.
+
 **You need:** Same as Path A, plus a Hugging Face account and a Cloudflare account (for R2).
 
 ### 1. Hugging Face Space (ML)
@@ -188,3 +190,5 @@ Same as Path A, steps 3–4:
 | **Docs** | [FREE_HOSTING.md](FREE_HOSTING.md) | [HF_SPACES_CLOUDFLARE_R2.md](HF_SPACES_CLOUDFLARE_R2.md) |
 
 If something fails, check the service logs (Render **Logs**, HF Space **Logs**, Pages **Build** and **Functions** if used) and the env vars above.
+
+**Cost and staying free:** See **[COST_AND_LIMITS.md](COST_AND_LIMITS.md)** for limits and a “stay free” checklist.

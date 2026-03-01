@@ -4,12 +4,24 @@ const multer = require('multer');
 const Prenda = require('../models/Prenda');
 const { uploadImage, deleteImage } = require('../utils/cloudinary');
 const r2 = require('../utils/r2');
+const { checkR2StorageLimit } = require('../utils/cloudflareUsage');
 const path = require('path');
 const fs = require('fs');
 const sharp = require('sharp');
 
 const DATASET_PATH = process.env.DATASET_PATH || '';
 const MIN_CONFIDENCE_FOR_DATASET = 0.8;
+
+/** Max garments per user (free tier safeguard). Set PRENDAS_MAX_PER_USER in env (default 200). */
+const PRENDAS_MAX_PER_USER = Math.min(parseInt(process.env.PRENDAS_MAX_PER_USER, 10) || 200, 1000);
+
+async function checkPrendaLimit(ownerId) {
+  const count = await Prenda.countDocuments({ owner_id: ownerId });
+  if (count >= PRENDAS_MAX_PER_USER) {
+    return { over: true, count, max: PRENDAS_MAX_PER_USER };
+  }
+  return { over: false, count, max: PRENDAS_MAX_PER_USER };
+}
 
 const CLASS_TO_FOLDER = {
   Ankle_boot: 'Ankle_boot', Bag: 'Bag', Coat: 'Coat', Dress: 'Dress',
@@ -69,8 +81,16 @@ const upload = multer({
 
 router.post('/upload', upload.single('imagen'), async (req, res) => {
   let convertedFilePath = null;
-  
+
   try {
+    const limitCheck = await checkPrendaLimit(req.user.sub);
+    if (limitCheck.over) {
+      return res.status(429).json({
+        error: 'Garment limit reached (free tier).',
+        limit: limitCheck.max,
+        hint: 'Delete some garments or set PRENDAS_MAX_PER_USER in backend env to increase.'
+      });
+    }
     if (!req.file) {
       return res.status(400).json({ error: 'No image provided' });
     }
@@ -99,6 +119,18 @@ router.post('/upload', upload.single('imagen'), async (req, res) => {
 
     let imagen_url;
     if (r2.isConfigured()) {
+      const fileSize = fs.statSync(filePath).size;
+      const storageCheck = await checkR2StorageLimit(fileSize);
+      if (!storageCheck.allowed) {
+        if (convertedFilePath && fs.existsSync(convertedFilePath)) fs.unlinkSync(convertedFilePath);
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        return res.status(429).json({
+          error: 'R2 storage limit reached (free tier).',
+          currentBytes: storageCheck.currentBytes,
+          limitBytes: storageCheck.limitBytes,
+          hint: 'Delete some garments or set R2_SOFT_LIMIT_BYTES / CLOUDFLARE_API_TOKEN in backend env.'
+        });
+      }
       const { url } = await r2.uploadToR2(filePath);
       imagen_url = url;
       if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
@@ -291,6 +323,14 @@ router.delete('/:id', async (req, res) => {
 
 router.post('/auto', async (req, res) => {
   try {
+    const limitCheck = await checkPrendaLimit(req.user.sub);
+    if (limitCheck.over) {
+      return res.status(429).json({
+        error: 'Garment limit reached (free tier).',
+        limit: limitCheck.max,
+        hint: 'Delete some garments or set PRENDAS_MAX_PER_USER in backend env to increase.'
+      });
+    }
     const { nombre, tipo, color, imagen_base64, clase_nombre, confianza, ocasion } = req.body;
 
     if (!imagen_base64 || !tipo || !color) {
@@ -310,6 +350,17 @@ router.post('/auto', async (req, res) => {
     await sharp(imageBuffer).jpeg({ quality: 90 }).toFile(filePath);
     let imagen_url;
     if (r2.isConfigured()) {
+      const fileSize = fs.statSync(filePath).size;
+      const storageCheck = await checkR2StorageLimit(fileSize);
+      if (!storageCheck.allowed) {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        return res.status(429).json({
+          error: 'R2 storage limit reached (free tier).',
+          currentBytes: storageCheck.currentBytes,
+          limitBytes: storageCheck.limitBytes,
+          hint: 'Delete some garments or set R2_SOFT_LIMIT_BYTES / CLOUDFLARE_API_TOKEN in backend env.'
+        });
+      }
       const { url } = await r2.uploadToR2(filePath);
       imagen_url = url;
     } else {

@@ -1,6 +1,19 @@
 # Hugging Face Space — setup steps
 
-This folder is ready to deploy as a **Hugging Face Space**. Do the following.
+This folder is ready to deploy as a **Hugging Face Space**. Use the script (after logging in) or follow the manual steps.
+
+## Quick (script, after login)
+
+1. **GitHub:** already verified — release `models-v1.0` on `Alvaromp3/fashion_ai` has `cnn_model_v1.zip` and `vit_model_v1.zip`. If `vit_model_v1.zip` is very small (~134 bytes), re-upload the real ViT `.keras` file to the release or add a direct asset `vision_transformer_moda_modelo.keras`.
+2. **Hugging Face:** log in, then run from the repo root:
+   ```powershell
+   huggingface-cli login
+   .\hf-space\scripts\setup-space.ps1
+   ```
+   Or on macOS/Linux: `./hf-space/scripts/setup-space.sh`  
+   This creates the Space (Docker) and uploads all files. Set your backend **ML_SERVICE_URL** to the Space URL shown when the build is running.
+
+---
 
 ## 1. Create a GitHub Release with the model files
 
@@ -92,6 +105,14 @@ ML_SERVICE_URL=https://YOUR_USERNAME-fashion-ai-ml.hf.space
 ```
 
 No path needed — the backend calls `ML_SERVICE_URL/classify` and `ML_SERVICE_URL/classify-vit`.
+
+## Optional: ViT in a second Space
+
+If you call ViT rarely, run it in a **separate Space** so the main Space stays CNN-only (faster, less RAM). The ViT Space can sleep when unused.
+
+1. Create a new Space (e.g. **fashion-ai-ml-vit**) with **Docker**.
+2. Upload the same files (app.py, space_app.py, requirements.txt, README.md) but use **Dockerfile.vit** as the **Dockerfile** (copy `Dockerfile.vit` contents into `Dockerfile` in the repo). Dockerfile.vit only downloads the ViT model.
+3. In your backend env set **ML_VIT_SERVICE_URL** = the ViT Space URL. Keep **ML_SERVICE_URL** = main (CNN) Space. The backend will call the ViT Space only for `/classify-vit` and `/vit-base64`.
 
 ## Troubleshooting
 

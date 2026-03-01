@@ -40,7 +40,11 @@ async function processAndClassify(req, res, endpoint) {
   try {
     if (!req.file) return res.status(400).json({ error: 'No image provided' });
 
-    const mlServiceUrl = process.env.ML_SERVICE_URL || 'http://localhost:6001';
+    // Use separate ViT Space when set (ViT called rarely; keeps main Space lighter)
+    const isVit = endpoint === '/classify-vit';
+    const mlServiceUrl = isVit && process.env.ML_VIT_SERVICE_URL
+      ? process.env.ML_VIT_SERVICE_URL
+      : (process.env.ML_SERVICE_URL || 'http://localhost:6001');
     let filePath = req.file.path;
     const fileExt = path.extname(req.file.originalname).toLowerCase();
     const isHeic = ['.heic', '.heif'].includes(fileExt) || 
@@ -61,7 +65,10 @@ async function processAndClassify(req, res, endpoint) {
     formData.append('imagen', fs.createReadStream(filePath), { filename: path.basename(filePath), contentType: 'image/jpeg' });
 
     try {
-      const response = await axios.post(`${mlServiceUrl}${endpoint}`, formData, {
+      const requestUrl = (isVit && process.env.ML_VIT_SERVICE_URL)
+        ? `${mlServiceUrl}/classify-vit`
+        : `${mlServiceUrl}${endpoint}`;
+      const response = await axios.post(requestUrl, formData, {
         headers: formData.getHeaders(),
         timeout: 30000
       });

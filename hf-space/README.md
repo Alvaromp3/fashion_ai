@@ -31,6 +31,13 @@ HTTP API for classifying clothing images. Used by the [Fashion AI](https://githu
 
 3. **Rebuild** the Space. Models download at build time; inference runs on CPU (16 GB RAM).
 
+## ViT in a separate Space (optional)
+
+If you call ViT rarely, run ViT in a **second Space** so the main Space stays CNN-only (faster, less RAM). Use **Dockerfile.vit** in the new Space (only downloads the ViT model). In your backend set:
+- `ML_SERVICE_URL` = main Space (CNN)
+- `ML_VIT_SERVICE_URL` = ViT-only Space URL  
+The backend will call the ViT Space only for `/classify-vit` and `/vit-base64`.
+
 ## CORS
 
 Set **Variables** → `CORS_ORIGINS` to your frontend URL (e.g. `https://your-app.pages.dev`) or `*` for testing.

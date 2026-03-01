@@ -2,6 +2,8 @@
 
 **Preferred free stack:** For a better fit (more RAM for ML, no egress for images), see **[HF Spaces + Cloudflare Pages + R2](HF_SPACES_CLOUDFLARE_R2.md)** — Hugging Face Spaces for inference, Cloudflare Pages for frontend, R2 for image storage.
 
+**Cost and limits:** See **[COST_AND_LIMITS.md](COST_AND_LIMITS.md)** for what’s free, hard limits, and how to avoid charges.
+
 This guide splits the app into **three deployments** (Render + Pages) so each part uses its own free tier allowance:
 
 | Service   | Host             | Free tier        |
