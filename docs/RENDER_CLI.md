@@ -71,6 +71,28 @@ The CLI cannot create **free-tier** services. Do this once in the Dashboard:
 
 ---
 
+## 4b. Set environment variables from the terminal (API)
+
+The Render CLI does not have a command to set env vars. Use the **Render API** via the sync script:
+
+1. Create an **API key** at [Dashboard → Account → API Keys](https://dashboard.render.com/u/settings#api-keys) (not the CLI token).
+2. From repo root:
+
+```bash
+# Option A: Set both (PowerShell)
+$env:RENDER_API_KEY = "rnd_xxxx"
+$env:RENDER_SERVICE_ID = "srv-xxxx"   # optional if you use Render CLI
+npm run render:env
+
+# Option B: If Render CLI is installed and you're logged in, service ID is resolved by name
+$env:RENDER_API_KEY = "rnd_xxxx"
+npm run render:env
+```
+
+The script reads `backend/.env` and syncs those variables to the Render backend service (replacing existing user env vars). Then trigger a deploy so the new vars take effect: `npm run render:deploy`.
+
+---
+
 ## 5. Deploy via CLI
 
 After the service exists, trigger a deploy:
@@ -111,5 +133,6 @@ render deploys create srv-xxxxxxxxxxxx --wait --output json --confirm
 ## Quick reference
 
 - **Validate:** `npm run render:validate` or `render blueprints validate render-backend-only.yaml`
+- **Env (sync backend/.env to Render):** `npm run render:env` (requires `RENDER_API_KEY`; optional `RENDER_SERVICE_ID` if CLI installed)
 - **Deploy:** `npm run render:deploy` (uses `RENDER_SERVICE_ID` if set) or `render deploys create <SERVICE_ID> --wait`
 - **Docs:** [Render CLI](https://render.com/docs/cli), [Non-interactive mode](https://render.com/docs/cli#non-interactive-mode)
