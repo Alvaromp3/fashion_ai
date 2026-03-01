@@ -108,10 +108,10 @@ Optional:
 ## 7. Auth0 URLs + backend CORS
 
 1. [ ] **Auth0** → your **Application (SPA)** → **Settings**:
-   - **Allowed Callback URLs:** add your Pages URL (e.g. `https://fashion-ai-xxxx.pages.dev`)
+   - **Allowed Callback URLs:** add your Pages URL (e.g. `https://fashion-ai.pages.dev`) — no trailing slash
    - **Allowed Logout URLs:** add the same
    - **Allowed Web Origins:** add the same
-   - **Save**.
+   - **Save**. See [AUTH0_PRODUCTION.md](AUTH0_PRODUCTION.md) for step-by-step.
 2. [ ] **Render** → **fashion-ai-backend** → **Environment** → add:
    - `CORS_ORIGINS` = your **Pages URL** (e.g. `https://fashion-ai-xxxx.pages.dev`)
    - **Save** (Render will redeploy).

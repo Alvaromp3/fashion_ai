@@ -10,6 +10,7 @@ import ConfusionMatrix from './pages/ConfusionMatrix'
 import ModelExamples from './pages/ModelExamples'
 import Mirror from './pages/Mirror'
 
+const redirectOrigin = (import.meta.env.VITE_AUTH0_CALLBACK_URL || '').replace(/\/$/, '') || window.location.origin
 const routerFuture = { v7_startTransition: true, v7_relativeSplatPath: true }
 
 function App() {
@@ -39,8 +40,8 @@ function App() {
       >
         <TubelightNavbar
           isAuthenticated={isAuthenticated}
-          onLogin={() => loginWithRedirect({ authorizationParams: { redirect_uri: window.location.origin } })}
-          onLogout={() => logout({ logoutParams: { returnTo: window.location.origin } })}
+          onLogin={() => loginWithRedirect({ authorizationParams: { redirect_uri: redirectOrigin } })}
+          onLogout={() => logout({ logoutParams: { returnTo: redirectOrigin } })}
         />
         <div className="pb-24 sm:pb-0 sm:pt-20">
           <Routes>

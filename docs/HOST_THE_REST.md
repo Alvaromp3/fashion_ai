@@ -61,7 +61,7 @@ Leave **`CORS_ORIGINS`** empty for now.
 | `VITE_AUTH0_DOMAIN` | Same as backend `AUTH0_DOMAIN` |
 | `VITE_AUTH0_CLIENT_ID` | Auth0 SPA Client ID |
 | `VITE_AUTH0_AUDIENCE` | Same as `AUTH0_AUDIENCE` |
-| `VITE_AUTH0_CALLBACK_URL` | Your **Pages URL** (no trailing slash) |
+| `VITE_AUTH0_CALLBACK_URL` | Your **Pages URL** (e.g. `https://fashion-ai.pages.dev`) — ensures redirects never go to localhost |
 | `VITE_API_BASE_URL` | Your **backend URL** from step 1 (no trailing slash) |
 
 6. **Redeploy** (e.g. **Deployments** → **⋯** → **Retry deployment**) so the new env vars are used.
@@ -81,10 +81,11 @@ Then add the **Environment variables** above in **Workers & Pages** → **fashio
 ## 3. Auth0 + CORS (~2 min)
 
 1. **Auth0** → Your SPA application → **Settings**:
-   - **Allowed Callback URLs:** add your Pages URL
+   - **Allowed Callback URLs:** add `https://fashion-ai.pages.dev` (or your exact Pages URL)
    - **Allowed Logout URLs:** add the same
    - **Allowed Web Origins:** add the same  
-   → **Save**.
+   → **Save**.  
+   **Details:** [AUTH0_PRODUCTION.md](AUTH0_PRODUCTION.md)
 2. **Render** → **fashion-ai-backend** → **Environment** → add:
    - **`CORS_ORIGINS`** = your **Pages URL** (exact, no trailing slash)  
    → **Save** (Render will redeploy).

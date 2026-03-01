@@ -8,6 +8,8 @@ import './index.css'
 const domain = import.meta.env.VITE_AUTH0_DOMAIN?.trim() || ''
 const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID?.trim() || ''
 const audience = import.meta.env.VITE_AUTH0_AUDIENCE?.trim() || undefined
+// In production, set VITE_AUTH0_CALLBACK_URL so redirects never go to localhost
+const redirectOrigin = (import.meta.env.VITE_AUTH0_CALLBACK_URL || '').replace(/\/$/, '') || window.location.origin
 
 const rootEl = document.getElementById('root')
 if (!rootEl) {
@@ -38,7 +40,7 @@ if (!rootEl) {
               clientId={clientId}
               cacheLocation="localstorage"
               authorizationParams={{
-                redirect_uri: window.location.origin,
+                redirect_uri: redirectOrigin,
                 audience: audience
               }}
             >

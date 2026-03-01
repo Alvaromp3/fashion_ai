@@ -2,6 +2,8 @@ import { useAuth0 } from '@auth0/auth0-react'
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 
+const redirectOrigin = (import.meta.env.VITE_AUTH0_CALLBACK_URL || '').replace(/\/$/, '') || window.location.origin
+
 /**
  * Renders children only when the user is logged in.
  * Shows a login screen otherwise and attaches the access token to axios.
@@ -37,7 +39,7 @@ export function LoginGuard({ children }) {
     setLoginError(null)
     loginWithRedirect({
       authorizationParams: {
-        redirect_uri: window.location.origin
+        redirect_uri: redirectOrigin
       }
     }).catch((err) => {
       setLoginError(err?.message || 'Login failed')
@@ -81,7 +83,7 @@ export function LoginGuard({ children }) {
             Log in
           </button>
           <p className="mt-6 text-xs text-zinc-500">
-            If login fails, in Auth0 Dashboard → Application → Settings set Allowed Callback URLs to <code className="bg-zinc-800 px-1 rounded">http://localhost:3000</code> and Application Type to Single Page Application.
+            If login fails, in Auth0 Dashboard → Application → Settings add your app URL to Allowed Callback URLs, Logout URLs, and Web Origins (see docs/AUTH0_PRODUCTION.md for production).
           </p>
         </div>
       </div>
