@@ -32,6 +32,7 @@
     "build": "vite build",
     "preview": "vite preview --port 3000",
     "start": "node serve.cjs",
-    "serve": "node serve.cjs"
+    "serve": "node serve.cjs",
+    "cloudflare:pages-deploy": "npm run cloudflare:pages-deploy --prefix .."
   }
 }

@@ -1,8 +1,7 @@
 import { useAuth0 } from '@auth0/auth0-react'
 import { useEffect, useState } from 'react'
 import axios from 'axios'
-
-const redirectOrigin = (import.meta.env.VITE_AUTH0_CALLBACK_URL || '').replace(/\/$/, '') || window.location.origin
+import { getRedirectOrigin } from '../utils/auth0Redirect'
 
 /**
  * Renders children only when the user is logged in.
@@ -39,7 +38,7 @@ export function LoginGuard({ children }) {
     setLoginError(null)
     loginWithRedirect({
       authorizationParams: {
-        redirect_uri: redirectOrigin
+        redirect_uri: getRedirectOrigin()
       }
     }).catch((err) => {
       setLoginError(err?.message || 'Login failed')

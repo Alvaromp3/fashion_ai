@@ -5,11 +5,12 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import App from './App.jsx'
 import './index.css'
 
+import { getRedirectOrigin } from './utils/auth0Redirect'
+
 const domain = import.meta.env.VITE_AUTH0_DOMAIN?.trim() || ''
 const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID?.trim() || ''
 const audience = import.meta.env.VITE_AUTH0_AUDIENCE?.trim() || undefined
-// In production, set VITE_AUTH0_CALLBACK_URL so redirects never go to localhost
-const redirectOrigin = (import.meta.env.VITE_AUTH0_CALLBACK_URL || '').replace(/\/$/, '') || window.location.origin
+const redirectOrigin = getRedirectOrigin()
 
 const rootEl = document.getElementById('root')
 if (!rootEl) {

@@ -9,8 +9,8 @@ import MisOutfits from './pages/MisOutfits'
 import ConfusionMatrix from './pages/ConfusionMatrix'
 import ModelExamples from './pages/ModelExamples'
 import Mirror from './pages/Mirror'
+import { getRedirectOrigin } from './utils/auth0Redirect'
 
-const redirectOrigin = (import.meta.env.VITE_AUTH0_CALLBACK_URL || '').replace(/\/$/, '') || window.location.origin
 const routerFuture = { v7_startTransition: true, v7_relativeSplatPath: true }
 
 function App() {
@@ -40,8 +40,8 @@ function App() {
       >
         <TubelightNavbar
           isAuthenticated={isAuthenticated}
-          onLogin={() => loginWithRedirect({ authorizationParams: { redirect_uri: redirectOrigin } })}
-          onLogout={() => logout({ logoutParams: { returnTo: redirectOrigin } })}
+          onLogin={() => loginWithRedirect({ authorizationParams: { redirect_uri: getRedirectOrigin() } })}
+          onLogout={() => logout({ logoutParams: { returnTo: getRedirectOrigin() } })}
         />
         <div className="pb-24 sm:pb-0 sm:pt-20">
           <Routes>

@@ -34,10 +34,15 @@ app.get('/api/ml-health', async (req, res) => {
     const { data } = await axios.get(`${mlUrl}/health`, { timeout: 3000 });
     res.json({ available: true, ...data });
   } catch (err) {
+    const isHostedMl = /\.hf\.space|\.onrender\.com|https?:\/\/(?!localhost|127\.)/.test(mlUrl || '');
+    const hint = isHostedMl
+      ? `ML is hosted (e.g. Hugging Face Space). The Space may be sleeping—open ${mlUrl} in a browser to wake it, or check ML_SERVICE_URL on the backend.`
+      : 'Run in a terminal: ./ml-service/run_ml.sh (or ./start-all.sh)';
     res.status(503).json({
       available: false,
       error: 'ML service not running',
-      hint: 'Run in a terminal: ./ml-service/run_ml.sh (or ./start-all.sh)'
+      hint,
+      hosted: isHostedMl
     });
   }
 });

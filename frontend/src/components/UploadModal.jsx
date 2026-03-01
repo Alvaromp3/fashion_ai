@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { FaTimes, FaUpload, FaSpinner, FaCalendar, FaBrain, FaNetworkWired } from 'react-icons/fa'
 import axios from 'axios'
 
-const ML_UNAVAILABLE_HINT = 'Run ./start-all.sh from the project root and wait ~1–2 min for models to load. If it still fails, check logs/ml-service.log.'
+const ML_UNAVAILABLE_HINT_LOCAL = 'Run ./start-all.sh from the project root and wait ~1–2 min for models to load. If it still fails, check logs/ml-service.log.'
+const ML_UNAVAILABLE_HINT_PROD = 'ML is on a hosted Space (e.g. Hugging Face). The Space may be sleeping—open the Space URL in a browser to wake it, or ask the admin to check ML_SERVICE_URL.'
 
 const UploadModal = ({ onClose, onSuccess }) => {
   const [file, setFile] = useState(null)
@@ -15,11 +16,19 @@ const UploadModal = ({ onClose, onSuccess }) => {
   const [selectedOccasions, setSelectedOccasions] = useState([])
   const [error, setError] = useState(null)
   const [mlStatus, setMlStatus] = useState('checking') // 'checking' | 'available' | 'unavailable'
+  const [mlHint, setMlHint] = useState(null)
+  const [mlHosted, setMlHosted] = useState(false) // from backend 503: ML is hosted (e.g. HF Space)
 
   const [vitReady, setVitReady] = useState(false)
 
+  const isLocalhost = typeof window !== 'undefined' && /^localhost$|^127\.0\.0\.1$/.test((window.location?.hostname || '').toLowerCase())
+  const mlUnavailableHint = (mlHint != null && mlHint !== '') ? mlHint : ((mlHosted || !isLocalhost) ? ML_UNAVAILABLE_HINT_PROD : ML_UNAVAILABLE_HINT_LOCAL)
+  const showTerminalTip = isLocalhost && !mlHosted
+
   const checkMlHealth = () => {
     setMlStatus('checking')
+    setMlHint(null)
+    setMlHosted(false)
     axios.get('/api/ml-health', { timeout: 5000 })
       .then((res) => {
         if (res?.data?.available) {
@@ -31,11 +40,19 @@ const UploadModal = ({ onClose, onSuccess }) => {
           setVitReady(false)
         }
       })
-      .catch(() => { setMlStatus('unavailable'); setVitReady(false) })
+      .catch((err) => {
+        setMlStatus('unavailable')
+        setVitReady(false)
+        const data = err.response?.data
+        setMlHint(data?.hint ?? null)
+        setMlHosted(Boolean(data?.hosted))
+      })
   }
 
   useEffect(() => {
     let cancelled = false
+    setMlHint(null)
+    setMlHosted(false)
     axios.get('/api/ml-health', { timeout: 5000 })
       .then((res) => {
         if (cancelled) return
@@ -48,7 +65,15 @@ const UploadModal = ({ onClose, onSuccess }) => {
           setVitReady(false)
         }
       })
-      .catch(() => { if (!cancelled) { setMlStatus('unavailable'); setVitReady(false) } })
+      .catch((err) => {
+        if (!cancelled) {
+          setMlStatus('unavailable')
+          setVitReady(false)
+          const data = err.response?.data
+          setMlHint(data?.hint ?? null)
+          setMlHosted(Boolean(data?.hosted))
+        }
+      })
     return () => { cancelled = true }
   }, [])
 
@@ -114,11 +139,11 @@ const UploadModal = ({ onClose, onSuccess }) => {
             : 'ViT (vision_transformer_moda_modelo.keras) not ready yet; CNN was used. Wait ~1 min for ViT to load and try "Classify (ViT)" again, or check logs/ml-service.log.')
         } catch (fallbackErr) {
           const errMsg = fallbackErr.response?.data?.error || 'ML service not available.'
-          setError(errMsg.includes('ML service') ? `${errMsg} ${ML_UNAVAILABLE_HINT}` : errMsg)
+          setError(errMsg.includes('ML service') ? `${errMsg} ${mlUnavailableHint}` : errMsg)
         }
       } else {
         const msg = res?.error || 'Classification failed. Please try again.'
-        setError(msg === 'ML service not available' ? `${msg} ${ML_UNAVAILABLE_HINT}` : msg)
+        setError(msg === 'ML service not available' ? `${msg} ${mlUnavailableHint}` : msg)
       }
     } finally {
       setClassifying(false)
@@ -286,8 +311,10 @@ const UploadModal = ({ onClose, onSuccess }) => {
           {mlStatus === 'unavailable' && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-amber-800 text-sm">
               <p className="font-medium">ML service not available</p>
-              <p className="mt-1">{ML_UNAVAILABLE_HINT}</p>
-              <p className="mt-2 text-xs text-amber-700">To see errors in the terminal: <code className="bg-amber-100 px-1 rounded">./ml-service/run_ml.sh</code></p>
+              <p className="mt-1">{mlUnavailableHint}</p>
+              {showTerminalTip && (
+                <p className="mt-2 text-xs text-amber-700">To see errors in the terminal: <code className="bg-amber-100 px-1 rounded">./ml-service/run_ml.sh</code></p>
+              )}
               <button
                 type="button"
                 onClick={checkMlHealth}
