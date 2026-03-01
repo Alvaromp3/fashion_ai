@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "description": "Fashion AI - Recomendador de Outfits",
   "scripts": {
+    "render:validate": "node scripts/render-validate.js",
+    "render:deploy": "node scripts/render-deploy.js",
     "cloudflare:r2-create": "node scripts/cloudflare-r2-create.js",
     "cloudflare:pages-deploy": "node scripts/cloudflare-pages-deploy.js",
     "start": "concurrently -n \"BACKEND,ML,FRONTEND\" -c \"blue,green,yellow\" \"npm run start:backend\" \"npm run start:ml\" \"npm run start:frontend\"",

@@ -17,6 +17,8 @@ Have these ready:
 
 ## 1. Backend on Render (~5 min)
 
+**Validate the blueprint (optional):** From repo root run `npm run render:validate` (requires [Render CLI](https://render.com/docs/cli); see [RENDER_CLI.md](RENDER_CLI.md)).
+
 1. Go to **[dashboard.render.com](https://dashboard.render.com)** → **New** → **Blueprint**.
 2. Connect **GitHub** and select the repo that contains this project.
 3. Set **Blueprint path** to **`render-backend-only.yaml`** → Continue.
@@ -37,6 +39,8 @@ Have these ready:
 Leave **`CORS_ORIGINS`** empty for now.
 
 5. **Save**. Wait for deploy. Copy the backend URL, e.g. **`https://fashion-ai-backend.onrender.com`**.
+
+**Deploy from CLI later:** After the service exists, install the Render CLI and run `npm run render:deploy` (or `render deploys create <SERVICE_ID> --wait`). See [RENDER_CLI.md](RENDER_CLI.md).
 
 ---
 

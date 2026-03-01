@@ -134,6 +134,7 @@ The app is available at `http://localhost:3000`. The frontend proxies `/api` and
 To host the app for free: **ML** on Hugging Face Spaces, **frontend** on Cloudflare Pages, **backend** on Render, **images** on Cloudflare R2. See:
 
 - **[docs/HOST_THE_REST.md](docs/HOST_THE_REST.md)** — short guide to host backend (Render) + frontend (Pages) after ML is on HF.
+- **[docs/RENDER_CLI.md](docs/RENDER_CLI.md)** — Render CLI: validate blueprint, trigger deploys (`npm run render:validate`, `npm run render:deploy`).
 - **[docs/SETUP_CHECKLIST.md](docs/SETUP_CHECKLIST.md)** — full ordered checklist with every env var and where to set it.
 - **[docs/CLOUDFLARE_SETUP.md](docs/CLOUDFLARE_SETUP.md)** — Cloudflare **Wrangler CLI**: create R2 bucket (`npm run cloudflare:r2-create`) and deploy Pages (`npm run cloudflare:pages-deploy`).
 - **[docs/CLOUDFLARE_PROTECTIONS.md](docs/CLOUDFLARE_PROTECTIONS.md)** — Cloudflare-side protections so you never get charged (no payment method, R2 cap in app, optional cron check).
