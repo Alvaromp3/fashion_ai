@@ -1,124 +1,66 @@
-# Dotenv Vault — store and share secrets securely
+# Env Vault — one place for all keys
 
-Use [dotenv-vault](https://dotenv.org/docs/dotenv-vault) to keep `backend/.env` encrypted in the cloud and share it with the team. Then sync the same secrets to Render when you deploy.
-
----
-
-## How others access the secrets
-
-**Teammates** (or you on a new machine) need the **vault key** and a one-time connect, then they can pull the same `.env`.
-
-1. **Get the vault key** from whoever set up the vault:
-   - They run `npm run env:vault-pull` (or open the vault in the dotenv app), then in `backend/.env` there is a comment block at the top with a line like:
-     - `npx dotenv-vault@latest new vlt_xxxxxxxx...`
-   - Or they share the key (e.g. `vlt_8b06...`) over a secure channel (1Password, Slack DM, etc.). The key only grants *read* access to pull; it doesn’t let someone push unless they have the vault account.
-
-2. **Clone the repo** and install deps as usual. Do **not** commit `backend/.env`.
-
-3. **One-time: connect this repo to the vault** (from repo root or from `backend/`):
-   ```bash
-   cd backend
-   npx dotenv-vault@latest new vlt_YOUR_VAULT_KEY_HERE
-   ```
-   Replace `vlt_YOUR_VAULT_KEY_HERE` with the key from step 1.
-
-4. **Pull the secrets** into `backend/.env`:
-   ```bash
-   npm run env:vault-pull
-   ```
-   (from repo root)
-
-After that, they have a local `backend/.env` and can run the app or `npm run env:sync-render` like you.
-
-**Who can push?** Only someone logged into the [dotenv-vault](https://dotenv.org) account that owns the vault (or with the right credentials). So you control who can update the shared secrets; everyone else uses the key to pull.
+All env (backend + frontend prod + frontend local) lives in [dotenv-vault](https://dotenv.org/docs/dotenv-vault). You edit local files, then **push** to save. You **pull** to load. Use **production** for deploy (Render, Cloudflare). Use **development** for local dev.
 
 ---
 
-## 1. One-time: connect backend to your vault (vault owner)
+## Commands (run from repo root)
 
-From **repo root** (scripts run from here) or from **backend/**:
+| What you want | Command |
+|---------------|--------|
+| **Load production keys** (Render, Cloudflare, deploy) | `npm run env:vault-pull` |
+| **Load development keys** (local backend + frontend) | `npm run env:vault-pull:dev` |
+| **Save current keys as production** | `npm run env:vault-push` |
+| **Save current keys as development** | `npm run env:vault-push:dev` |
 
-```bash
-cd backend
-npx dotenv-vault@latest new
-```
-
-If you already have a vault key (from an existing vault’s `.env` header), link this project to it:
-
-```bash
-cd backend
-npx dotenv-vault@latest new vlt_YOUR_VAULT_KEY_HERE
-```
-
-Replace `vlt_YOUR_VAULT_KEY_HERE` with the key from the vault (e.g. from the “Connect to it locally” line in the vault’s `.env` instructions).
+After pull, you get: `backend/.env`, `frontend/.env`, `frontend/.env.local`.  
+Before push, set those three files to the values you want, then run the push command.
 
 ---
 
-## 2. Push secrets up (store / share)
+## When to use which
 
-Upload `backend/.env` to the vault so it’s stored securely and others can pull it:
-
-```bash
-# From repo root
-npm run env:vault-push
-```
-
-Or from `backend/`:
-
-```bash
-cd backend
-npx dotenv-vault@latest push
-```
-
-Teammates can then run **Pull** (below) to get the same `.env` without you sending the file.
+- **Production** — Values for Render (backend), Cloudflare Pages (frontend build), and prod URLs. Use `env:vault-pull` before syncing to Render (`npm run render:env`) or Cloudflare (`npm run cloudflare:pages-env`), and use `env:vault-push` after you change prod keys.
+- **Development** — Values for local runs (e.g. local MongoDB, localhost callbacks, empty `VITE_API_BASE_URL` for proxy). Use `env:vault-pull:dev` when developing locally; use `env:vault-push:dev` after you change dev-only keys.
 
 ---
 
-## 3. Pull secrets down
+## First-time / new machine
 
-Download the latest `.env` from the vault into `backend/.env`:
+1. Get the vault key (from `.env.vault` → `DOTENV_VAULT="vlt_..."` or from whoever owns the vault).
+2. From repo root: `npx dotenv-vault@latest new vlt_YOUR_KEY_HERE`
+3. Load keys: `npm run env:vault-pull` (prod) or `npm run env:vault-pull:dev` (dev).
 
-```bash
-# From repo root
-npm run env:vault-pull
-```
-
-Or from `backend/`:
-
-```bash
-cd backend
-npx dotenv-vault@latest pull
-```
-
-Use this when someone else has pushed changes or when you’re on a new machine.
+Only vault owners can push; everyone else can pull with the key.
 
 ---
 
-## 4. Sync vault → Render
+## Sync to hosts
 
-To update Render’s environment from the vault in one step:
-
-1. Pull the latest `.env` from the vault.
-2. Push those variables to the Render backend service via the API.
-
-From repo root:
-
-```bash
-npm run env:sync-render
-```
-
-This runs `env:vault-pull` then `render:env`. Ensure `RENDER_API_KEY` and optionally `RENDER_SERVICE_ID` are in `backend/.env` (or in the vault so they come down on pull). Then deploy so Render uses the new vars: `npm run render:deploy`.
+| Goal | Steps |
+|------|--------|
+| Vault → Render | `npm run env:vault-pull` then `npm run render:env` (then deploy backend). |
+| Vault → Cloudflare Pages | `npm run env:vault-pull` then `npm run cloudflare:pages-env` then redeploy frontend. |
+| One command: vault → Render | `npm run env:sync-render` (pull production + push to Render). |
 
 ---
 
-## Quick reference
+## Which file is used when
 
-| Goal                     | Command (repo root)     |
-|--------------------------|-------------------------|
-| Push `.env` to vault     | `npm run env:vault-push` |
-| Pull `.env` from vault   | `npm run env:vault-pull` |
-| Vault → Render + deploy  | `npm run env:sync-render` then `npm run render:deploy` |
+| Context | Backend | Frontend |
+|--------|---------|----------|
+| **Local dev** (`npm run start`, `npm run dev`) | `backend/.env` only | `frontend/.env` + `frontend/.env.local` (`.env.local` overrides) |
+| **Production build / deploy** | Render uses vars you pushed from `backend/.env` via `render:env` | Build uses `frontend/.env`; Cloudflare Pages gets VITE_* from `frontend/.env` via `cloudflare:pages-env` |
 
-- Keep `backend/.env` out of git (it should be in `.gitignore`).
-- You can commit `.env.vault` if you use dotenv-vault’s build flow for deployment.
-- [Dotenv Vault docs](https://dotenv.org/docs/dotenv-vault)
+So: **local** uses `backend/.env` and frontend’s `.env` + `.env.local`. **Prod** uses the same files after you run `env:vault-pull` (so they contain prod values), then you run `render:env` and `cloudflare:pages-env` to push those values to Render and Cloudflare.
+
+---
+
+## Files
+
+- **backend/.env** — Backend only (Node, Render).
+- **frontend/.env** — Frontend production (used by Cloudflare build and by `cloudflare:pages-env`).
+- **frontend/.env.local** — Frontend local overrides (Vite uses when you run `npm run dev`).
+- **Root .env** — Generated by combine; used only for vault push/pull. Do not edit; it’s in `.gitignore`.
+
+[Dotenv Vault docs](https://dotenv.org/docs/dotenv-vault)
