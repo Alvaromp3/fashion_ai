@@ -74,6 +74,8 @@ CLOUDINARY_API_SECRET=your_api_secret
 
 If Cloudinary is not set, images are stored under `backend/uploads/`.
 
+**Team — Env Vault (push/pull all keys):** We use [Env Vault](docs/ENV_VAULT_QUICK.md) instead of emailing passwords. From repo root: **`npm run env:vault-pull`** to get the latest keys; **`npm run env:vault-push`** to save your keys to the vault. See [docs/DOTENV_VAULT.md](docs/DOTENV_VAULT.md) for setup.
+
 **Authentication (Auth0):** The app uses Auth0 for login and per-user data. Add these to `backend/.env` and to the project root or `frontend/.env` (frontend uses `VITE_` prefix so they are available in the browser):
 
 - **Backend:** `AUTH0_DOMAIN=your-tenant.auth0.com`, `AUTH0_AUDIENCE=https://fashion-ai-api` (or your Auth0 API identifier).
@@ -103,16 +105,40 @@ npm install
 
 ## Running the application
 
-Run all three parts (from the project root or in separate terminals).
+### Arrancar en local (backend + frontend + ML)
 
-**Backend (default port 4000):**
+**Guía con todas las opciones:** [docs/CORRER_EN_LOCAL.md](docs/CORRER_EN_LOCAL.md).
+
+Un solo comando (usa **`backend/.env`**):
+
+```bash
+./start-all.sh
+```
+
+o `./run.sh`. Para parar: `./stop-all.sh`.
+
+Si el ML falla (p. ej. "No module named 'flask'"), instala dependencias una vez:
+
+```bash
+cd ml-service && source venv/bin/activate && pip install -r requirements.txt
+```
+
+### Solo backend
+
+```bash
+./start-backend-only.sh
+```
+
+### Desarrollo manual (en terminales separadas)
+
+**Backend (puerto 4000):**
 
 ```bash
 cd backend
 npm run dev
 ```
 
-**ML service (default port 6001):**
+**ML service (puerto 6001):**
 
 ```bash
 cd ml-service

@@ -25,7 +25,7 @@ const ConfusionMatrix = ({ embedded = false }) => {
         setCnnOverall(res.data.overall || null)
         setCnnError(null)
       } catch (err) {
-        setCnnError('Could not load CNN model data. Make sure the backend is running (http://localhost:4000).')
+        setCnnError('No se pudo cargar la matriz del modelo CNN. Comprueba que el backend esté en marcha y accesible.')
       } finally {
         setCnnLoading(false)
       }
@@ -40,7 +40,7 @@ const ConfusionMatrix = ({ embedded = false }) => {
         setVitOverall(res.data.overall || null)
         setVitError(null)
       } catch (err) {
-        setVitError('Could not load Vision Transformer model data. Make sure the backend is running (http://localhost:4000).')
+        setVitError('No se pudo cargar la matriz del modelo Vision Transformer. Comprueba que el backend esté en marcha y accesible.')
       } finally {
         setVitLoading(false)
       }

@@ -122,3 +122,20 @@ This runs `env:vault-pull` then `render:env`. Ensure `RENDER_API_KEY` and option
 - Keep `backend/.env` out of git (it should be in `.gitignore`).
 - You can commit `.env.vault` if you use dotenv-vault’s build flow for deployment.
 - [Dotenv Vault docs](https://dotenv.org/docs/dotenv-vault)
+
+---
+
+## 5. Upload ViT model to Hugging Face (optional)
+
+To push the Vision Transformer model to Hugging Face using the token stored in the vault:
+
+1. **Add `HF_TOKEN` to the vault** (Hugging Face → Settings → Access Tokens → create token with write access). Then add to `backend/.env`: `HF_TOKEN=hf_xxxx` and run `npm run env:vault-push`.
+
+2. **Run the upload script** (non-interactive):
+
+   ```bash
+   export DOTENV_KEY=tu_dotenv_vault_key
+   ./scripts/upload-vit-to-hf.sh
+   ```
+
+   The script will: pull the latest env from the vault, authenticate HF with `HF_TOKEN`, create or reuse the repo `fashion-ai-vit-model`, and push `ml-service/vision_transformer_moda_modelo.keras` via Git LFS. Production can then load the model from that Hugging Face repo or a Space that uses it.

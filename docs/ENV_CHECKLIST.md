@@ -18,7 +18,7 @@ Use this to verify env is set correctly for local dev and production.
 | `AUTH0_AUDIENCE` | ✓ | ✓ | e.g. `https://fashion-ai-api` |
 | `ML_SERVICE_URL` | ✓ | ✓ | **Production:** your HF Space URL (e.g. `https://YOUR_USER-fashion-ai-ml.hf.space`). Required so ML status and “wake Space” hint work. |
 | `PORT` | 4000 | — | Omit on Render (script skips it); Render sets `PORT` itself. |
-| `CORS_ORIGINS` | localhost:3000 | Optional | Backend uses permissive CORS by default; set if you add origin checks later. |
+| `CORS_ORIGINS` | localhost:3000 | **Incluir** `https://fashion-ai.pages.dev` (junto con localhost si quieres probar local) | Sin esto, el frontend en Pages recibirá errores CORS. |
 | `R2_*` or `CLOUDINARY_*` | Optional | ✓ | One set for image uploads in production. |
 | `OPENROUTER_API_KEY` | Optional | Optional | For Mirror / AI features. |
 | `RENDER_API_KEY` | For scripts | — | Only for `npm run render:env`; not sent to Render. |
@@ -48,3 +48,40 @@ Use this to verify env is set correctly for local dev and production.
 2. **Frontend “ML not available”** – Ensure Cloudflare Pages has `VITE_API_BASE_URL` set to your Render backend URL and that you redeployed after setting it.
 3. **Auth0 login redirect** – In Auth0 Application settings, add your **Pages URL** to Allowed Callback URLs, Allowed Logout URLs, and Allowed Web Origins.
 4. **Duplicate keys in `.env`** – If a key appears twice, the **last** value wins. Keep one value per key or use a “Production overrides” section at the bottom.
+
+---
+
+## Revisión variable por variable (vs código)
+
+**Backend** — variables que usa el código y si están en `backend/.env`:
+
+| Variable | Usado en | En backend/.env |
+|----------|----------|------------------|
+| `PORT` | server.js | ✓ |
+| `CORS_ORIGINS` | server.js | ✓ |
+| `ML_SERVICE_URL` | server.js, classify.js, model.js | ✓ |
+| `MONGODB_URI` | server.js | ✓ |
+| `CLOUDINARY_*` | server.js, cloudinary.js, prendas.js | ✓ |
+| `AUTH0_DOMAIN`, `AUTH0_AUDIENCE` | middleware/auth.js | ✓ |
+| `AUTH0_ROLES_CLAIM` | routes/me.js (opcional) | — (default) |
+| `OPENROUTER_*` | config/openrouter.js | ✓ |
+| `R2_*`, `R2_FOLDER` | utils/r2.js | ✓ |
+| `ML_VIT_SERVICE_URL` | classify.js (opcional) | — |
+| `RATE_LIMIT_*`, `CLOUDFLARE_API_TOKEN`, `R2_SOFT_LIMIT_BYTES` | opcionales | — |
+| `DATASET_PATH` | prendas.js (opcional) | — |
+
+**Frontend** — variables que usa el código y si están en `frontend/.env`:
+
+| Variable | Usado en | En frontend/.env |
+|----------|----------|-------------------|
+| `VITE_AUTH0_DOMAIN`, `_CLIENT_ID`, `_AUDIENCE` | main.jsx | ✓ |
+| `VITE_AUTH0_CALLBACK_URL` | auth0Redirect.js | ✓ |
+| `VITE_API_BASE_URL` | api/client.js | ✓ |
+
+**Comprobar carga en backend:**
+
+```bash
+cd backend && node -e "require('dotenv').config(); console.log('OK', !!process.env.MONGODB_URI, !!process.env.AUTH0_DOMAIN, !!process.env.CLOUDINARY_CLOUD_NAME);"
+```
+
+Si imprime `OK true true true`, las variables esenciales se cargan bien.

@@ -214,14 +214,19 @@ def preprocess_image(image, target_size=IMG_SIZE, normalize=True):
     return np.expand_dims(img_array, axis=0)
 
 def preprocess_image_vit(image):
-    return preprocess_image(image, target_size=vit_input_size, normalize=False)
+    # ViT suele entrenarse con imágenes normalizadas [0,1]; usar normalize=True para coincidir con el entrenamiento.
+    return preprocess_image(image, target_size=vit_input_size, normalize=True)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def logits_to_probs(logits):
-    """Convierte logits del modelo en probabilidades (0-1) con softmax."""
+    """Convierte logits del modelo en probabilidades (0-1). Si la salida ya suma ~1 y está en [0,1], se usa como probs."""
     x = np.asarray(logits, dtype=np.float64).ravel()
+    if len(x) == 0:
+        return x
+    if np.all(x >= 0) and np.all(x <= 1.0) and np.abs(np.sum(x) - 1.0) < 0.01:
+        return x / np.sum(x)
     x = x - x.max()
     exp_x = np.exp(x)
     return exp_x / exp_x.sum()
@@ -542,8 +547,8 @@ if __name__ == '__main__':
         print(f"CNN not found: {CNN_MODEL_PATH}", flush=True)
         sys.exit(1)
     if not os.path.exists(VIT_MODEL_PATH):
-        print(f"ViT not found: {VIT_MODEL_PATH}", flush=True)
-        sys.exit(1)
+        print(f"ViT not found (CNN only): {VIT_MODEL_PATH}", flush=True)
+        # No sys.exit(1): arrancar con solo CNN para que /health responda
     print(f"Binding to http://0.0.0.0:{port} (models loading in background)...", flush=True)
     t = threading.Thread(target=_load_models_background, daemon=True)
     t.start()

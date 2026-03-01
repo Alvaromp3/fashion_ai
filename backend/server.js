@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 const path = require('path');
 const axios = require('axios');
 
+// Single source of truth: backend/.env (no usar .env.example para cargar variables)
 dotenv.config({ path: path.join(__dirname, '.env') });
 
 const openrouter = require('./config/openrouter');
@@ -11,7 +12,14 @@ const { requireAuth, isAuthEnabled } = require('./middleware/auth');
 const app = express();
 app.locals.openrouter = openrouter;
 
-app.use(cors());
+// CORS: si CORS_ORIGINS está definido, permitir solo esos orígenes; si no, permitir todos (dev)
+const corsOrigins = process.env.CORS_ORIGINS;
+if (corsOrigins && corsOrigins.trim()) {
+  const origins = corsOrigins.split(',').map(o => o.trim()).filter(Boolean);
+  app.use(cors({ origin: origins, credentials: true }));
+} else {
+  app.use(cors());
+}
 // Mirror puede enviar frames (base64) para evaluación visual.
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
@@ -63,7 +71,7 @@ app.get('/api/ml-health', async (req, res) => {
   }
   const hint = result.isHostedMl
     ? `ML is hosted (e.g. Hugging Face Space). The Space may be sleeping—open ${result.mlUrl} in a browser to wake it, or check ML_SERVICE_URL on the backend.`
-    : 'Run in a terminal: ./ml-service/run_ml.sh (or ./start-all.sh)';
+    : 'Run in a terminal: ./ml-service/run_ml.sh (or start ML with ./start-all.sh)';
   res.status(503).json({
     available: false,
     error: 'ML service not running',

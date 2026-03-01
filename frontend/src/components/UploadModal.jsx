@@ -78,6 +78,19 @@ const UploadModal = ({ onClose, onSuccess }) => {
     return () => { cancelled = true }
   }, [])
 
+  // Re-check ViT when ML is available but ViT not ready yet (models load in background)
+  useEffect(() => {
+    if (mlStatus !== 'available' || vitReady) return
+    const t = setInterval(() => {
+      axios.get('/api/ml-health', { timeout: 10000 })
+        .then((res) => {
+          if (res?.data?.available && res?.data?.vit_model_loaded) setVitReady(true)
+        })
+        .catch(() => {})
+    }, 15000)
+    return () => clearInterval(t)
+  }, [mlStatus, vitReady])
+
   const occasions = [
     { value: 'casual', label: 'Casual', desc: 'Everyday wear' },
     { value: 'formal', label: 'Formal', desc: 'Important events' },
@@ -328,13 +341,23 @@ const UploadModal = ({ onClose, onSuccess }) => {
             </div>
           )}
           {mlStatus === 'available' && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2 text-emerald-800 text-sm flex items-center gap-2">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2 text-emerald-800 text-sm flex flex-wrap items-center gap-2">
               <FaBrain className="flex-shrink-0" />
               <span>
                 {vitReady
                   ? 'ML service ready — CNN and ViT (vision_transformer_moda_modelo.keras) available.'
                   : 'ML service ready — CNN available; ViT still loading (wait ~1 min) or check logs/ml-service.log.'}
               </span>
+              {!vitReady && (
+                <button
+                  type="button"
+                  onClick={checkMlHealth}
+                  disabled={mlStatus === 'checking'}
+                  className="ml-auto px-3 py-1.5 bg-emerald-200 hover:bg-emerald-300 text-emerald-900 rounded-lg text-xs font-medium disabled:opacity-70"
+                >
+                  {mlStatus === 'checking' ? 'Comprobando…' : 'Comprobar ViT de nuevo'}
+                </button>
+              )}
             </div>
           )}
 

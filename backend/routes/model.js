@@ -14,12 +14,17 @@ const ML_SERVICE_DIR = (() => {
 })();
 
 /** When ML is on a separate host (e.g. Render), proxy GET to ML service. */
+const IMAGE_SUBPATHS = ['/confusion-matrix', '/confusion-matrix-vit', '/data-audit', '/training-curves-vit'];
+function isImageProxy(subPath) {
+  return subPath.endsWith('.png') || IMAGE_SUBPATHS.some(p => subPath === p || subPath.startsWith(p + '?'));
+}
+
 async function proxyToMl(subPath, res) {
   const base = ML_SERVICE_URL.replace(/\/$/, '');
   if (!base) return false;
   try {
     const { data, status, headers } = await axios.get(`${base}${subPath}`, {
-      responseType: subPath.endsWith('.png') ? 'arraybuffer' : 'json',
+      responseType: isImageProxy(subPath) ? 'arraybuffer' : 'json',
       timeout: 15000,
       validateStatus: () => true
     });
@@ -27,8 +32,8 @@ async function proxyToMl(subPath, res) {
       res.status(404).json({ error: 'Not found' });
       return true;
     }
-    if (subPath.endsWith('.png')) {
-      res.set('Content-Type', 'image/png').send(Buffer.from(data));
+    if (isImageProxy(subPath)) {
+      res.set('Content-Type', headers?.['content-type'] || 'image/png').send(Buffer.from(data));
     } else {
       res.json(data);
     }

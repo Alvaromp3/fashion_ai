@@ -47,3 +47,13 @@ pip install -r requirements-base.txt
 ```
 
 Luego arranca todo con `./start-all.sh` desde la raíz del proyecto.
+
+## Parar y arrancar todo (desde la raíz)
+
+Los scripts `stop-all.sh` y `start-all.sh` están en la **raíz del repo**, no en `ml-service`. Si estás en `ml-service`:
+
+```bash
+cd ..           # ir a la raíz del proyecto (fashion_ai)
+./stop-all.sh
+./start-all.sh
+```

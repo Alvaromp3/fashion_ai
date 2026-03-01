@@ -7,6 +7,7 @@
  */
 
 const path = require('path');
+// Load backend/.env (this script is in backend/scripts/)
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const { getR2StorageBytes } = require('../utils/cloudflareUsage');

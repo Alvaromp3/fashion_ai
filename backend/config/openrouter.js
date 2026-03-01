@@ -1,6 +1,6 @@
 /**
  * Configuración de OpenRouter en el servidor.
- * Carga .env y exporta apiKey, baseUrl y model para usar en rutas.
+ * Uses backend/.env (config is in backend/config/).
  */
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
