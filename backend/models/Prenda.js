@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const prendaSchema = new mongoose.Schema({
+  owner_id: {
+    type: String,
+    required: true,
+    index: true
+  },
   imagen_url: {
     type: String,
     required: true

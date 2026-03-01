@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-const ModelExamples = () => {
+const ModelExamples = ({ embedded = false }) => {
   const [imageError, setImageError] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
 
@@ -40,16 +40,17 @@ const ModelExamples = () => {
   }
 
   return (
-    <div className="min-h-screen max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10" style={{ background: 'var(--content-bg)' }}>
-      {/* Header */}
-      <div className={`mb-10 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-        <h1 className="text-4xl font-bold text-slate-100 tracking-tight mb-2">
-          Garment categories recognised by the model
-        </h1>
-        <p className="text-slate-400 text-lg max-w-2xl">
-          The 10 clothing categories from the Fashion MNIST-style dataset that the CNN and ViT models can classify.
-        </p>
-      </div>
+    <div className={embedded ? '' : 'min-h-screen max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10'} style={embedded ? undefined : { background: 'var(--content-bg)' }}>
+      {!embedded && (
+        <div className={`mb-10 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <h1 className="text-4xl font-bold text-slate-100 tracking-tight mb-2">
+            Garment categories recognised by the model
+          </h1>
+          <p className="text-slate-400 text-lg max-w-2xl">
+            The 10 clothing categories from the Fashion MNIST-style dataset that the CNN and ViT models can classify.
+          </p>
+        </div>
+      )}
 
       {/* Visual examples image */}
       {!imageError && (

@@ -1,0 +1,34 @@
+# Free-tier split: Backend and ML as separate Render Web Services.
+# Deploy from Render Dashboard: New > Blueprint > Connect repo, select this file.
+# Set env vars in Dashboard (or as envVarGroups) — see docs/FREE_HOSTING.md.
+
+services:
+  # --- 1. Node.js backend (Express + MongoDB, Auth0, Cloudinary) ---
+  - type: web
+    name: fashion-ai-backend
+    runtime: node
+    rootDir: backend
+
+    buildCommand: npm ci
+    startCommand: npm start
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      # Add in Render Dashboard: MONGODB_URI, AUTH0_DOMAIN, AUTH0_AUDIENCE,
+      # CLOUDINARY_*, ML_SERVICE_URL=<your-ml-service-url>, OPENROUTER_API_KEY,
+      # CORS_ORIGINS=https://your-frontend.pages.dev
+
+  # --- 2. Python ML service (Flask + TensorFlow/CNN/ViT) ---
+  - type: web
+    name: fashion-ai-ml
+    runtime: docker
+    rootDir: ml-service
+    dockerfilePath: Dockerfile
+
+    # Models are downloaded in Dockerfile from GitHub Release (set GITHUB_REPO / GITHUB_TOKEN in Dashboard if private).
+    envVars:
+      - key: PORT
+        value: 6001

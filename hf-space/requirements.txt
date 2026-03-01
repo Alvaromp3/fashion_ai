@@ -1,8 +1,5 @@
-# ML Service - CNN + ViT
-# En Mac con Apple Silicon (M1/M2/M3): si falla, usa Python 3.11 (pyenv/brew) y/o requirements-base.txt sin tensorflow-text
 flask==3.0.0
 flask-cors==4.0.0
-# For Hugging Face Spaces (space_app.py)
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
 tensorflow>=2.15.0

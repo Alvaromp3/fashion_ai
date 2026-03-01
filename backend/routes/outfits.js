@@ -138,13 +138,14 @@ router.get('/recommend', async (req, res) => {
       layeredTop: req.query.layeredTop === 'true'
     };
 
-    let superiores = await Prenda.find({ tipo: 'superior' });
-    const inferiores = await Prenda.find({ tipo: 'inferior' });
-    const zapatos = await Prenda.find({ tipo: 'zapatos' });
-    const abrigos = preferencias.incluirAbrigo ? await Prenda.find({ tipo: 'abrigo' }) : [];
+    const ownerId = req.user.sub;
+    let superiores = await Prenda.find({ tipo: 'superior', owner_id: ownerId });
+    const inferiores = await Prenda.find({ tipo: 'inferior', owner_id: ownerId });
+    const zapatos = await Prenda.find({ tipo: 'zapatos', owner_id: ownerId });
+    const abrigos = preferencias.incluirAbrigo ? await Prenda.find({ tipo: 'abrigo', owner_id: ownerId }) : [];
     let vestidos = [];
     if (preferencias.incluirVestido) {
-      vestidos = await Prenda.find({ tipo: 'vestido' });
+      vestidos = await Prenda.find({ tipo: 'vestido', owner_id: ownerId });
     }
 
     if (superiores.length === 0 || inferiores.length === 0 || zapatos.length === 0) {
@@ -272,16 +273,27 @@ router.get('/recommend', async (req, res) => {
 router.post('/save', async (req, res) => {
   try {
     const { superior_id, inferior_id, zapatos_id, puntuacion, superior_secundario_id, abrigo_id } = req.body;
+    const ownerId = req.user.sub;
 
-    const superior = await Prenda.findById(superior_id);
-    const inferior = await Prenda.findById(inferior_id);
-    const zapatos = await Prenda.findById(zapatos_id);
+    const superior = await Prenda.findOne({ _id: superior_id, owner_id: ownerId });
+    const inferior = await Prenda.findOne({ _id: inferior_id, owner_id: ownerId });
+    const zapatos = await Prenda.findOne({ _id: zapatos_id, owner_id: ownerId });
 
     if (!superior || !inferior || !zapatos) {
       return res.status(404).json({ error: 'One or more garments not found' });
     }
 
+    if (superior_secundario_id) {
+      const sec = await Prenda.findOne({ _id: superior_secundario_id, owner_id: ownerId });
+      if (!sec) return res.status(404).json({ error: 'Secondary top garment not found' });
+    }
+    if (abrigo_id) {
+      const abr = await Prenda.findOne({ _id: abrigo_id, owner_id: ownerId });
+      if (!abr) return res.status(404).json({ error: 'Coat garment not found' });
+    }
+
     const outfit = new Outfit({
+      owner_id: ownerId,
       superior_id,
       inferior_id,
       zapatos_id,
@@ -301,7 +313,7 @@ router.post('/save', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const outfits = await Outfit.find()
+    const outfits = await Outfit.find({ owner_id: req.user.sub })
       .populate('superior_id')
       .populate('inferior_id')
       .populate('zapatos_id')
@@ -317,7 +329,7 @@ router.get('/', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    const outfit = await Outfit.findByIdAndDelete(req.params.id);
+    const outfit = await Outfit.findOneAndDelete({ _id: req.params.id, owner_id: req.user.sub });
     if (!outfit) {
       return res.status(404).json({ error: 'Outfit not found' });
     }

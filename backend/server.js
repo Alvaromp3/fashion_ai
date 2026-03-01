@@ -7,10 +7,14 @@ const axios = require('axios');
 dotenv.config({ path: path.join(__dirname, '.env') });
 
 const openrouter = require('./config/openrouter');
+const { requireAuth, requireAdmin } = require('./middleware/auth');
 const app = express();
 app.locals.openrouter = openrouter;
 
-app.use(cors());
+const corsOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map(s => s.trim()).filter(Boolean)
+  : [];
+app.use(cors(corsOrigins.length ? { origin: corsOrigins } : {}));
 // Mirror puede enviar frames (base64) para evaluación visual.
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
@@ -52,11 +56,12 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   }
   const mongoose = require('mongoose');
   global.__mongoose = mongoose;
-  app.use('/api/prendas', require('./routes/prendas'));
-  app.use('/api/outfits', require('./routes/outfits'));
-  app.use('/api/classify', require('./routes/classify'));
-  app.use('/api/model', require('./routes/model'));
-  app.use('/api/mirror', require('./routes/mirror'));
+  app.use('/api/prendas', requireAuth, require('./routes/prendas'));
+  app.use('/api/outfits', requireAuth, require('./routes/outfits'));
+  app.use('/api/classify', requireAuth, require('./routes/classify'));
+  app.use('/api/model', requireAuth, requireAdmin, require('./routes/model'));
+  app.use('/api/mirror', requireAuth, require('./routes/mirror'));
+  app.use('/api/me', requireAuth, require('./routes/me'));
   mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/fashion_ai', {
     serverSelectionTimeoutMS: 8000
   })

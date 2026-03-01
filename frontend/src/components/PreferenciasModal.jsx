@@ -1,17 +1,29 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { FaTimes } from 'react-icons/fa'
 import { Palette, CalendarDays, Sparkles, Layers } from 'lucide-react'
 
-const PreferenciasModal = ({ isOpen, onClose, onGenerate }) => {
-  const [preferencias, setPreferencias] = useState({
-    colores: [],
-    ocasion: '',
-    estilo: '',
-    incluirVestido: false,
-    incluirAbrigo: false,
-    topPreference: 'any',
-    layeredTop: false
-  })
+const defaultPreferencias = {
+  colores: [],
+  ocasion: '',
+  estilo: '',
+  incluirVestido: false,
+  incluirAbrigo: false,
+  topPreference: 'any',
+  layeredTop: false
+}
+
+const PreferenciasModal = ({ isOpen, onClose, onGenerate, initialPreferences, onSave }) => {
+  const [preferencias, setPreferencias] = useState(defaultPreferencias)
+
+  useEffect(() => {
+    if (isOpen && initialPreferences) {
+      setPreferencias({
+        ...defaultPreferencias,
+        ...initialPreferences,
+        colores: Array.isArray(initialPreferences.colores) ? initialPreferences.colores : []
+      })
+    }
+  }, [isOpen, initialPreferences])
 
   const coloresDisponibles = [
     { value: 'negro', label: 'Black' },
@@ -59,6 +71,7 @@ const PreferenciasModal = ({ isOpen, onClose, onGenerate }) => {
 
   const handleGenerate = () => {
     onGenerate(preferencias)
+    if (onSave) onSave(preferencias)
     onClose()
   }
 

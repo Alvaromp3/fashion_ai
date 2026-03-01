@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const Prenda = require('../models/Prenda');
 const { uploadImage, deleteImage } = require('../utils/cloudinary');
+const r2 = require('../utils/r2');
 const path = require('path');
 const fs = require('fs');
 const sharp = require('sharp');
@@ -97,7 +98,12 @@ router.post('/upload', upload.single('imagen'), async (req, res) => {
     }
 
     let imagen_url;
-    if (process.env.CLOUDINARY_CLOUD_NAME) {
+    if (r2.isConfigured()) {
+      const { url } = await r2.uploadToR2(filePath);
+      imagen_url = url;
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      if (convertedFilePath && fs.existsSync(convertedFilePath)) fs.unlinkSync(convertedFilePath);
+    } else if (process.env.CLOUDINARY_CLOUD_NAME) {
       const result = await uploadImage(filePath);
       imagen_url = result.secure_url;
       if (fs.existsSync(req.file.path)) {
@@ -145,6 +151,7 @@ router.post('/upload', upload.single('imagen'), async (req, res) => {
     ocasionArray = ocasionArray.filter(oc => ocasionesValidas.includes(oc));
 
     const prenda = new Prenda({
+      owner_id: req.user.sub,
       imagen_url,
       tipo: tipoFinal,
       clase_nombre: clase_nombre || 'desconocido',
@@ -206,7 +213,7 @@ router.get('/', async (req, res) => {
   }
   try {
     const timeoutMs = 10000;
-    const findPromise = Prenda.find().sort({ fecha_agregada: -1 }).lean();
+    const findPromise = Prenda.find({ owner_id: req.user.sub }).sort({ fecha_agregada: -1 }).lean();
     const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error('DB timeout')), timeoutMs));
     const prendas = await Promise.race([findPromise, timeoutPromise]);
     res.json(prendas);
@@ -219,7 +226,8 @@ router.get('/', async (req, res) => {
 router.get('/filter', async (req, res) => {
   try {
     const { type } = req.query;
-    const query = type ? { tipo: type } : {};
+    const query = { owner_id: req.user.sub };
+    if (type) query.tipo = type;
     const prendas = await Prenda.find(query).sort({ fecha_agregada: -1 });
     res.json(prendas);
   } catch (error) {
@@ -231,8 +239,8 @@ router.get('/filter', async (req, res) => {
 router.put('/:id/ocasion', async (req, res) => {
   try {
     const { ocasion } = req.body;
-    
-    const prenda = await Prenda.findById(req.params.id);
+
+    const prenda = await Prenda.findOne({ _id: req.params.id, owner_id: req.user.sub });
     if (!prenda) {
       return res.status(404).json({ error: 'Garment not found' });
     }
@@ -257,7 +265,7 @@ router.put('/:id/ocasion', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    const prenda = await Prenda.findById(req.params.id);
+    const prenda = await Prenda.findOne({ _id: req.params.id, owner_id: req.user.sub });
     if (!prenda) {
       return res.status(404).json({ error: 'Garment not found' });
     }
@@ -267,11 +275,13 @@ router.delete('/:id', async (req, res) => {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
+    } else if (r2.isConfigured() && process.env.R2_PUBLIC_URL && prenda.imagen_url.startsWith(process.env.R2_PUBLIC_URL.replace(/\/$/, ''))) {
+      await r2.deleteFromR2(prenda.imagen_url);
     } else if (prenda.imagen_url.includes('cloudinary')) {
       await deleteImage(prenda.imagen_url);
     }
 
-    await Prenda.findByIdAndDelete(req.params.id);
+    await Prenda.findOneAndDelete({ _id: req.params.id, owner_id: req.user.sub });
     res.json({ message: 'Garment deleted successfully' });
   } catch (error) {
     console.error('Error eliminando prenda:', error);
@@ -298,7 +308,13 @@ router.post('/auto', async (req, res) => {
     const filePath = path.join(uploadsDir, filename);
 
     await sharp(imageBuffer).jpeg({ quality: 90 }).toFile(filePath);
-    const imagen_url = `/uploads/${filename}`;
+    let imagen_url;
+    if (r2.isConfigured()) {
+      const { url } = await r2.uploadToR2(filePath);
+      imagen_url = url;
+    } else {
+      imagen_url = `/uploads/${filename}`;
+    }
 
     const confianzaValue = confianza || 0.5;
     
@@ -310,6 +326,7 @@ router.post('/auto', async (req, res) => {
     }
 
     const prenda = new Prenda({
+        owner_id: req.user.sub,
         imagen_url,
         tipo,
         color,
@@ -323,6 +340,7 @@ router.post('/auto', async (req, res) => {
     if (clase_nombre && confianzaValue >= MIN_CONFIDENCE_FOR_DATASET) {
         copyToDataset(filePath, clase_nombre, confianzaValue);
     }
+    if (r2.isConfigured() && fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
     res.status(201).json({
         message: 'Garment added automatically',

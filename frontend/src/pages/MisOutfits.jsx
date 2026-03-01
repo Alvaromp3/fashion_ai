@@ -34,6 +34,7 @@ const MisOutfits = () => {
   const [savedId, setSavedId] = useState(null)
   const [error, setError] = useState(null)
   const [lastPreferences, setLastPreferences] = useState(null)
+  const [savedPreferences, setSavedPreferences] = useState(null)
   const [showSurpriseChoice, setShowSurpriseChoice] = useState(false)
   const [selectedPrenda, setSelectedPrenda] = useState(null)
   const [compareSelection, setCompareSelection] = useState([])
@@ -76,10 +77,29 @@ const MisOutfits = () => {
 
   useEffect(() => {
     fetchOutfits()
+    fetchPreferences()
     if (location.state?.recommendations) {
       setRecommendations(location.state.recommendations)
     }
   }, [location])
+
+  const fetchPreferences = async () => {
+    try {
+      const res = await axios.get('/api/me/preferences')
+      setSavedPreferences(res.data)
+    } catch {
+      setSavedPreferences(null)
+    }
+  }
+
+  const savePreferences = async (prefs) => {
+    try {
+      await axios.put('/api/me/preferences', prefs)
+      setSavedPreferences(prefs)
+    } catch (e) {
+      console.error('Error saving preferences:', e)
+    }
+  }
 
   const fetchOutfits = async () => {
     try {
@@ -96,7 +116,10 @@ const MisOutfits = () => {
     setError(null)
     setGenerating(true)
     const prefs = preferencias ?? lastPreferences ?? {}
-    if (preferencias != null) setLastPreferences(preferencias)
+    if (preferencias != null) {
+      setLastPreferences(preferencias)
+      savePreferences(preferencias)
+    }
     try {
       const params = new URLSearchParams()
       if (prefs.colores?.length) params.append('colores', JSON.stringify(prefs.colores))
@@ -295,6 +318,8 @@ const MisOutfits = () => {
           isOpen={showPreferencias}
           onClose={() => setShowPreferencias(false)}
           onGenerate={handleGenerate}
+          initialPreferences={savedPreferences}
+          onSave={savePreferences}
         />
 
         {selectedPrenda && (

@@ -74,6 +74,20 @@ export default function Mirror() {
   const [vitResult, setVitResult] = useState(null)
   const [addToWardrobeLoading, setAddToWardrobeLoading] = useState(false)
 
+  useEffect(() => {
+    let cancelled = false
+    axios.get('/api/me/preferences').then((res) => {
+      if (!cancelled && res.data?.style_preference) {
+        setStylePref(res.data.style_preference)
+      }
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [])
+
+  const saveStylePreference = (value) => {
+    axios.put('/api/me/preferences', { style_preference: value }).catch(() => {})
+  }
+
   const context = useMemo(() => {
     const ctx = {
       event,
@@ -418,7 +432,7 @@ export default function Mirror() {
               </div>
               <div>
                 <label className="block text-xs text-zinc-500 mb-1">Style</label>
-                <input value={stylePref} onChange={(e) => setStylePref(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-600" />
+                <input value={stylePref} onChange={(e) => setStylePref(e.target.value)} onBlur={() => saveStylePreference(stylePref)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-600" />
               </div>
               <div>
                 <label className="block text-xs text-zinc-500 mb-1">Notes</label>

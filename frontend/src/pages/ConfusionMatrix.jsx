@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { BarChart3, Cpu, Sparkles } from 'lucide-react'
 
-const ConfusionMatrix = () => {
+const ConfusionMatrix = ({ embedded = false }) => {
   const [activeTab, setActiveTab] = useState('cnn')
   const [cnnImageUrl, setCnnImageUrl] = useState(null)
   const [cnnMetrics, setCnnMetrics] = useState(null)
@@ -59,19 +59,20 @@ const ConfusionMatrix = () => {
   const formatValue = (value) => value.toFixed(2)
 
   return (
-    <div className="min-h-screen max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10" style={{ background: 'var(--content-bg)' }}>
-      {/* Header */}
-      <div className="mb-10">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-3 rounded-xl bg-slate-600/80 border border-slate-500">
-            <BarChart3 className="text-slate-200 w-7 h-7" />
+    <div className={embedded ? '' : 'min-h-screen max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10'} style={embedded ? undefined : { background: 'var(--content-bg)' }}>
+      {!embedded && (
+        <div className="mb-10">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-3 rounded-xl bg-slate-600/80 border border-slate-500">
+              <BarChart3 className="text-slate-200 w-7 h-7" />
+            </div>
+            <h1 className="text-4xl font-bold text-slate-100 tracking-tight">Confusion Matrix & Metrics</h1>
           </div>
-          <h1 className="text-4xl font-bold text-slate-100 tracking-tight">Confusion Matrix & Metrics</h1>
+          <p className="text-slate-400 text-lg max-w-2xl">
+            Compare CNN and Vision Transformer (ViT) performance on clothing classification.
+          </p>
         </div>
-        <p className="text-slate-400 text-lg max-w-2xl">
-          Compare CNN and Vision Transformer (ViT) performance on clothing classification.
-        </p>
-      </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 p-1.5 bg-slate-700/80 rounded-xl w-fit mb-8 border border-slate-600">

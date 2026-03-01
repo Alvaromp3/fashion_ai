@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const outfitSchema = new mongoose.Schema({
+  owner_id: {
+    type: String,
+    required: true,
+    index: true
+  },
   superior_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Prenda',

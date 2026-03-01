@@ -1,8 +1,14 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { Auth0Provider } from '@auth0/auth0-react'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import App from './App.jsx'
 import './index.css'
+
+const domain = import.meta.env.VITE_AUTH0_DOMAIN
+const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID
+const audience = import.meta.env.VITE_AUTH0_AUDIENCE
+const redirectUri = import.meta.env.VITE_AUTH0_CALLBACK_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000')
 
 const rootEl = document.getElementById('root')
 if (!rootEl) {
@@ -20,7 +26,18 @@ if (!rootEl) {
     root.render(
       <React.StrictMode>
         <ErrorBoundary fallback={fallback}>
-          <App />
+          <Auth0Provider
+            domain={domain || ''}
+            clientId={clientId || ''}
+            authorizationParams={{
+              redirect_uri: redirectUri,
+              audience: audience || undefined
+            }}
+            useRefreshTokens={true}
+            cacheLocation="localstorage"
+          >
+            <App />
+          </Auth0Provider>
         </ErrorBoundary>
       </React.StrictMode>
     )

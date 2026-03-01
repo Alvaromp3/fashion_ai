@@ -55,6 +55,15 @@ CLOUDINARY_API_SECRET=your_api_secret
 
 If Cloudinary is not set, images are stored under `backend/uploads/`.
 
+**Authentication (Auth0):** The app uses Auth0 for login and per-user data. Add these to `backend/.env` and to the project root or `frontend/.env` (frontend uses `VITE_` prefix so they are available in the browser):
+
+- **Backend:** `AUTH0_DOMAIN=your-tenant.auth0.com`, `AUTH0_AUDIENCE=https://fashion-ai-api` (or your Auth0 API identifier).
+- **Frontend:** `VITE_AUTH0_DOMAIN`, `VITE_AUTH0_CLIENT_ID`, `VITE_AUTH0_AUDIENCE`, `VITE_AUTH0_CALLBACK_URL=http://localhost:3000`.
+
+In the Auth0 Dashboard: create a **Single Page Application** and an **API**. Set the API identifier (audience) to match `AUTH0_AUDIENCE`. For the SPA, set Allowed Callback URLs, Allowed Logout URLs, and Allowed Web Origins to `http://localhost:3000` (and your production URL when deploying).
+
+**Admin dashboard:** The Metrics and Examples views are in the Admin area (`/admin`), restricted to users with an `admin` role. Add a custom claim to your access token (e.g. `https://fashion-ai-api/roles` or set `AUTH0_ROLES_CLAIM` in backend `.env`) containing a `roles` array with `"admin"` for users who should see the Admin link and access model metrics/examples. Configure this in Auth0 via Actions or Rules that add `app_metadata.roles` to the token.
+
 ### 3. ML service
 
 ```bash
