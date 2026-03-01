@@ -1,3 +1,9 @@
+name = "fashion-ai"
+compatibility_date = "2026-03-01"
+
+[assets]
+directory = "./dist"
+
 # Cloudflare Wrangler config for Fashion AI
 # Used by: npx wrangler r2 bucket create/list, npx wrangler pages deploy
 # Set CLOUDFLARE_ACCOUNT_ID in env or below for non-interactive use.

@@ -82,9 +82,23 @@ def load_model():
     vit_model_path = os.path.abspath(os.path.realpath(VIT_MODEL_PATH))
     print(f"   Loading ViT: {vit_model_path}", flush=True)
     if os.path.exists(vit_model_path):
-        vit_custom_objects = {}
-        if KERAS_HUB_AVAILABLE:
+        # Detectar puntero Git LFS (archivo pequeño con "git-lfs" y "oid sha256")
+        vit_size = os.path.getsize(vit_model_path)
+        if vit_size < 500:
             try:
+                with open(vit_model_path, 'rb') as f:
+                    head = f.read(200).decode('utf-8', errors='ignore')
+                if 'git-lfs' in head and 'oid sha256' in head:
+                    print("   ViT no cargó: el archivo .keras es un puntero de Git LFS, no el modelo (~1 GB).", flush=True)
+                    print("   Ejecuta 'git lfs pull' en este repo o copia el archivo real desde otro clone.", flush=True)
+                    vit_model = None
+                    vit_model_path = None  # skip loading below
+            except Exception:
+                pass
+        if vit_model_path and os.path.exists(vit_model_path):
+            vit_custom_objects = {}
+            if KERAS_HUB_AVAILABLE:
+                try:
                 # Registrar todas las clases de keras_hub (models, layers y submodulos vit)
                 for mod in [getattr(keras_hub, 'models', None), getattr(keras_hub, 'layers', None)]:
                     if mod is None:
@@ -106,63 +120,63 @@ def load_model():
                         if isinstance(obj, type):
                             vit_custom_objects[name] = obj
                             vit_custom_objects[f"keras_hub>{name}"] = obj
-            except Exception:
-                pass
-        vit_loaded = False
-        vit_model = None
-        vit_last_error = None
-        # 1) tf.keras con safe_mode=False (muchos .keras cargan así sin custom_objects)
-        try:
-            vit_model = tf.keras.models.load_model(
-                vit_model_path, compile=False, safe_mode=False
-            )
-            if vit_model is not None:
-                vit_loaded = True
-        except (TypeError, Exception) as e0:
-            vit_last_error = e0
+                except Exception:
+                    pass
+            vit_loaded = False
             vit_model = None
-        # 2) tf.keras con custom_objects (para ViT de keras_hub)
-        if not vit_loaded and vit_custom_objects:
+            vit_last_error = None
+            # 1) tf.keras con safe_mode=False (muchos .keras cargan así sin custom_objects)
             try:
                 vit_model = tf.keras.models.load_model(
-                    vit_model_path, compile=False, custom_objects=vit_custom_objects
+                    vit_model_path, compile=False, safe_mode=False
                 )
-                vit_loaded = True
-            except Exception as e2:
-                vit_last_error = e2
-                vit_model = None
-        # 3) Keras 3 con safe_mode=False
-        if not vit_loaded:
-            try:
-                import keras as k3
-                try:
-                    vit_model = k3.models.load_model(vit_model_path, compile=False, safe_mode=False)
-                except TypeError:
-                    vit_model = k3.models.load_model(vit_model_path, compile=False)
                 if vit_model is not None:
                     vit_loaded = True
-            except Exception as e1:
-                vit_last_error = e1
-        # 4) tf.keras sin safe_mode (Keras 2)
-        if not vit_loaded:
-            try:
-                vit_model = tf.keras.models.load_model(vit_model_path, compile=False)
-                vit_loaded = True
-            except (TypeError, Exception) as e3:
-                vit_last_error = e3
+            except (TypeError, Exception) as e0:
+                vit_last_error = e0
                 vit_model = None
-        if vit_loaded and vit_model is not None:
-            print(f"✅ ViT loaded ({os.path.getsize(vit_model_path) / (1024*1024):.1f} MB)", flush=True)
-            if vit_model.input_shape and len(vit_model.input_shape) >= 3:
-                detected_size = vit_model.input_shape[1]
-                if detected_size and detected_size > 0:
-                    vit_input_size = detected_size
-        else:
-            vit_model = None
-            err_msg = str(vit_last_error) if vit_last_error else "unknown"
-            print(f"ViT did not load; CNN only. Error: {err_msg[:150]}", flush=True)
-            if not KERAS_HUB_AVAILABLE:
-                print("   pip install keras-hub para ViT", flush=True)
+            # 2) tf.keras con custom_objects (para ViT de keras_hub)
+            if not vit_loaded and vit_custom_objects:
+                try:
+                    vit_model = tf.keras.models.load_model(
+                        vit_model_path, compile=False, custom_objects=vit_custom_objects
+                    )
+                    vit_loaded = True
+                except Exception as e2:
+                    vit_last_error = e2
+                    vit_model = None
+            # 3) Keras 3 con safe_mode=False
+            if not vit_loaded:
+                try:
+                    import keras as k3
+                    try:
+                        vit_model = k3.models.load_model(vit_model_path, compile=False, safe_mode=False)
+                    except TypeError:
+                        vit_model = k3.models.load_model(vit_model_path, compile=False)
+                    if vit_model is not None:
+                        vit_loaded = True
+                except Exception as e1:
+                    vit_last_error = e1
+            # 4) tf.keras sin safe_mode (Keras 2)
+            if not vit_loaded:
+                try:
+                    vit_model = tf.keras.models.load_model(vit_model_path, compile=False)
+                    vit_loaded = True
+                except (TypeError, Exception) as e3:
+                    vit_last_error = e3
+                    vit_model = None
+            if vit_loaded and vit_model is not None:
+                print(f"✅ ViT loaded ({os.path.getsize(vit_model_path) / (1024*1024):.1f} MB)", flush=True)
+                if vit_model.input_shape and len(vit_model.input_shape) >= 3:
+                    detected_size = vit_model.input_shape[1]
+                    if detected_size and detected_size > 0:
+                        vit_input_size = detected_size
+            else:
+                vit_model = None
+                err_msg = str(vit_last_error) if vit_last_error else "unknown"
+                print(f"ViT did not load; CNN only. Error: {err_msg[:150]}", flush=True)
+                if not KERAS_HUB_AVAILABLE:
+                    print("   pip install keras-hub para ViT", flush=True)
     else:
         print(f"ViT not found: {vit_model_path}", flush=True)
         vit_model = None
