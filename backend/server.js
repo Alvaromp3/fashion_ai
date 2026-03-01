@@ -28,37 +28,48 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.get('/api/ml-health', async (req, res) => {
+/** Check if the ML/AI service is reachable. Used by /api/ml-health and startup test. */
+async function checkMlServiceReachability() {
   const mlUrl = process.env.ML_SERVICE_URL || 'http://localhost:6001';
   const isHostedMl = /\.hf\.space|\.onrender\.com|https?:\/\/(?!localhost|127\.)/.test(mlUrl || '');
-  const timeoutMs = isHostedMl ? 20000 : 3000; // hosted Spaces can take 15–60s to wake
+  const timeoutMs = isHostedMl ? 20000 : 3000;
   try {
-    let data;
     try {
       const healthRes = await axios.get(`${mlUrl}/health`, { timeout: timeoutMs });
-      data = healthRes.data;
+      return { ok: true, data: healthRes.data };
     } catch (healthErr) {
       if (!isHostedMl) throw healthErr;
       const rootRes = await axios.get(mlUrl.replace(/\/$/, ''), { timeout: timeoutMs });
       const root = rootRes.data;
       if (root && (root.health === '/health' || root.message === 'Fashion AI ML API')) {
-        data = { status: 'OK', model_loaded: true, woke_from_root: true };
-      } else {
-        throw healthErr;
+        return { ok: true, data: { status: 'OK', model_loaded: true, woke_from_root: true } };
       }
+      throw healthErr;
     }
-    res.json({ available: true, ...data });
   } catch (err) {
-    const hint = isHostedMl
-      ? `ML is hosted (e.g. Hugging Face Space). The Space may be sleeping—open ${mlUrl} in a browser to wake it, or check ML_SERVICE_URL on the backend.`
-      : 'Run in a terminal: ./ml-service/run_ml.sh (or ./start-all.sh)';
-    res.status(503).json({
-      available: false,
-      error: 'ML service not running',
-      hint,
-      hosted: isHostedMl
-    });
+    return {
+      ok: false,
+      mlUrl,
+      isHostedMl,
+      message: err.code === 'ECONNREFUSED' ? 'Connection refused' : err.message || 'Unknown error'
+    };
   }
+}
+
+app.get('/api/ml-health', async (req, res) => {
+  const result = await checkMlServiceReachability();
+  if (result.ok) {
+    return res.json({ available: true, ...result.data });
+  }
+  const hint = result.isHostedMl
+    ? `ML is hosted (e.g. Hugging Face Space). The Space may be sleeping—open ${result.mlUrl} in a browser to wake it, or check ML_SERVICE_URL on the backend.`
+    : 'Run in a terminal: ./ml-service/run_ml.sh (or ./start-all.sh)';
+  res.status(503).json({
+    available: false,
+    error: 'ML service not running',
+    hint,
+    hosted: result.isHostedMl
+  });
 });
 
 const PORT = process.env.PORT || 4000;
@@ -92,6 +103,18 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   })
     .then(() => console.log('Connected to MongoDB'))
     .catch((err) => console.error('Error connecting to MongoDB:', err));
+
+  // Startup test: verify backend can reach the AI/ML server
+  (async () => {
+    const mlUrl = process.env.ML_SERVICE_URL || 'http://localhost:6001';
+    console.log(`Checking AI/ML server reachability at ${mlUrl}...`);
+    const result = await checkMlServiceReachability();
+    if (result.ok) {
+      console.log('AI/ML server: reachable', result.data?.model_loaded ? '(model loaded)' : '');
+    } else {
+      console.warn(`AI/ML server: not reachable — ${result.message}. Endpoints that need ML (e.g. /api/classify) may fail until the service is running.`);
+    }
+  })();
 });
 
 server.on('error', (err) => {

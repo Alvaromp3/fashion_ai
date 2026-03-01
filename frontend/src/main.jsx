@@ -5,6 +5,9 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import App from './App.jsx'
 import './index.css'
 
+// Load API client first so axios sends /api and /uploads to VITE_API_BASE_URL in production
+import './api/client'
+
 import { getRedirectOrigin } from './utils/auth0Redirect'
 
 const domain = import.meta.env.VITE_AUTH0_DOMAIN?.trim() || ''

@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { useAuth0 } from '@auth0/auth0-react'
 import axios from 'axios'
 import { TubelightNavbar } from './components/ui/tubelight-navbar'
+import { AuthTokenSetup } from './components/AuthTokenSetup'
 import Dashboard from './pages/Dashboard'
 import MisPrendas from './pages/MisPrendas'
 import MisOutfits from './pages/MisOutfits'
@@ -33,11 +34,12 @@ function App() {
   }, [isAuthenticated, getAccessTokenSilently])
 
   return (
-    <Router future={routerFuture}>
-      <div
-        className="min-h-screen app-shell"
-        style={{ background: 'var(--content-bg)' }}
-      >
+<Router future={routerFuture}>
+        <AuthTokenSetup />
+        <div
+          className="min-h-screen app-shell"
+          style={{ background: 'var(--content-bg)' }}
+        >
         <TubelightNavbar
           isAuthenticated={isAuthenticated}
           onLogin={() => loginWithRedirect({ authorizationParams: { redirect_uri: getRedirectOrigin() } })}

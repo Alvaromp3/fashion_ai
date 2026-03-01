@@ -99,7 +99,7 @@ Optional:
 | `VITE_AUTH0_CLIENT_ID` | Auth0 SPA Client ID |
 | `VITE_AUTH0_AUDIENCE` | Same as `AUTH0_AUDIENCE` |
 | `VITE_AUTH0_CALLBACK_URL` | Your **Pages URL** (e.g. `https://fashion-ai-xxxx.pages.dev`) — no trailing slash |
-| `VITE_API_BASE_URL` | Your **backend URL** (e.g. `https://fashion-ai-backend.onrender.com`) — no trailing slash |
+| `VITE_API_BASE_URL` | Your **backend URL** (e.g. `https://fashion-ai-backend.onrender.com`) — no trailing slash. **Required** or the frontend will call the Pages host instead of the backend. |
 
 7. [ ] **Redeploy** the Pages project (trigger a new build so env vars are applied).
 
