@@ -48,3 +48,14 @@ Use this to verify env is set correctly for local dev and production.
 2. **Frontend “ML not available”** – Ensure Cloudflare Pages has `VITE_API_BASE_URL` set to your Render backend URL and that you redeployed after setting it.
 3. **Auth0 login redirect** – In Auth0 Application settings, add your **Pages URL** to Allowed Callback URLs, Allowed Logout URLs, and Allowed Web Origins.
 4. **Duplicate keys in `.env`** – If a key appears twice, the **last** value wins. Keep one value per key or use a “Production overrides” section at the bottom.
+
+---
+
+## Upload garment not working? (production)
+
+| Symptom | Cause | Fix |
+|--------|--------|-----|
+| "Please log in to upload garments" or 401 | Auth0 is on; user not signed in | Log in via the app's login button, then try upload again. |
+| "Can't reach the backend" / Network Error / 404 on Save | Frontend calling wrong host (e.g. Pages instead of backend) | Set **Cloudflare Pages** env `VITE_API_BASE_URL` to your backend URL (no trailing slash). Run `npm run cloudflare:pages-env` from repo root, then **redeploy** the frontend so the build gets the variable. |
+| "ML service not available" / can't click Classify or it fails | ML (HF Space) asleep or `ML_SERVICE_URL` wrong | Open your HF Space URL in a browser to wake it; in Render, set `ML_SERVICE_URL` to that URL and redeploy. Upload needs Classify to succeed before Save is enabled. |
+| Save succeeds but image missing later | Backend has no Cloudinary/R2; Render disk is ephemeral | Configure **Cloudinary** or **R2** on the backend (Render env) so uploads are stored in the cloud. |

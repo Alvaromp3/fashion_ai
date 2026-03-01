@@ -182,9 +182,15 @@ const UploadModal = ({ onClose, onSuccess }) => {
       setError(null)
       onSuccess()
     } catch (err) {
+      const status = err.response?.status
       const data = err.response?.data
-      const msg = data?.error || 'Error saving the garment. Please try again.'
+      let msg = data?.error || 'Error saving the garment. Please try again.'
       const details = data?.details && data.details !== msg ? ` (${data.details})` : ''
+      if (status === 401) {
+        msg = 'Please log in to upload garments. Use the login button to sign in.'
+      } else if (status === 404 || err.code === 'ERR_NETWORK' || err.message?.includes('Network Error')) {
+        msg = "Can't reach the backend. If you're on the production site, ensure the frontend was built with VITE_API_BASE_URL set to your backend URL (e.g. https://fashion-ai-backend-c6wd.onrender.com), then redeploy."
+      }
       setError(msg + details)
     } finally {
       setLoading(false)
