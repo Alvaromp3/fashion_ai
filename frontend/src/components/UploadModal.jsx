@@ -29,7 +29,8 @@ const UploadModal = ({ onClose, onSuccess }) => {
     setMlStatus('checking')
     setMlHint(null)
     setMlHosted(false)
-    axios.get('/api/ml-health', { timeout: 5000 })
+    // Hosted ML (e.g. HF Space) can take 20+ s to wake; backend uses 20s timeout
+    axios.get('/api/ml-health', { timeout: 25000 })
       .then((res) => {
         if (res?.data?.available) {
           setMlStatus('available')
@@ -53,7 +54,7 @@ const UploadModal = ({ onClose, onSuccess }) => {
     let cancelled = false
     setMlHint(null)
     setMlHosted(false)
-    axios.get('/api/ml-health', { timeout: 5000 })
+    axios.get('/api/ml-health', { timeout: 25000 })
       .then((res) => {
         if (cancelled) return
         if (res?.data?.available) {
@@ -315,12 +316,14 @@ const UploadModal = ({ onClose, onSuccess }) => {
               {showTerminalTip && (
                 <p className="mt-2 text-xs text-amber-700">To see errors in the terminal: <code className="bg-amber-100 px-1 rounded">./ml-service/run_ml.sh</code></p>
               )}
+              <p className="mt-2 text-xs text-amber-700">If the Space was sleeping, wait ~30s after opening its URL, then click below.</p>
               <button
                 type="button"
                 onClick={checkMlHealth}
-                className="mt-3 px-3 py-1.5 bg-amber-200 hover:bg-amber-300 text-amber-900 rounded-lg text-sm font-medium"
+                disabled={mlStatus === 'checking'}
+                className="mt-3 px-4 py-2 bg-amber-200 hover:bg-amber-300 text-amber-900 rounded-lg text-sm font-medium disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                Check again
+                {mlStatus === 'checking' ? <><FaSpinner className="animate-spin" /> Checking…</> : 'Check again'}
               </button>
             </div>
           )}

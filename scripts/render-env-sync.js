@@ -18,8 +18,8 @@ const API_BASE = 'https://api.render.com/v1';
 const ENV_FILE = path.join(__dirname, '..', 'backend', '.env');
 const SERVICE_NAME = 'fashion-ai-backend';
 
-// Keys we never send to Render (script-only or local-only)
-const SKIP_KEYS = new Set(['FLASK_ENV', 'FLASK_SECRET_KEY', 'BACKEND_URL', 'RENDER_API_KEY', 'RENDER_SERVICE_ID']);
+// Keys we never send to Render (script-only, local-only, or set by Render)
+const SKIP_KEYS = new Set(['FLASK_ENV', 'FLASK_SECRET_KEY', 'BACKEND_URL', 'RENDER_API_KEY', 'RENDER_SERVICE_ID', 'PORT']);
 const RENDER_SYSTEM_PREFIX = 'RENDER_';
 
 /** Load RENDER_API_KEY and RENDER_SERVICE_ID from backend/.env (and root .env) when run from repo root. */

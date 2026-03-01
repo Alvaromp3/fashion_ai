@@ -11,6 +11,7 @@
     "env:sync-render": "npm run env:vault-pull && npm run render:env",
     "cloudflare:r2-create": "node scripts/cloudflare-r2-create.js",
     "cloudflare:pages-deploy": "node scripts/cloudflare-pages-deploy.js",
+    "cloudflare:pages-env": "node scripts/cloudflare-pages-env.js",
     "start": "concurrently -n \"BACKEND,ML,FRONTEND\" -c \"blue,green,yellow\" \"npm run start:backend\" \"npm run start:ml\" \"npm run start:frontend\"",
     "start:backend": "cd backend && npm run dev",
     "start:ml": "cd ml-service && ./start.sh",

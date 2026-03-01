@@ -92,7 +92,17 @@ npx wrangler pages project create fashion-ai
 
 Then run `npm run cloudflare:pages-deploy` again.
 
-**Environment variables** (e.g. `VITE_AUTH0_DOMAIN`, `VITE_API_BASE_URL`) must be set in the dashboard: **Workers & Pages** → **fashion-ai** → **Settings** → **Environment variables** (Production). After adding or changing vars, redeploy (e.g. run `npm run cloudflare:pages-deploy` again).
+**Environment variables** (e.g. `VITE_AUTH0_DOMAIN`, `VITE_API_BASE_URL`) can be set via CLI or dashboard:
+
+- **CLI (from repo root):** Put your production values in `frontend/.env` or `frontend/.env.production` (only `VITE_*` keys are used). Then run:
+  ```bash
+  npm run cloudflare:pages-env
+  ```
+  This runs `wrangler pages secret bulk` to push those vars to the **fashion-ai** Pages project. After that, redeploy (e.g. `npm run cloudflare:pages-deploy` or push to Git) so the next build uses the new vars.
+
+- **Dashboard:** **Workers & Pages** → **fashion-ai** → **Settings** → **Environment variables** (Production). After adding or changing vars, redeploy.
+
+To use a different project name, set `CLOUDFLARE_PAGES_PROJECT_NAME` (e.g. `export CLOUDFLARE_PAGES_PROJECT_NAME=my-pages`).
 
 **Alternative:** Use **Git integration** instead of Direct Upload: connect the repo in **Workers & Pages** → **Create** → **Pages** → **Connect to Git**, and set build command / output directory and env vars there. Then deploys happen on push; you don’t need Wrangler for deploy.
 
@@ -105,6 +115,7 @@ Then run `npm run cloudflare:pages-deploy` again.
 | **wrangler.toml** | Project name and (optional) `account_id` for Wrangler commands. |
 | **scripts/cloudflare-r2-create.js** | Runs `wrangler r2 bucket create fashion-ai-uploads`. |
 | **scripts/cloudflare-pages-deploy.js** | Builds frontend and runs `wrangler pages deploy frontend/dist --project-name fashion-ai`. |
+| **scripts/cloudflare-pages-env.js** | Pushes `VITE_*` from frontend/.env to Pages via `wrangler pages secret bulk`. |
 | **scripts/cloudflare-r2-create.ps1** / **.sh** | Same R2 create step with printed next steps (create API token in dashboard). |
 | **scripts/cloudflare-pages-deploy.ps1** / **.sh** | Same Pages deploy with project create hint. |
 
@@ -112,6 +123,7 @@ Then run `npm run cloudflare:pages-deploy` again.
 
 - `npm run cloudflare:r2-create` — create R2 bucket.
 - `npm run cloudflare:pages-deploy` — build frontend and deploy to Pages.
+- `npm run cloudflare:pages-env` — push frontend `VITE_*` env vars to Cloudflare Pages (then redeploy).
 
 ---
 
