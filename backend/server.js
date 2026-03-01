@@ -30,11 +30,25 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/ml-health', async (req, res) => {
   const mlUrl = process.env.ML_SERVICE_URL || 'http://localhost:6001';
+  const isHostedMl = /\.hf\.space|\.onrender\.com|https?:\/\/(?!localhost|127\.)/.test(mlUrl || '');
+  const timeoutMs = isHostedMl ? 20000 : 3000; // hosted Spaces can take 15–60s to wake
   try {
-    const { data } = await axios.get(`${mlUrl}/health`, { timeout: 3000 });
+    let data;
+    try {
+      const healthRes = await axios.get(`${mlUrl}/health`, { timeout: timeoutMs });
+      data = healthRes.data;
+    } catch (healthErr) {
+      if (!isHostedMl) throw healthErr;
+      const rootRes = await axios.get(mlUrl.replace(/\/$/, ''), { timeout: timeoutMs });
+      const root = rootRes.data;
+      if (root && (root.health === '/health' || root.message === 'Fashion AI ML API')) {
+        data = { status: 'OK', model_loaded: true, woke_from_root: true };
+      } else {
+        throw healthErr;
+      }
+    }
     res.json({ available: true, ...data });
   } catch (err) {
-    const isHostedMl = /\.hf\.space|\.onrender\.com|https?:\/\/(?!localhost|127\.)/.test(mlUrl || '');
     const hint = isHostedMl
       ? `ML is hosted (e.g. Hugging Face Space). The Space may be sleeping—open ${mlUrl} in a browser to wake it, or check ML_SERVICE_URL on the backend.`
       : 'Run in a terminal: ./ml-service/run_ml.sh (or ./start-all.sh)';

@@ -62,7 +62,7 @@ You’ll add these to the **backend** in step 4:
 | `MONGODB_URI` | Your MongoDB connection string |
 | `AUTH0_DOMAIN` | Auth0 domain (e.g. `dev-xxx.us.auth0.com`) |
 | `AUTH0_AUDIENCE` | e.g. `https://fashion-ai-api` |
-| `ML_SERVICE_URL` | `https://Jobersteadt-fashion-ai-ml.hf.space` (no trailing slash) |
+| `ML_SERVICE_URL` | `https://Jobersteadt-fashion-ai-ml.hf.space` (no trailing slash). **Required** — otherwise the “ML unavailable” message won’t show the link to wake the Space. |
 | `R2_ACCOUNT_ID` | From step 2 |
 | `R2_ACCESS_KEY_ID` | From step 2 |
 | `R2_SECRET_ACCESS_KEY` | From step 2 |

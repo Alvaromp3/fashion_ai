@@ -1,0 +1,2 @@
+# SPA: serve index.html for all routes so client-side router works
+/*    /index.html   200
