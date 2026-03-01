@@ -2,6 +2,14 @@ const express = require('express');
 const router = express.Router();
 const Outfit = require('../models/Outfit');
 const Prenda = require('../models/Prenda');
+const { getUserId } = require('../middleware/auth');
+
+function userFilter(userId) {
+  if (userId === 'anonymous') {
+    return { $or: [{ userId: 'anonymous' }, { userId: { $exists: false } }] };
+  }
+  return { userId };
+}
 
 // --- Modelo de puntuación: predice compatibilidad del outfit (formalidad + color + preferencias + variación) ---
 const FORMALITY = {
@@ -127,6 +135,7 @@ function scoreOutfitCompatibility(superior, superiorSecundario, inferior, zapato
 }
 
 router.get('/recommend', async (req, res) => {
+  const userId = getUserId(req);
   try {
     const preferencias = {
       colores: req.query.colores ? JSON.parse(req.query.colores) : [],
@@ -138,13 +147,13 @@ router.get('/recommend', async (req, res) => {
       layeredTop: req.query.layeredTop === 'true'
     };
 
-    let superiores = await Prenda.find({ tipo: 'superior' });
-    const inferiores = await Prenda.find({ tipo: 'inferior' });
-    const zapatos = await Prenda.find({ tipo: 'zapatos' });
-    const abrigos = preferencias.incluirAbrigo ? await Prenda.find({ tipo: 'abrigo' }) : [];
+    let superiores = await Prenda.find({ userId, tipo: 'superior' });
+    const inferiores = await Prenda.find({ userId, tipo: 'inferior' });
+    const zapatos = await Prenda.find({ userId, tipo: 'zapatos' });
+    const abrigos = preferencias.incluirAbrigo ? await Prenda.find({ userId, tipo: 'abrigo' }) : [];
     let vestidos = [];
     if (preferencias.incluirVestido) {
-      vestidos = await Prenda.find({ tipo: 'vestido' });
+      vestidos = await Prenda.find({ userId, tipo: 'vestido' });
     }
 
     if (superiores.length === 0 || inferiores.length === 0 || zapatos.length === 0) {
@@ -270,18 +279,20 @@ router.get('/recommend', async (req, res) => {
 });
 
 router.post('/save', async (req, res) => {
+  const userId = getUserId(req);
   try {
     const { superior_id, inferior_id, zapatos_id, puntuacion, superior_secundario_id, abrigo_id } = req.body;
 
-    const superior = await Prenda.findById(superior_id);
-    const inferior = await Prenda.findById(inferior_id);
-    const zapatos = await Prenda.findById(zapatos_id);
+    const superior = await Prenda.findOne({ _id: superior_id, userId });
+    const inferior = await Prenda.findOne({ _id: inferior_id, userId });
+    const zapatos = await Prenda.findOne({ _id: zapatos_id, userId });
 
     if (!superior || !inferior || !zapatos) {
       return res.status(404).json({ error: 'One or more garments not found' });
     }
 
     const outfit = new Outfit({
+      userId,
       superior_id,
       inferior_id,
       zapatos_id,
@@ -300,8 +311,9 @@ router.post('/save', async (req, res) => {
 });
 
 router.get('/', async (req, res) => {
+  const userId = getUserId(req);
   try {
-    const outfits = await Outfit.find()
+    const outfits = await Outfit.find(userFilter(userId))
       .populate('superior_id')
       .populate('inferior_id')
       .populate('zapatos_id')
@@ -316,15 +328,16 @@ router.get('/', async (req, res) => {
 });
 
 router.delete('/:id', async (req, res) => {
+  const userId = getUserId(req);
   try {
-    const outfit = await Outfit.findByIdAndDelete(req.params.id);
+    const outfit = await Outfit.findOneAndDelete({ _id: req.params.id, ...userFilter(userId) });
     if (!outfit) {
       return res.status(404).json({ error: 'Outfit not found' });
     }
     res.json({ message: 'Outfit deleted successfully' });
   } catch (error) {
     console.error('Error eliminando outfit:', error);
-      res.status(500).json({ error: 'Error deleting the outfit' });
+    res.status(500).json({ error: 'Error deleting the outfit' });
   }
 });
 

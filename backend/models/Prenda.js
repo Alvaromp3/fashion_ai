@@ -1,6 +1,13 @@
 const mongoose = require('mongoose');
 
 const prendaSchema = new mongoose.Schema({
+  /** Auth0 sub (user id). Each user only sees their own garments. Default for existing docs. */
+  userId: {
+    type: String,
+    required: true,
+    default: 'anonymous',
+    index: true
+  },
   imagen_url: {
     type: String,
     required: true

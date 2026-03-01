@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Shirt, Sparkles, BarChart3, Image, ScanLine } from 'lucide-react'
+import { Home, Shirt, Sparkles, BarChart3, Image, ScanLine, LogOut, LogIn } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
 const defaultNavItems = [
@@ -13,7 +13,7 @@ const defaultNavItems = [
   { name: 'Examples', url: '/modelo/ejemplos', icon: Image },
 ]
 
-export function TubelightNavbar({ items = defaultNavItems, className }) {
+export function TubelightNavbar({ items = defaultNavItems, isAuthenticated, onLogin, onLogout, className }) {
   const location = useLocation()
   const [isMobile, setIsMobile] = useState(false)
 
@@ -75,6 +75,28 @@ export function TubelightNavbar({ items = defaultNavItems, className }) {
             </Link>
           )
         })}
+        {onLogin && !isAuthenticated && (
+          <button
+            type="button"
+            onClick={onLogin}
+            className="relative cursor-pointer text-sm font-semibold px-3 sm:px-4 py-2 rounded-full bg-emerald-600 text-white hover:bg-emerald-500 flex items-center gap-1"
+            title="Log in"
+          >
+            <LogIn size={18} strokeWidth={2.5} />
+            <span className="hidden md:inline">Log in</span>
+          </button>
+        )}
+        {onLogout && isAuthenticated && (
+          <button
+            type="button"
+            onClick={onLogout}
+            className="relative cursor-pointer text-sm font-semibold px-3 sm:px-4 py-2 rounded-full text-slate-300 hover:text-white flex items-center gap-1"
+            title="Log out"
+          >
+            <LogOut size={18} strokeWidth={2.5} />
+            <span className="hidden md:inline">Log out</span>
+          </button>
+        )}
       </div>
     </div>
   )

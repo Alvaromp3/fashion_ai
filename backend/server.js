@@ -7,6 +7,7 @@ const axios = require('axios');
 dotenv.config({ path: path.join(__dirname, '.env') });
 
 const openrouter = require('./config/openrouter');
+const { requireAuth, isAuthEnabled } = require('./middleware/auth');
 const app = express();
 app.locals.openrouter = openrouter;
 
@@ -50,10 +51,20 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   } else {
     console.warn('OpenRouter: OPENROUTER_API_KEY no definida en .env');
   }
+  if (isAuthEnabled) {
+    console.log('Auth0: login required for /api/prendas and /api/outfits (per-user wardrobe)');
+  } else {
+    console.log('Auth0: not configured — using anonymous user; set AUTH0_DOMAIN and AUTH0_AUDIENCE for login');
+  }
+  if (process.env.CLOUDINARY_CLOUD_NAME) {
+    console.log('Cloudinary: configured — uploads will go to cloud');
+  } else {
+    console.log('Cloudinary: not set — uploads saved to backend/uploads/');
+  }
   const mongoose = require('mongoose');
   global.__mongoose = mongoose;
-  app.use('/api/prendas', require('./routes/prendas'));
-  app.use('/api/outfits', require('./routes/outfits'));
+  app.use('/api/prendas', requireAuth, require('./routes/prendas'));
+  app.use('/api/outfits', requireAuth, require('./routes/outfits'));
   app.use('/api/classify', require('./routes/classify'));
   app.use('/api/model', require('./routes/model'));
   app.use('/api/mirror', require('./routes/mirror'));

@@ -1,10 +1,10 @@
 # Fashion AI
 
-A full-stack web application for uploading clothing images, classifying them with CNN or Vision Transformer (ViT) models, and generating outfit recommendations from the user's wardrobe.
+A full-stack web application for uploading clothing images, classifying them with CNN or Vision Transformer (ViT) models, and generating outfit recommendations from the user's wardrobe. Includes **Mirror**: real-time outfit feedback via camera and AI (OpenRouter), with optional Auth0 login and per-user wardrobe.
 
 ## Summary
 
-Fashion AI lets users build a digital wardrobe by uploading garment photos. The system classifies each item (type and colour) via a machine learning service that supports both a convolutional neural network (CNN) and a Vision Transformer (ViT). Users can filter garments by category, set preferences (occasion, style, colours), and receive outfit suggestions that combine top, bottom, and shoes. Recommendations can be saved for later. The project includes a metrics view (confusion matrices, classification reports) and a model examples page describing the supported garment classes.
+Fashion AI lets users build a digital wardrobe by uploading garment photos. The system classifies each item (type and colour) via a machine learning service (CNN and ViT). Users can filter garments by category, set preferences (occasion, style, colours), and receive outfit suggestions. **Mirror** uses the camera and OpenRouter to analyse the current outfit and give preparation-focused tips for the chosen occasion (e.g. business casual). Optional Auth0 login scopes data per user; images can be stored locally or in Cloudinary.
 
 ## Tech Stack
 
@@ -26,7 +26,7 @@ Fashion AI lets users build a digital wardrobe by uploading garment photos. The 
 
 ```bash
 git clone <repository-url>
-cd fashion_program
+cd fashion_ai_clean
 ```
 
 ### 2. Backend
@@ -36,7 +36,7 @@ cd backend
 npm install
 ```
 
-Create a `.env` file (use `.env.example` if available):
+Create a `.env` file in `backend/` with the variables below (see `backend/README-AUTH.md` for Auth0):
 
 ```env
 PORT=4000
@@ -45,7 +45,26 @@ ML_SERVICE_URL=http://localhost:6001
 NODE_ENV=development
 ```
 
-Optional (for cloud image storage):
+**OpenRouter (Mirror AI):**
+
+```env
+OPENROUTER_API_KEY=your-key
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+OPENROUTER_MODEL=openai/gpt-4o-mini
+```
+
+**Auth0 (optional; per-user wardrobe and login):**
+
+```env
+AUTH0_DOMAIN=your-tenant.us.auth0.com
+AUTH0_CLIENT_ID=your-client-id
+AUTH0_CLIENT_SECRET=your-client-secret
+AUTH0_AUDIENCE=https://your-api-identifier
+```
+
+See `backend/README-AUTH.md` and `frontend/AUTH0-CHECKLIST.md` for setup. If Auth0 is not set, the app uses an anonymous user.
+
+**Cloudinary (optional; cloud image storage):**
 
 ```env
 CLOUDINARY_CLOUD_NAME=your_cloud_name
@@ -142,66 +161,86 @@ docker compose -f docker-compose.ml.yml build --build-arg GITHUB_TOKEN=ghp_xxxxx
 ## Project structure
 
 ```
-fashion_program/
+fashion_ai_clean/
 ├── backend/
-│   ├── models/          # MongoDB models (Prenda, Outfit)
-│   ├── routes/          # API routes (prendas, outfits, classify, model)
+│   ├── config/          # e.g. OpenRouter
+│   ├── middleware/      # Auth0 (requireAuth, getUserId)
+│   ├── models/          # MongoDB (Prenda, Outfit)
+│   ├── routes/          # prendas, outfits, classify, mirror, model
 │   ├── utils/           # e.g. Cloudinary
 │   ├── server.js
-│   └── package.json
+│   └── .env             # PORT, MONGODB_URI, ML_SERVICE_URL, OpenRouter, Auth0, Cloudinary
 ├── frontend/
 │   ├── src/
-│   │   ├── components/  # React components and UI
-│   │   ├── pages/       # Dashboard, Garments, Outfits, Metrics, Examples
+│   │   ├── components/  # LoginGuard, navbar, modals, UI
+│   │   ├── pages/       # Dashboard, Garments, Outfits, Mirror, Metrics, Examples
 │   │   ├── App.jsx
 │   │   └── main.jsx
+│   ├── .env             # VITE_AUTH0_* for login
 │   ├── vite.config.js   # dev proxy to backend
 │   └── package.json
 ├── ml-service/
-│   ├── app.py           # Flask app: classify, metrics, confusion matrix
+│   ├── app.py           # Flask: classify, classify-vit, health, metrics
 │   ├── requirements.txt
-│   └── (model files)    # e.g. modelo_ropa.h5
+│   └── (model files)    # e.g. modelo_ropa.h5, vision_transformer_*.keras
+├── start-all.sh         # run backend + frontend + ML
+├── stop-all.sh
 └── README.md
 ```
 
 ## API overview
 
-| Area           | Method | Endpoint                          | Description                |
-| -------------- | ------ | --------------------------------- | -------------------------- |
-| Garments       | POST   | `/api/prendas/upload`             | Upload and store a garment |
-| Garments       | GET    | `/api/prendas`                    | List garments              |
-| Garments       | GET    | `/api/prendas/filter?type=...`    | Filter by type             |
-| Garments       | DELETE | `/api/prendas/:id`                | Delete a garment           |
-| Garments       | PUT    | `/api/prendas/:id/ocasion`        | Update garment occasions   |
-| Classification | POST   | `/api/classify`                   | Classify image (CNN)       |
-| Classification | POST   | `/api/classify/vit`               | Classify image (ViT)       |
-| Outfits        | GET    | `/api/outfits/recommend`          | Get outfit recommendations |
-| Outfits        | POST   | `/api/outfits/save`               | Save an outfit             |
-| Outfits        | GET    | `/api/outfits`                    | List saved outfits         |
-| Outfits        | DELETE | `/api/outfits/:id`                | Delete an outfit           |
-| Model          | GET    | `/api/model/metrics`              | CNN metrics                |
-| Model          | GET    | `/api/model/metrics-vit`          | ViT metrics                |
-| Model          | GET    | `/api/model/confusion-matrix`     | CNN confusion matrix image |
+All endpoints are under the backend base URL (e.g. `http://localhost:4000`). When Auth0 is configured, `POST`/`GET`/`PUT`/`DELETE` for `/api/prendas` and `/api/outfits` require a valid JWT: `Authorization: Bearer <token>`.
+
+| Area           | Method | Endpoint | Description |
+|----------------|--------|----------|-------------|
+| Health         | GET    | `/api/health` | Backend and MongoDB status |
+| Health         | GET    | `/api/ml-health` | ML service (CNN/ViT) status |
+| **Mirror**     | GET    | `/api/mirror/status` | OpenRouter config check |
+| **Mirror**     | POST   | `/api/mirror/analyze` | Text-only analysis (body: `userPrompt`) |
+| **Mirror**     | POST   | `/api/mirror/analyze-frame` | Image + context analysis (body: `imageDataUrl`, `context`, `userNotes`) |
+| Garments       | POST   | `/api/prendas/upload` | Upload and store a garment (multipart) |
+| Garments       | POST   | `/api/prendas/auto` | Add garment from base64 (e.g. Mirror; body: `imagen_base64`, `tipo`, `color`, `clase_nombre`, `confianza`, `ocasion`) |
+| Garments       | GET    | `/api/prendas` | List garments (per user if Auth0) |
+| Garments       | GET    | `/api/prendas/filter?type=...` | Filter by type |
+| Garments       | PUT    | `/api/prendas/:id/ocasion` | Update garment occasions |
+| Garments       | DELETE | `/api/prendas/:id` | Delete a garment |
+| Classification | POST   | `/api/classify` | Classify image (CNN; multipart `imagen`) |
+| Classification | POST   | `/api/classify/vit` | Classify image (ViT; multipart) |
+| Classification | POST   | `/api/classify/vit-base64` | Classify from base64 (Mirror; body: `imageDataUrl`) |
+| Outfits        | GET    | `/api/outfits/recommend` | Get outfit recommendations (query params: preferences) |
+| Outfits        | POST   | `/api/outfits/save` | Save an outfit |
+| Outfits        | GET    | `/api/outfits` | List saved outfits |
+| Outfits        | DELETE | `/api/outfits/:id` | Delete an outfit |
+| Model          | GET    | `/api/model/metrics` | CNN metrics |
+| Model          | GET    | `/api/model/metrics-vit` | ViT metrics |
+| Model          | GET    | `/api/model/confusion-matrix` | CNN confusion matrix image |
 | Model          | GET    | `/api/model/confusion-matrix-vit` | ViT confusion matrix image |
-| Model          | GET    | `/api/model/data-audit`           | Dataset sample image       |
+| Model          | GET    | `/api/model/data-audit` | Dataset sample image |
+
+Static: `/uploads` serves uploaded images (or use Cloudinary); `/api/model/images` can serve ML-related assets.
 
 ## Features
 
-- **Garments:** Upload images; classify with CNN or ViT; view and filter by type (top, bottom, shoes, coat, dress, etc.); edit occasions; delete.
-- **Outfits:** Generate up to three outfit suggestions (Surprise Me or with preferences); filter by occasion, style, and preferred colours; save and delete outfits.
-- **Metrics:** View confusion matrices and classification reports for CNN and ViT.
-- **Examples:** Browse the garment categories and short descriptions used by the models.
+- **Garments:** Upload images; classify with CNN or ViT; view and filter by type; edit occasions; delete. With Auth0, each user has their own wardrobe; uploads can be stored in `backend/uploads/{userId}/` or Cloudinary.
+- **Outfits:** Generate outfit suggestions (with preferences); save and delete. Scoped per user when Auth0 is enabled.
+- **Mirror:** Use the camera to capture your outfit; get AI feedback (OpenRouter) focused on **preparing for the chosen occasion** (e.g. business casual). Tips are constructive and supportive. Optionally classify the frame with ViT and add the item to your wardrobe.
+- **Metrics:** Confusion matrices and classification reports for CNN and ViT.
+- **Examples:** Garment categories and descriptions used by the models.
 
 ## Troubleshooting
 
-- **Classification or recommendations fail:** Ensure the backend is running on port 4000 and the ML service on port 6001. Check backend and ML logs for errors.
+- **Classification or recommendations fail:** Ensure the backend is running on port 4000 and the ML service on port 6001. Check backend and ML logs.
 - **MongoDB errors:** Confirm MongoDB is running and `MONGODB_URI` in `.env` is correct.
-- **Images not loading:** If not using Cloudinary, ensure `backend/uploads/` exists and the backend serves `/uploads` correctly.
+- **Mirror "Service not found":** Create an API in Auth0 with Identifier equal to `AUTH0_AUDIENCE` (e.g. `https://fashion-classifier-api`). See `frontend/AUTH0-CHECKLIST.md`.
+- **Camera not showing:** Ensure the browser has camera permission for localhost; if you see "Stop" but no image, a fix ensures the stream is attached after the video element is in the DOM.
+- **Images not loading:** If not using Cloudinary, ensure `backend/uploads/` exists and the backend serves `/uploads`.
 
 ## Notes
 
-- The application does not implement user authentication; data is shared for all users (suitable for a demo or university project).
-- You must provide your own trained model file(s) and align class names and types in `ml-service/app.py` with your training setup.
+- **Auth0:** Optional. When `AUTH0_DOMAIN` and `AUTH0_AUDIENCE` are set, `/api/prendas` and `/api/outfits` require a valid JWT. Each user's garments and outfits are stored with a `userId`; uploads go to `uploads/{userId}/`. See `backend/README-AUTH.md` and `frontend/AUTH0-CHECKLIST.md`.
+- **OpenRouter:** Required for Mirror AI. Set `OPENROUTER_API_KEY` (and optionally `OPENROUTER_BASE_URL`, `OPENROUTER_MODEL`) in `backend/.env`.
+- You must provide your own trained model file(s) and align class names in `ml-service/app.py` with your setup.
 
 ## License
 
