@@ -19,9 +19,12 @@
     "start:backend": "cd backend && npm run dev",
     "start:ml": "cd ml-service && ./start.sh",
     "start:frontend": "cd frontend && npm run dev",
-    "stop": "pkill -f 'node.*server.js' && pkill -f nodemon && pkill -f vite && pkill -f 'python.*app.py' && for p in 3000 4000 6001; do lsof -ti :$p | xargs kill -9 2>/dev/null; done; true"
+    "stop": "pkill -f 'node.*server.js' && pkill -f nodemon && pkill -f vite && pkill -f 'python.*app.py' && for p in 3000 4000 6001; do lsof -ti :$p | xargs kill -9 2>/dev/null; done; true",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "wrangler": "^4.69.0"
   }
 }
