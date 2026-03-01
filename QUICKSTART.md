@@ -71,11 +71,7 @@ python train_model.py
 
 ### 4. Configurar Variables de Entorno
 
-```bash
-cd backend
-cp .env.example .env
-# Edita .env con tus valores
-```
+Crea `backend/.env` con las variables necesarias (PORT, MONGODB_URI, ML_SERVICE_URL, NODE_ENV, OpenRouter, Auth0). Ver `backend/README-AUTH.md` para login con Auth0.
 
 ### 5. Ejecutar Todo
 

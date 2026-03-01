@@ -1,9 +1,11 @@
 const mongoose = require('mongoose');
 
 const outfitSchema = new mongoose.Schema({
-  owner_id: {
+  /** Auth0 sub (user id). Each user only sees their own outfits. Default for existing docs. */
+  userId: {
     type: String,
     required: true,
+    default: 'anonymous',
     index: true
   },
   superior_id: {

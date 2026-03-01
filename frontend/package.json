@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@auth0/auth0-react": "^2.2.4",
+    "@auth0/auth0-react": "^2.15.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^8.18.0",
     "axios": "^1.6.2",

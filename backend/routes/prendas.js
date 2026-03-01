@@ -1,27 +1,23 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const Prenda = require('../models/Prenda');
-const { uploadImage, deleteImage } = require('../utils/cloudinary');
-const r2 = require('../utils/r2');
-const { checkR2StorageLimit } = require('../utils/cloudflareUsage');
 const path = require('path');
 const fs = require('fs');
 const sharp = require('sharp');
+const Prenda = require('../models/Prenda');
+const { uploadImage, deleteImage } = require('../utils/cloudinary');
+const { getUserId } = require('../middleware/auth');
+
+/** Query filter by user: only their prendas, or legacy docs without userId when anonymous. */
+function userFilter(userId) {
+  if (userId === 'anonymous') {
+    return { $or: [{ userId: 'anonymous' }, { userId: { $exists: false } }] };
+  }
+  return { userId };
+}
 
 const DATASET_PATH = process.env.DATASET_PATH || '';
 const MIN_CONFIDENCE_FOR_DATASET = 0.8;
-
-/** Max garments per user (free tier safeguard). Set PRENDAS_MAX_PER_USER in env (default 200). */
-const PRENDAS_MAX_PER_USER = Math.min(parseInt(process.env.PRENDAS_MAX_PER_USER, 10) || 200, 1000);
-
-async function checkPrendaLimit(ownerId) {
-  const count = await Prenda.countDocuments({ owner_id: ownerId });
-  if (count >= PRENDAS_MAX_PER_USER) {
-    return { over: true, count, max: PRENDAS_MAX_PER_USER };
-  }
-  return { over: false, count, max: PRENDAS_MAX_PER_USER };
-}
 
 const CLASS_TO_FOLDER = {
   Ankle_boot: 'Ankle_boot', Bag: 'Bag', Coat: 'Coat', Dress: 'Dress',
@@ -45,9 +41,14 @@ function copyToDataset(imagePath, clase_nombre, confianza) {
   }
 }
 
+/** Per-user upload folder: uploads/{userId}/ so each user has their own images and DB matches. */
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../uploads');
+    const userId = getUserId(req);
+    if (!userId) {
+      return cb(new Error('User not identified'));
+    }
+    const uploadDir = path.join(__dirname, '../uploads', userId);
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -80,17 +81,10 @@ const upload = multer({
 });
 
 router.post('/upload', upload.single('imagen'), async (req, res) => {
+  const userId = getUserId(req);
   let convertedFilePath = null;
 
   try {
-    const limitCheck = await checkPrendaLimit(req.user.sub);
-    if (limitCheck.over) {
-      return res.status(429).json({
-        error: 'Garment limit reached (free tier).',
-        limit: limitCheck.max,
-        hint: 'Delete some garments or set PRENDAS_MAX_PER_USER in backend env to increase.'
-      });
-    }
     if (!req.file) {
       return res.status(400).json({ error: 'No image provided' });
     }
@@ -118,24 +112,7 @@ router.post('/upload', upload.single('imagen'), async (req, res) => {
     }
 
     let imagen_url;
-    if (r2.isConfigured()) {
-      const fileSize = fs.statSync(filePath).size;
-      const storageCheck = await checkR2StorageLimit(fileSize);
-      if (!storageCheck.allowed) {
-        if (convertedFilePath && fs.existsSync(convertedFilePath)) fs.unlinkSync(convertedFilePath);
-        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-        return res.status(429).json({
-          error: 'R2 storage limit reached (free tier).',
-          currentBytes: storageCheck.currentBytes,
-          limitBytes: storageCheck.limitBytes,
-          hint: 'Delete some garments or set R2_SOFT_LIMIT_BYTES / CLOUDFLARE_API_TOKEN in backend env.'
-        });
-      }
-      const { url } = await r2.uploadToR2(filePath);
-      imagen_url = url;
-      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      if (convertedFilePath && fs.existsSync(convertedFilePath)) fs.unlinkSync(convertedFilePath);
-    } else if (process.env.CLOUDINARY_CLOUD_NAME) {
+    if (process.env.CLOUDINARY_CLOUD_NAME) {
       const result = await uploadImage(filePath);
       imagen_url = result.secure_url;
       if (fs.existsSync(req.file.path)) {
@@ -145,23 +122,21 @@ router.post('/upload', upload.single('imagen'), async (req, res) => {
         fs.unlinkSync(convertedFilePath);
       }
     } else {
-      const uploadsDir = path.join(__dirname, '../uploads');
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
+      const userDir = path.join(__dirname, '../uploads', userId);
+      if (!fs.existsSync(userDir)) {
+        fs.mkdirSync(userDir, { recursive: true });
       }
-      
+      const finalPath = path.join(userDir, req.file.filename);
       if (convertedFilePath && fs.existsSync(convertedFilePath)) {
-        const finalPath = path.join(uploadsDir, req.file.filename);
         fs.copyFileSync(convertedFilePath, finalPath);
-        imagen_url = `/uploads/${req.file.filename}`;
+        imagen_url = `/uploads/${userId}/${req.file.filename}`;
         fs.unlinkSync(convertedFilePath);
         if (fs.existsSync(req.file.path)) {
           fs.unlinkSync(req.file.path);
         }
       } else {
-        const finalPath = path.join(uploadsDir, req.file.filename);
         fs.renameSync(req.file.path, finalPath);
-        imagen_url = `/uploads/${req.file.filename}`;
+        imagen_url = `/uploads/${userId}/${req.file.filename}`;
       }
     }
 
@@ -183,7 +158,7 @@ router.post('/upload', upload.single('imagen'), async (req, res) => {
     ocasionArray = ocasionArray.filter(oc => ocasionesValidas.includes(oc));
 
     const prenda = new Prenda({
-      owner_id: req.user.sub,
+      userId,
       imagen_url,
       tipo: tipoFinal,
       clase_nombre: clase_nombre || 'desconocido',
@@ -200,7 +175,7 @@ router.post('/upload', upload.single('imagen'), async (req, res) => {
     } else if (req.file && fs.existsSync(req.file.path)) {
       imagePathForDataset = req.file.path;
     } else {
-      const uploadsPath = path.join(__dirname, '../uploads', req.file.filename);
+      const uploadsPath = path.join(__dirname, '../uploads', userId, req.file.filename);
       if (fs.existsSync(uploadsPath)) {
         imagePathForDataset = uploadsPath;
       }
@@ -240,12 +215,13 @@ router.post('/upload', upload.single('imagen'), async (req, res) => {
 
 router.get('/', async (req, res) => {
   const mongoose = require('mongoose');
+  const userId = getUserId(req);
   if (mongoose.connection.readyState !== 1) {
     return res.json([]);
   }
   try {
     const timeoutMs = 10000;
-    const findPromise = Prenda.find({ owner_id: req.user.sub }).sort({ fecha_agregada: -1 }).lean();
+    const findPromise = Prenda.find(userFilter(userId)).sort({ fecha_agregada: -1 }).lean();
     const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error('DB timeout')), timeoutMs));
     const prendas = await Promise.race([findPromise, timeoutPromise]);
     res.json(prendas);
@@ -256,9 +232,10 @@ router.get('/', async (req, res) => {
 });
 
 router.get('/filter', async (req, res) => {
+  const userId = getUserId(req);
   try {
     const { type } = req.query;
-    const query = { owner_id: req.user.sub };
+    const query = userFilter(userId);
     if (type) query.tipo = type;
     const prendas = await Prenda.find(query).sort({ fecha_agregada: -1 });
     res.json(prendas);
@@ -269,10 +246,10 @@ router.get('/filter', async (req, res) => {
 });
 
 router.put('/:id/ocasion', async (req, res) => {
+  const userId = getUserId(req);
   try {
     const { ocasion } = req.body;
-
-    const prenda = await Prenda.findOne({ _id: req.params.id, owner_id: req.user.sub });
+    const prenda = await Prenda.findOne({ _id: req.params.id, ...userFilter(userId) });
     if (!prenda) {
       return res.status(404).json({ error: 'Garment not found' });
     }
@@ -296,24 +273,22 @@ router.put('/:id/ocasion', async (req, res) => {
 });
 
 router.delete('/:id', async (req, res) => {
+  const userId = getUserId(req);
   try {
-    const prenda = await Prenda.findOne({ _id: req.params.id, owner_id: req.user.sub });
+    const prenda = await Prenda.findOne({ _id: req.params.id, ...userFilter(userId) });
     if (!prenda) {
       return res.status(404).json({ error: 'Garment not found' });
     }
-
     if (prenda.imagen_url.startsWith('/uploads/')) {
-      const filePath = path.join(__dirname, '../', prenda.imagen_url);
+      const filePath = path.join(__dirname, '..', prenda.imagen_url);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
-    } else if (r2.isConfigured() && process.env.R2_PUBLIC_URL && prenda.imagen_url.startsWith(process.env.R2_PUBLIC_URL.replace(/\/$/, ''))) {
-      await r2.deleteFromR2(prenda.imagen_url);
     } else if (prenda.imagen_url.includes('cloudinary')) {
       await deleteImage(prenda.imagen_url);
     }
 
-    await Prenda.findOneAndDelete({ _id: req.params.id, owner_id: req.user.sub });
+    await Prenda.findByIdAndDelete(req.params.id);
     res.json({ message: 'Garment deleted successfully' });
   } catch (error) {
     console.error('Error eliminando prenda:', error);
@@ -322,15 +297,8 @@ router.delete('/:id', async (req, res) => {
 });
 
 router.post('/auto', async (req, res) => {
+  const userId = getUserId(req);
   try {
-    const limitCheck = await checkPrendaLimit(req.user.sub);
-    if (limitCheck.over) {
-      return res.status(429).json({
-        error: 'Garment limit reached (free tier).',
-        limit: limitCheck.max,
-        hint: 'Delete some garments or set PRENDAS_MAX_PER_USER in backend env to increase.'
-      });
-    }
     const { nombre, tipo, color, imagen_base64, clase_nombre, confianza, ocasion } = req.body;
 
     if (!imagen_base64 || !tipo || !color) {
@@ -338,37 +306,18 @@ router.post('/auto', async (req, res) => {
     }
 
     const imageBuffer = Buffer.from(imagen_base64, 'base64');
-    
-    const uploadsDir = path.join(__dirname, '../uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
+    const userDir = path.join(__dirname, '../uploads', userId);
+    if (!fs.existsSync(userDir)) {
+      fs.mkdirSync(userDir, { recursive: true });
     }
 
     const filename = `auto-${Date.now()}-${Math.round(Math.random() * 1E9)}.jpg`;
-    const filePath = path.join(uploadsDir, filename);
+    const filePath = path.join(userDir, filename);
 
     await sharp(imageBuffer).jpeg({ quality: 90 }).toFile(filePath);
-    let imagen_url;
-    if (r2.isConfigured()) {
-      const fileSize = fs.statSync(filePath).size;
-      const storageCheck = await checkR2StorageLimit(fileSize);
-      if (!storageCheck.allowed) {
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-        return res.status(429).json({
-          error: 'R2 storage limit reached (free tier).',
-          currentBytes: storageCheck.currentBytes,
-          limitBytes: storageCheck.limitBytes,
-          hint: 'Delete some garments or set R2_SOFT_LIMIT_BYTES / CLOUDFLARE_API_TOKEN in backend env.'
-        });
-      }
-      const { url } = await r2.uploadToR2(filePath);
-      imagen_url = url;
-    } else {
-      imagen_url = `/uploads/${filename}`;
-    }
+    const imagen_url = `/uploads/${userId}/${filename}`;
 
     const confianzaValue = confianza || 0.5;
-    
     let ocasionArray = [];
     if (ocasion) {
       ocasionArray = Array.isArray(ocasion) ? ocasion : [ocasion];
@@ -377,13 +326,13 @@ router.post('/auto', async (req, res) => {
     }
 
     const prenda = new Prenda({
-        owner_id: req.user.sub,
-        imagen_url,
-        tipo,
-        color,
-        clase_nombre: clase_nombre || 'desconocido',
-        confianza: confianzaValue,
-        ocasion: ocasionArray
+      userId,
+      imagen_url,
+      tipo,
+      color,
+      clase_nombre: clase_nombre || 'desconocido',
+      confianza: confianzaValue,
+      ocasion: ocasionArray
     });
 
     await prenda.save();
@@ -391,7 +340,6 @@ router.post('/auto', async (req, res) => {
     if (clase_nombre && confianzaValue >= MIN_CONFIDENCE_FOR_DATASET) {
         copyToDataset(filePath, clase_nombre, confianzaValue);
     }
-    if (r2.isConfigured() && fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
     res.status(201).json({
         message: 'Garment added automatically',

@@ -7,21 +7,16 @@ const axios = require('axios');
 dotenv.config({ path: path.join(__dirname, '.env') });
 
 const openrouter = require('./config/openrouter');
-const { requireAuth, requireAdmin } = require('./middleware/auth');
-const { apiLimiter, classifyLimiter, uploadLimiterConditional } = require('./middleware/freeTierLimits');
+const { requireAuth, isAuthEnabled } = require('./middleware/auth');
 const app = express();
 app.locals.openrouter = openrouter;
 
-const corsOrigins = process.env.CORS_ORIGINS
-  ? process.env.CORS_ORIGINS.split(',').map(s => s.trim()).filter(Boolean)
-  : [];
-app.use(cors(corsOrigins.length ? { origin: corsOrigins } : {}));
+app.use(cors());
 // Mirror puede enviar frames (base64) para evaluación visual.
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/model/images', express.static(path.join(__dirname, '../ml-service')));
-app.use('/api', apiLimiter);
 
 app.get('/api/health', (req, res) => {
   const mongoose = global.__mongoose;
@@ -56,14 +51,23 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   } else {
     console.warn('OpenRouter: OPENROUTER_API_KEY no definida en .env');
   }
+  if (isAuthEnabled) {
+    console.log('Auth0: login required for /api/prendas and /api/outfits (per-user wardrobe)');
+  } else {
+    console.log('Auth0: not configured — using anonymous user; set AUTH0_DOMAIN and AUTH0_AUDIENCE for login');
+  }
+  if (process.env.CLOUDINARY_CLOUD_NAME) {
+    console.log('Cloudinary: configured — uploads will go to cloud');
+  } else {
+    console.log('Cloudinary: not set — uploads saved to backend/uploads/');
+  }
   const mongoose = require('mongoose');
   global.__mongoose = mongoose;
-  app.use('/api/prendas', requireAuth, uploadLimiterConditional, require('./routes/prendas'));
+  app.use('/api/prendas', requireAuth, require('./routes/prendas'));
   app.use('/api/outfits', requireAuth, require('./routes/outfits'));
-  app.use('/api/classify', requireAuth, classifyLimiter, require('./routes/classify'));
-  app.use('/api/model', requireAuth, requireAdmin, require('./routes/model'));
-  app.use('/api/mirror', requireAuth, require('./routes/mirror'));
-  app.use('/api/me', requireAuth, require('./routes/me'));
+  app.use('/api/classify', require('./routes/classify'));
+  app.use('/api/model', require('./routes/model'));
+  app.use('/api/mirror', require('./routes/mirror'));
   mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/fashion_ai', {
     serverSelectionTimeoutMS: 8000
   })

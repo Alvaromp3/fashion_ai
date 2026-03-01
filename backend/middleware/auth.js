@@ -1,60 +1,61 @@
+/**
+ * Auth0 JWT middleware and helpers.
+ * Requires AUTH0_DOMAIN and AUTH0_AUDIENCE in .env.
+ * req.auth.payload.sub is the user id (e.g. auth0|xxx).
+ */
+
 const { auth } = require('express-oauth2-jwt-bearer');
 
-const domain = process.env.AUTH0_DOMAIN;
-const audience = process.env.AUTH0_AUDIENCE;
+const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN?.trim();
+const AUTH0_AUDIENCE = process.env.AUTH0_AUDIENCE?.trim();
+const issuerBaseURL = AUTH0_DOMAIN ? `https://${AUTH0_DOMAIN.replace(/^https?:\/\//, '')}` : null;
+
+/** True if Auth0 is configured and API routes should require login */
+const isAuthEnabled = Boolean(issuerBaseURL && AUTH0_AUDIENCE);
 
 /**
- * JWT validation middleware. Validates Auth0 access tokens and sets req.auth.
- * Requires AUTH0_DOMAIN and AUTH0_AUDIENCE in env.
+ * JWT validation middleware (Auth0). Use only on routes that require login.
+ * Sets req.auth.payload.sub (user id). Use getUserId(req) for a path-safe string.
  */
-const checkJwt = auth({
-  issuerBaseURL: domain ? `https://${domain}` : undefined,
-  audience: audience || undefined
-});
+const jwtCheck = isAuthEnabled
+  ? auth({
+      issuerBaseURL,
+      audience: AUTH0_AUDIENCE,
+      tokenSigningAlg: 'RS256'
+    })
+  : null;
 
 /**
- * Maps req.auth.payload.sub to req.user for use in routes.
- * Must be used after checkJwt.
+ * Get user id from request (from JWT sub). Safe for use in file paths.
+ * @param {import('express').Request} req - req.auth.payload.sub must be set
+ * @returns {string} - Safe string for uploads/userId/ and DB
  */
-function setUser(req, res, next) {
-  if (req.auth && req.auth.payload && req.auth.payload.sub) {
-    req.user = { sub: req.auth.payload.sub };
+function getUserId(req) {
+  const sub = req.auth?.payload?.sub;
+  if (!sub || typeof sub !== 'string') return '';
+  return sub.replace(/[|/\\?:*"<>]/g, '_');
+}
+
+/**
+ * Middleware: require Auth0. If auth is disabled, sets req.auth.payload.sub = 'anonymous' for dev.
+ * If auth is enabled and no valid token, responds 401.
+ */
+function requireAuth(req, res, next) {
+  if (!isAuthEnabled) {
+    req.auth = { payload: { sub: 'anonymous' } };
+    return next();
   }
-  next();
-}
-
-/**
- * Roles claim name in the JWT (e.g. "https://your-api/roles" or "roles").
- * Set AUTH0_ROLES_CLAIM in env if your token uses a different claim.
- */
-const ROLES_CLAIM = process.env.AUTH0_ROLES_CLAIM || 'https://fashion-ai-api/roles';
-
-/**
- * Returns true if the request has an admin role in the token.
- * Must be used after requireAuth (checkJwt + setUser).
- */
-function isAdmin(req) {
-  const payload = req.auth && req.auth.payload;
-  if (!payload) return false;
-  const roles = payload[ROLES_CLAIM];
-  if (!Array.isArray(roles)) return false;
-  return roles.includes('admin');
-}
-
-/**
- * Requires the user to have the admin role. Returns 403 otherwise.
- * Must be used after requireAuth.
- */
-function requireAdmin(req, res, next) {
-  if (isAdmin(req)) return next();
-  res.status(403).json({ error: 'Admin access required' });
+  jwtCheck(req, res, (err) => {
+    if (err) {
+      return res.status(401).json({ error: 'Login required', message: err.message });
+    }
+    next();
+  });
 }
 
 module.exports = {
-  checkJwt,
-  setUser,
-  requireAuth: [checkJwt, setUser],
-  requireAdmin,
-  ROLES_CLAIM,
-  isAdmin
+  isAuthEnabled,
+  jwtCheck,
+  getUserId,
+  requireAuth
 };

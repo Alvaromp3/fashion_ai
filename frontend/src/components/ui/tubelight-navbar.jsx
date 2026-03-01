@@ -1,30 +1,21 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useLocation } from 'react-router-dom'
-import { Home, LayoutDashboard, Shirt, Sparkles, ScanLine, Shield, LogIn, LogOut, User } from 'lucide-react'
-import { useAuth0 } from '@auth0/auth0-react'
+import { Home, Shirt, Sparkles, BarChart3, Image, ScanLine, LogOut, LogIn } from 'lucide-react'
 import { cn } from '../../lib/utils'
-import { useIsAdmin } from '../../hooks/useIsAdmin'
 
-const guestNavItems = [{ name: 'Home', url: '/', icon: Home }]
-
-const appNavItems = [
-  { name: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
+const defaultNavItems = [
+  { name: 'Dashboard', url: '/', icon: Home },
   { name: 'Garments', url: '/prendas', icon: Shirt },
   { name: 'Outfits', url: '/outfits', icon: Sparkles },
   { name: 'Mirror', url: '/mirror', icon: ScanLine },
+  { name: 'Metrics', url: '/modelo/confusion-matrix', icon: BarChart3 },
+  { name: 'Examples', url: '/modelo/ejemplos', icon: Image },
 ]
 
-export function TubelightNavbar({ items: itemsProp, className }) {
+export function TubelightNavbar({ items = defaultNavItems, isAuthenticated, onLogin, onLogout, className }) {
   const location = useLocation()
   const [isMobile, setIsMobile] = useState(false)
-  const [profileOpen, setProfileOpen] = useState(false)
-  const profileRef = useRef(null)
-  const { isAuthenticated, user, loginWithRedirect, logout } = useAuth0()
-  const { isAdmin } = useIsAdmin()
-  const items = itemsProp ?? (isAuthenticated
-    ? [...appNavItems, ...(isAdmin ? [{ name: 'Admin', url: '/admin', icon: Shield }] : [])]
-    : guestNavItems)
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
@@ -32,16 +23,6 @@ export function TubelightNavbar({ items: itemsProp, className }) {
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false)
-    }
-    if (profileOpen) {
-      document.addEventListener('click', handleClickOutside)
-      return () => document.removeEventListener('click', handleClickOutside)
-    }
-  }, [profileOpen])
 
   return (
     <div
@@ -94,68 +75,28 @@ export function TubelightNavbar({ items: itemsProp, className }) {
             </Link>
           )
         })}
-        <div className="flex items-center pl-1 sm:pl-2 border-l border-slate-600 ml-1">
-          {!isAuthenticated ? (
-            <button
-              type="button"
-              onClick={() => loginWithRedirect()}
-              className="flex items-center gap-1.5 text-sm font-semibold text-slate-300 hover:text-white px-3 py-2 rounded-full transition-colors"
-            >
-              <LogIn size={18} strokeWidth={2.5} />
-              <span className="hidden sm:inline">Log in</span>
-            </button>
-          ) : (
-            <div className="relative" ref={profileRef}>
-              <button
-                type="button"
-                onClick={() => setProfileOpen((o) => !o)}
-                className="flex items-center gap-2 rounded-full focus:outline-none focus:ring-2 focus:ring-slate-400"
-                aria-expanded={profileOpen}
-                aria-haspopup="true"
-              >
-                {user?.picture ? (
-                  <img
-                    src={user.picture}
-                    alt={user?.name || 'Profile'}
-                    className="w-8 h-8 rounded-full border-2 border-slate-500 object-cover"
-                  />
-                ) : (
-                  <span className="w-8 h-8 rounded-full border-2 border-slate-500 bg-slate-600 flex items-center justify-center">
-                    <User size={16} className="text-slate-300" />
-                  </span>
-                )}
-                <span className="hidden md:inline text-sm font-semibold text-slate-200 max-w-[120px] truncate">
-                  {user?.name || user?.email || 'Profile'}
-                </span>
-              </button>
-              {profileOpen && (
-                <div
-                  className="absolute right-0 top-full mt-2 py-1 w-48 rounded-lg shadow-xl border border-slate-600 bg-slate-800 z-50"
-                  role="menu"
-                >
-                  <div className="px-3 py-2 border-b border-slate-600">
-                    <p className="text-sm font-medium text-slate-100 truncate">{user?.name || 'User'}</p>
-                    {user?.email && (
-                      <p className="text-xs text-slate-400 truncate">{user.email}</p>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setProfileOpen(false)
-                      logout({ logoutParams: { returnTo: window.location.origin } })
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
-                    role="menuitem"
-                  >
-                    <LogOut size={16} />
-                    Log out
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        {onLogin && !isAuthenticated && (
+          <button
+            type="button"
+            onClick={onLogin}
+            className="relative cursor-pointer text-sm font-semibold px-3 sm:px-4 py-2 rounded-full bg-emerald-600 text-white hover:bg-emerald-500 flex items-center gap-1"
+            title="Log in"
+          >
+            <LogIn size={18} strokeWidth={2.5} />
+            <span className="hidden md:inline">Log in</span>
+          </button>
+        )}
+        {onLogout && isAuthenticated && (
+          <button
+            type="button"
+            onClick={onLogout}
+            className="relative cursor-pointer text-sm font-semibold px-3 sm:px-4 py-2 rounded-full text-slate-300 hover:text-white flex items-center gap-1"
+            title="Log out"
+          >
+            <LogOut size={18} strokeWidth={2.5} />
+            <span className="hidden md:inline">Log out</span>
+          </button>
+        )}
       </div>
     </div>
   )
