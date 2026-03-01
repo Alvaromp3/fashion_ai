@@ -6,3 +6,8 @@ uploads/*
 !uploads/.gitkeep
 logs
 *.log
+
+.env*
+.flaskenv*
+!.env.project
+!.env.vault

@@ -91,6 +91,8 @@ npm run render:env
 
 The script reads `backend/.env` and syncs those variables to the Render backend service (replacing existing user env vars). Then trigger a deploy so the new vars take effect: `npm run render:deploy`.
 
+**Using [dotenv-vault](https://dotenv.org/docs/dotenv-vault)?** Store secrets in the vault, then sync to Render: `npm run env:sync-render`. See [DOTENV_VAULT.md](DOTENV_VAULT.md).
+
 ---
 
 ## 5. Deploy via CLI

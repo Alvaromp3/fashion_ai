@@ -41,3 +41,9 @@ Thumbs.db
 
 # Duplicate lockfiles
 **/package-lock 2.json
+
+.env*
+.flaskenv*
+!.env.project
+!.env.vault
+.env.vault
