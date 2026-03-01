@@ -1,5 +1,6 @@
 
 .env*
+env-2
 .flaskenv*
 !.env.project
 !.env.vault
