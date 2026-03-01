@@ -5,6 +5,7 @@
 services:
   - type: web
     name: fashion-ai-backend
+    plan: free
     runtime: node
     rootDir: backend
 

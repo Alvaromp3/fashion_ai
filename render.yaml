@@ -6,6 +6,7 @@ services:
   # --- 1. Node.js backend (Express + MongoDB, Auth0, Cloudinary) ---
   - type: web
     name: fashion-ai-backend
+    plan: free
     runtime: node
     rootDir: backend
 
@@ -24,6 +25,7 @@ services:
   # --- 2. Python ML service (Flask + TensorFlow/CNN/ViT) ---
   - type: web
     name: fashion-ai-ml
+    plan: free
     runtime: docker
     rootDir: ml-service
     dockerfilePath: Dockerfile
