@@ -48,3 +48,16 @@ Configura en **Settings → Environment variables** (Production y/o Preview) las
 | **Non-production deploy command** | *(vacío)* | No uses `npx wrangler versions upload` (es para Workers). |
 | **Production branch** | `main` | — |
 | **Variables** | Añadir las `VITE_*` en Environment variables | — |
+
+---
+
+## Dos proyectos conectados al mismo repo (fashion-ai y fashion-ai05)
+
+Si en **Workers & Pages** tienes **dos proyectos** conectados al mismo repositorio (por ejemplo **fashion-ai** y **fashion-ai05**), cada push generará **dos** checks en GitHub: uno por proyecto. Si uno pasa y otro falla:
+
+1. **Abre el check que falla** → **Details** y revisa el log de build (línea donde falla).
+2. **Iguala la configuración** del proyecto que falla a la del que pasa:
+   - **Build command:** `npm run build`
+   - **Build output directory:** `frontend/dist` (si Root directory está vacío) o `dist` (si Root directory es `frontend`)
+   - **Root directory:** vacío **o** `frontend` (no mezcles: si es vacío, el build se lanza desde la raíz y el output es `frontend/dist`; si es `frontend`, el output es `dist`).
+3. **O elimina el proyecto que no uses:** en Cloudflare Dashboard → Workers & Pages → el proyecto que no quieras (p. ej. fashion-ai05) → Settings → desconecta el repositorio o borra el proyecto, así solo quedará un check por push.

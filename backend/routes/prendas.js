@@ -16,6 +16,8 @@ function userFilter(userId) {
   return { userId };
 }
 
+/** Mismo path que para el script de entrenamiento (train_model): las fotos que se copian aquí
+ * al guardar prendas con alta confianza son las que debe leer el entrenamiento. Ver ml-service/INSTALL.md. */
 const DATASET_PATH = process.env.DATASET_PATH || '';
 const MIN_CONFIDENCE_FOR_DATASET = 0.8;
 

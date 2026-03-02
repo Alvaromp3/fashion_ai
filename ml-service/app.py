@@ -99,27 +99,27 @@ def load_model():
             vit_custom_objects = {}
             if KERAS_HUB_AVAILABLE:
                 try:
-                # Registrar todas las clases de keras_hub (models, layers y submodulos vit)
-                for mod in [getattr(keras_hub, 'models', None), getattr(keras_hub, 'layers', None)]:
-                    if mod is None:
-                        continue
-                    for name in dir(mod):
-                        if name.startswith('_'):
+                    # Registrar todas las clases de keras_hub (models, layers y submodulos vit)
+                    for mod in [getattr(keras_hub, 'models', None), getattr(keras_hub, 'layers', None)]:
+                        if mod is None:
                             continue
-                        obj = getattr(mod, name)
-                        if isinstance(obj, type):
-                            vit_custom_objects[name] = obj
-                            vit_custom_objects[f"keras_hub>{name}"] = obj
-                # Importar módulo vit para que ViTImageClassifier quede registrado
-                vit_mod = getattr(getattr(keras_hub, 'models', None), 'vit', None)
-                if vit_mod is not None:
-                    for name in dir(vit_mod):
-                        if name.startswith('_'):
-                            continue
-                        obj = getattr(vit_mod, name)
-                        if isinstance(obj, type):
-                            vit_custom_objects[name] = obj
-                            vit_custom_objects[f"keras_hub>{name}"] = obj
+                        for name in dir(mod):
+                            if name.startswith('_'):
+                                continue
+                            obj = getattr(mod, name)
+                            if isinstance(obj, type):
+                                vit_custom_objects[name] = obj
+                                vit_custom_objects[f"keras_hub>{name}"] = obj
+                    # Importar módulo vit para que ViTImageClassifier quede registrado
+                    vit_mod = getattr(getattr(keras_hub, 'models', None), 'vit', None)
+                    if vit_mod is not None:
+                        for name in dir(vit_mod):
+                            if name.startswith('_'):
+                                continue
+                            obj = getattr(vit_mod, name)
+                            if isinstance(obj, type):
+                                vit_custom_objects[name] = obj
+                                vit_custom_objects[f"keras_hub>{name}"] = obj
                 except Exception:
                     pass
             vit_loaded = False

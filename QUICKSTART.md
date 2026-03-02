@@ -60,8 +60,8 @@ MONGODB_URI=mongodb+srv://usuario:password@cluster.mongodb.net/fashion_ai
 cd ml-service
 
 # Opción 1: Usar el script de entrenamiento
-# (Ajusta DATASET_PATH en train_model.py)
-python train_model.py
+# (Ruta del dataset en tu Mac: /Users/alvaromartin-pena/Desktop/Proyectos/fashion_dataset — ver ml-service/INSTALL.md)
+# python train_model.py
 
 # Opción 2: Si ya tienes el modelo entrenado
 # Copia tu modelo_ropa.h5 a ml-service/

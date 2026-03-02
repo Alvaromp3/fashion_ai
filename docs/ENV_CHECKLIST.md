@@ -68,7 +68,7 @@
 | `R2_*`, `R2_FOLDER` | utils/r2.js | ✓ |
 | `ML_VIT_SERVICE_URL` | classify.js (opcional) | — |
 | `RATE_LIMIT_*`, `CLOUDFLARE_API_TOKEN`, `R2_SOFT_LIMIT_BYTES` | opcionales | — |
-| `DATASET_PATH` | prendas.js (opcional) | — |
+| `DATASET_PATH` | prendas.js (opcional) | Ruta al dataset con `train_df/` (Ankle_boot, Bag, …). Ejemplo local: `/Users/TU_USUARIO/Desktop/Proyectos/fashion_dataset`. |
 
 **Frontend** — variables que usa el código y si están en `frontend/.env`:
 
