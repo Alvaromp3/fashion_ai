@@ -1,16 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BarChart3, Image, Shield, ArrowLeft } from 'lucide-react'
-import ConfusionMatrix from './ConfusionMatrix'
 import ModelExamples from './ModelExamples'
 
 const TABS = [
-  { id: 'metrics', label: 'Metrics', icon: BarChart3 },
   { id: 'examples', label: 'Examples', icon: Image }
 ]
 
 const Admin = () => {
-  const [activeTab, setActiveTab] = useState('metrics')
+  const [activeTab, setActiveTab] = useState('examples')
   const navigate = useNavigate()
 
   return (
@@ -61,7 +59,6 @@ const Admin = () => {
 
         {/* Tab content */}
         <div className="admin-tab-content pt-6">
-          {activeTab === 'metrics' && <ConfusionMatrix embedded />}
           {activeTab === 'examples' && <ModelExamples embedded />}
         </div>
 

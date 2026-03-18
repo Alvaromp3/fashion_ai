@@ -29,6 +29,7 @@ ml-service/temp/
 *.hdf5
 *.pkl
 *.keras
+yolo_garment.pt
 
 # IDE
 .vscode/

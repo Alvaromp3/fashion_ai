@@ -44,18 +44,33 @@ sleep 1
 
 # --- ML: usar Python 3.11 del venv (donde están las dependencias) ---
 echo -e "${BLUE}Starting ML (6001)...${NC}"
-ML_VENV_PYTHON="$SCRIPT_DIR/ml-service/venv/bin/python3.11"
-[ ! -x "$ML_VENV_PYTHON" ] && ML_VENV_PYTHON="$SCRIPT_DIR/ml-service/venv/bin/python"
 ML_DIR="$SCRIPT_DIR/ml-service"
+
+# Asegurar venv funcional (algunos commits tenían venv incompleto sin bin/)
+if [ ! -x "$ML_DIR/venv/bin/python" ]; then
+  if command -v python3.11 >/dev/null 2>&1; then
+    echo -e "${YELLOW}  ML: creando venv con python3.11 (primera vez)...${NC}"
+    ( cd "$ML_DIR" && python3.11 -m venv venv ) || true
+  fi
+fi
+
+ML_VENV_PYTHON="$ML_DIR/venv/bin/python3.11"
+[ ! -x "$ML_VENV_PYTHON" ] && ML_VENV_PYTHON="$ML_DIR/venv/bin/python"
 export ML_CNN_PATH="${ML_CNN_PATH:-$ML_DIR/modelo_ropa.h5}"
-export ML_VIT_PATH="${ML_VIT_PATH:-$ML_DIR/vision_transformer_moda_modelo.keras}"
+# Preferir el modelo ViT nuevo si existe en tu máquina.
+DEFAULT_USER_VIT="/Users/alvaromartin-pena/Desktop/vit_fashion_outputs/best_model_17_marzo.keras"
+if [ -z "${ML_VIT_PATH:-}" ] && [ -f "$DEFAULT_USER_VIT" ]; then
+  export ML_VIT_PATH="$DEFAULT_USER_VIT"
+else
+  export ML_VIT_PATH="${ML_VIT_PATH:-$ML_DIR/vision_transformer_fashion_model.keras}"
+fi
 
 if [ ! -x "$ML_VENV_PYTHON" ]; then
   echo -e "${YELLOW}  ML: no hay venv. Crea uno: cd ml-service && python3.11 -m venv venv && source venv/bin/activate && pip install -r requirements.txt${NC}"
 else
   if ! "$ML_VENV_PYTHON" -c "import flask" 2>/dev/null; then
     echo -e "${YELLOW}  ML: instalando dependencias (puede tardar 2-5 min)...${NC}"
-    ( cd "$ML_DIR" && venv/bin/pip install -r requirements.txt ) || true
+    ( cd "$ML_DIR" && venv/bin/python -m pip install -U pip && venv/bin/python -m pip install -r requirements.txt ) || true
     echo -e "${GREEN}  ML: dependencias listas.${NC}"
   fi
   : > "$SCRIPT_DIR/logs/ml-service.log"
@@ -84,6 +99,26 @@ for i in $(seq 1 90); do
   sleep 1
 done
 if [ "$code" != "200" ]; then echo -e "${YELLOW}  ✗ ML no respondió (ver logs/ml-service.log)${NC}"; OK=0; fi
+
+# Comprobar que ambos modelos (CNN y ViT) están cargados según /health
+if [ "$code" = "200" ]; then
+  echo -e "${BLUE}Checking ML models (CNN + ViT)...${NC}"
+  models_ok=0
+  for i in $(seq 1 60); do
+    health_json=$(curl -s --connect-timeout 3 http://127.0.0.1:6001/health 2>/dev/null || echo "")
+    echo "$health_json" | grep -q '"model_loaded": true' && \
+    echo "$health_json" | grep -q '"vit_model_loaded": true'
+    if [ "$?" = "0" ]; then
+      echo -e "${GREEN}  ✓ ML models loaded (CNN + ViT)${NC}"
+      models_ok=1
+      break
+    fi
+    sleep 2
+  done
+  if [ "$models_ok" != "1" ]; then
+    echo -e "${YELLOW}  ⚠ ML responde pero ViT aún no está cargado (revisa logs/ml-service.log o espera un poco más).${NC}"
+  fi
+fi
 
 code="000"
 for i in $(seq 1 90); do

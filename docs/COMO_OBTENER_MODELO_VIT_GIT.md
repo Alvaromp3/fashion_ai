@@ -58,15 +58,15 @@ Deberías ver algo como **~980M** o **~1G**, no 135 bytes.
 Con el archivo real ya en el repo clonado, cópialo a la carpeta `ml-service` de tu proyecto:
 
 ```bash
-cp ml-service/vision_transformer_moda_modelo.keras /Users/alvaromartin-pena/Projects/fashion_ai/ml-service/
+cp ml-service/vision_transformer_moda_modelo.keras /Users/alvaromartin-pena/Desktop/fashion_ai/ml-service/
 ```
 
-(O si estás en otra ruta, usa la ruta absoluta de tu proyecto en lugar de `/Users/alvaromartin-pena/Projects/fashion_ai`.)
+(O si estás en otra ruta, usa la ruta absoluta de tu proyecto en lugar de `/Users/alvaromartin-pena/Desktop/fashion_ai`.)
 
 Verifica de nuevo el tamaño:
 
 ```bash
-ls -lh /Users/alvaromartin-pena/Projects/fashion_ai/ml-service/vision_transformer_moda_modelo.keras
+ls -lh /Users/alvaromartin-pena/Desktop/fashion_ai/ml-service/vision_transformer_moda_modelo.keras
 ```
 
 ---
@@ -76,7 +76,7 @@ ls -lh /Users/alvaromartin-pena/Projects/fashion_ai/ml-service/vision_transforme
 Desde la raíz del proyecto fashion_ai:
 
 ```bash
-cd /Users/alvaromartin-pena/Projects/fashion_ai
+cd /Users/alvaromartin-pena/Desktop/fashion_ai
 ./stop-all.sh
 npm run start
 ```
@@ -97,8 +97,8 @@ Cuando el ML termine de cargar (un poco más de 1 minuto), el ViT estará dispon
 |------|--------|
 | 1 | `cd ~/Downloads && git clone <URL_REPO> fashion_ai-modelos && cd fashion_ai-modelos` |
 | 2 | `git lfs pull` (o `git lfs fetch --all` + `git lfs checkout`) |
-| 3 | `cp ml-service/vision_transformer_moda_modelo.keras /Users/alvaromartin-pena/Projects/fashion_ai/ml-service/` |
-| 4 | `cd /Users/alvaromartin-pena/Projects/fashion_ai && ./start-all.sh` |
+| 3 | `cp ml-service/vision_transformer_moda_modelo.keras /Users/alvaromartin-pena/Desktop/fashion_ai/ml-service/` |
+| 4 | `cd /Users/alvaromartin-pena/Desktop/fashion_ai && ./start-all.sh` |
 
 ---
 
@@ -107,7 +107,7 @@ Cuando el ML termine de cargar (un poco más de 1 minuto), el ViT estará dispon
 - Si tienes el archivo **vision_transformer_moda_modelo.keras** en otro sitio (Escritorio, USB, otro equipo), cópialo directamente a:
 
   ```text
-  /Users/alvaromartin-pena/Projects/fashion_ai/ml-service/vision_transformer_moda_modelo.keras
+  /Users/alvaromartin-pena/Desktop/fashion_ai/ml-service/vision_transformer_moda_modelo.keras
   ```
 
 - Si el modelo está en un **GitHub Release** de este u otro repo, descárgalo desde la página del Release y colócalo en la misma ruta de arriba.

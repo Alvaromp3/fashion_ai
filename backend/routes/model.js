@@ -14,7 +14,7 @@ const ML_SERVICE_DIR = (() => {
 })();
 
 /** When ML is on a separate host (e.g. Render), proxy GET to ML service. */
-const IMAGE_SUBPATHS = ['/confusion-matrix', '/confusion-matrix-vit', '/data-audit', '/training-curves-vit'];
+const IMAGE_SUBPATHS = ['/confusion-matrix', '/confusion-matrix-vit', '/confusion-matrix-vit-real', '/data-audit', '/training-curves-vit'];
 function isImageProxy(subPath) {
   return subPath.endsWith('.png') || IMAGE_SUBPATHS.some(p => subPath === p || subPath.startsWith(p + '?'));
 }
@@ -85,6 +85,11 @@ router.get('/metrics', async (req, res) => {
 router.get('/confusion-matrix-vit', async (req, res) => {
   if (await proxyToMl('/confusion-matrix-vit', res)) return;
   sendFileOr404('confusion_matrix_vit.png', res, 'ViT confusion matrix not found');
+});
+
+router.get('/confusion-matrix-vit-real', async (req, res) => {
+  if (await proxyToMl('/confusion-matrix-vit-real', res)) return;
+  sendFileOr404('vit_real_pictures/confusion_matrix_vit_real_picture.png', res, 'ViT (real pictures) confusion matrix not found');
 });
 
 router.get('/training-curves-vit', async (req, res) => {

@@ -1,16 +1,26 @@
 import { useState, useEffect } from 'react'
-import { FaTimes, FaUpload, FaSpinner, FaCalendar, FaBrain, FaNetworkWired } from 'react-icons/fa'
+import { FaTimes, FaUpload, FaSpinner, FaCalendar, FaBrain } from 'react-icons/fa'
 import axios from 'axios'
+import heic2any from 'heic2any'
 
 const ML_UNAVAILABLE_HINT_LOCAL = 'Run ./start-all.sh from the project root and wait ~1–2 min for models to load. If it still fails, check logs/ml-service.log.'
 const ML_UNAVAILABLE_HINT_PROD = 'ML is on a hosted Space (e.g. Hugging Face). The Space may be sleeping—open the Space URL in a browser to wake it, or ask the admin to check ML_SERVICE_URL.'
+
+// Cuando todo funcione bien, pon a false para que la clasificación corra en background sin mostrar pasos
+const SHOW_CLASSIFY_STEPS = true
+
+const CLASSIFY_STEPS = [
+  'Detectando prenda (YOLO)...',
+  'Recortando y preparando imagen...',
+  'Clasificando con el modelo...'
+]
 
 const UploadModal = ({ onClose, onSuccess }) => {
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [classifying, setClassifying] = useState(false)
   const [classifyingVit, setClassifyingVit] = useState(false)
+  const [classifyStep, setClassifyStep] = useState(null)
   const [classification, setClassification] = useState(null)
   const [usedModel, setUsedModel] = useState(null)
   const [selectedOccasions, setSelectedOccasions] = useState([])
@@ -84,7 +94,9 @@ const UploadModal = ({ onClose, onSuccess }) => {
     const t = setInterval(() => {
       axios.get('/api/ml-health', { timeout: 10000 })
         .then((res) => {
-          if (res?.data?.available && res?.data?.vit_model_loaded) setVitReady(true)
+          if (res?.data?.available && res?.data?.vit_model_loaded) {
+            setVitReady(Boolean(res?.data?.vit_model_loaded))
+          }
         })
         .catch(() => {})
     }, 15000)
@@ -99,69 +111,149 @@ const UploadModal = ({ onClose, onSuccess }) => {
     { value: 'trabajo', label: 'Work', desc: 'Professional office' }
   ]
 
-  const handleFileChange = (e) => {
+  // Convierte la imagen a JPEG en el navegador si no lo es ya.
+  // Para HEIC/HEIF usamos heic2any en el frontend (el backend ya no necesita convertir).
+  const ensureJpegFile = async (inputFile) => {
+    if (!inputFile) return null
+    const nameLower = inputFile.name.toLowerCase()
+    const isHeic =
+      nameLower.endsWith('.heic') ||
+      nameLower.endsWith('.heif') ||
+      inputFile.type === 'image/heic' ||
+      inputFile.type === 'image/heif' ||
+      inputFile.type === 'image/x-heic' ||
+      inputFile.type === 'image/x-heif'
+    if (isHeic) {
+      try {
+        const converted = await heic2any({
+          blob: inputFile,
+          toType: 'image/jpeg',
+          quality: 0.9
+        })
+        const jpegBlob = converted instanceof Blob ? converted : converted[0]
+        const baseName = inputFile.name.replace(/\.[^/.]+$/, '')
+        return new File([jpegBlob], `${baseName}.jpg`, { type: 'image/jpeg' })
+      } catch {
+        // Si la conversión falla (por compatibilidad del navegador), seguimos con el archivo original HEIC.
+        return inputFile
+      }
+    }
+
+    const isAlreadyJpeg =
+      inputFile.type === 'image/jpeg' ||
+      nameLower.endsWith('.jpg') ||
+      nameLower.endsWith('.jpeg')
+    if (isAlreadyJpeg) return inputFile
+
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas')
+          canvas.width = img.naturalWidth || img.width
+          canvas.height = img.naturalHeight || img.height
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0)
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                reject(new Error('No se pudo convertir la imagen a JPEG'))
+                return
+              }
+              const baseName = inputFile.name.replace(/\.[^/.]+$/, '')
+              const jpegFile = new File([blob], `${baseName}.jpg`, { type: 'image/jpeg' })
+              resolve(jpegFile)
+            },
+            'image/jpeg',
+            0.9
+          )
+        } catch (e) {
+          reject(e)
+        }
+      }
+      img.onerror = (e) => {
+        reject(new Error('No se pudo leer la imagen para conversión a JPEG'))
+      }
+      img.src = URL.createObjectURL(inputFile)
+    })
+  }
+
+  const handleFileChange = async (e) => {
     const selectedFile = e.target.files[0]
     if (selectedFile) {
       setFile(selectedFile)
-      const fileExt = selectedFile.name.toLowerCase().split('.').pop()
-      if (fileExt === 'heic' || fileExt === 'heif') {
-        setPreview(null)
-        setError('Note: HEIC images will be automatically converted to JPEG')
-      } else {
-        setPreview(URL.createObjectURL(selectedFile))
-        setError(null)
-      }
+      setError(null)
       setClassification(null)
+      try {
+        const jpegForPreview = await ensureJpegFile(selectedFile)
+        const previewFile = jpegForPreview || selectedFile
+        setPreview(URL.createObjectURL(previewFile))
+      } catch {
+        // Si falla la conversión (HEIC muy raro), al menos intentamos previsualizar el original
+        setPreview(URL.createObjectURL(selectedFile))
+      }
     }
   }
 
-  const handleClassify = async (useVit = false) => {
+  const handleClassify = async () => {
     if (!file) {
       setError('Please select an image first')
       return
     }
 
-    useVit ? setClassifyingVit(true) : setClassifying(true)
+    setClassifyingVit(true)
     setError(null)
+    setClassifyStep(SHOW_CLASSIFY_STEPS ? CLASSIFY_STEPS[0] : null)
+
+    const stepIntervals = []
+    if (SHOW_CLASSIFY_STEPS && CLASSIFY_STEPS.length > 1) {
+      for (let i = 1; i < CLASSIFY_STEPS.length; i++) {
+        stepIntervals.push(
+          setTimeout(() => setClassifyStep(CLASSIFY_STEPS[i]), 500 * i)
+        )
+      }
+    }
+    const clearClassifyState = () => {
+      setClassifyingVit(false)
+      setClassifyStep(null)
+      stepIntervals.forEach(clearTimeout)
+    }
+
+    let uploadFile = file
+    try {
+      uploadFile = await ensureJpegFile(file)
+      if (!uploadFile) {
+        setError('Could not prepare image for upload.')
+        clearClassifyState()
+        return
+      }
+      setFile(uploadFile)
+    } catch (e) {
+      setError(e.message || 'Error converting image to JPEG before upload.')
+      clearClassifyState()
+      return
+    }
 
     const formData = new FormData()
-    formData.append('imagen', file)
+    formData.append('imagen', uploadFile)
 
     try {
-      const endpoint = useVit ? '/api/classify/vit' : '/api/classify'
+      const endpoint = '/api/classify/vit'
       const response = await axios.post(endpoint, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
       setClassification(response.data)
-      setUsedModel(useVit ? 'vit' : 'cnn')
+      setUsedModel('vit')
     } catch (err) {
       const res = err.response?.data
       if (err.response?.status === 503 && res?.loading) {
         setError('Models still loading. Wait about 1 minute and try again.')
         return
       }
-      if (useVit && (err.response?.status === 503 || res?.error?.includes('Vision Transformer'))) {
-        try {
-          const fallback = await axios.post('/api/classify', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-          })
-          setClassification(fallback.data)
-          setUsedModel('cnn')
-          const isFallbackResponse = fallback.data?.clase_nombre === 'desconocido' && fallback.data?.confianza === 0.5 && fallback.data?.warning
-          setError(isFallbackResponse
-            ? 'ML service not responding. Start the ML service (port 6001).'
-            : 'ViT (vision_transformer_moda_modelo.keras) not ready yet; CNN was used. Wait ~1 min for ViT to load and try "Classify (ViT)" again, or check logs/ml-service.log.')
-        } catch (fallbackErr) {
-          const errMsg = fallbackErr.response?.data?.error || 'ML service not available.'
-          setError(errMsg.includes('ML service') ? `${errMsg} ${mlUnavailableHint}` : errMsg)
-        }
-      } else {
-        const msg = res?.error || 'Classification failed. Please try again.'
-        setError(msg === 'ML service not available' ? `${msg} ${mlUnavailableHint}` : msg)
-      }
+      const msg = res?.error || 'Classification failed. Please try again.'
+      setError(msg === 'ML service not available' ? `${msg} ${mlUnavailableHint}` : msg)
     } finally {
-      setClassifying(false)
-      setClassifyingVit(false)
+      clearClassifyState()
     }
   }
 
@@ -175,8 +267,23 @@ const UploadModal = ({ onClose, onSuccess }) => {
     setError(null)
 
     try {
+      let uploadFile = file
+      try {
+        uploadFile = await ensureJpegFile(file)
+        if (!uploadFile) {
+          setError('Could not prepare image for upload.')
+          setLoading(false)
+          return
+        }
+        setFile(uploadFile)
+      } catch (e) {
+        setError(e.message || 'Error converting image to JPEG before upload.')
+        setLoading(false)
+        return
+      }
+
       const formData = new FormData()
-      formData.append('imagen', file)
+      formData.append('imagen', uploadFile)
       formData.append('tipo', classification.tipo)
       formData.append('clase_nombre', classification.clase_nombre || 'desconocido')
       formData.append('color', classification.color)
@@ -222,7 +329,7 @@ const UploadModal = ({ onClose, onSuccess }) => {
 
         <div className="p-6 space-y-6">
           <p className="text-sm text-gray-600 -mt-2">
-            Upload an image, classify it with AI (CNN or ViT), then save the garment to your wardrobe.
+            Upload an image, classify it with AI (ViT), then save the garment to your wardrobe.
           </p>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Select Image</label>
@@ -246,8 +353,7 @@ const UploadModal = ({ onClose, onSuccess }) => {
               <div className="bg-gray-100 p-4 rounded-lg text-center">
                 <p className="text-gray-600">{file.name}</p>
                 <p className="text-sm text-gray-500 mt-2">
-                  {file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif') 
-                    ? 'HEIC image - Will be automatically converted' : 'Preview not available'}
+                  Preview not available
                 </p>
               </div>
             </div>
@@ -259,8 +365,12 @@ const UploadModal = ({ onClose, onSuccess }) => {
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold text-gray-900">Classification:</h3>
                   {usedModel && (
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${usedModel === 'vit' ? 'bg-purple-100 text-purple-800' : 'bg-emerald-100 text-emerald-800'}`}>
-                      {usedModel === 'vit' ? <><FaBrain className="mr-1" />ViT</> : <><FaNetworkWired className="mr-1" />CNN</>}
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                      usedModel === 'vit'
+                        ? 'bg-purple-100 text-purple-800'
+                        : 'bg-purple-100 text-purple-800'
+                    }`}>
+                      {usedModel === 'vit' && <><FaBrain className="mr-1" />ViT</>}
                     </span>
                   )}
                 </div>
@@ -268,6 +378,32 @@ const UploadModal = ({ onClose, onSuccess }) => {
                   <p className="text-xs text-gray-500 mb-2">
                     Model: {classification.model_file}
                   </p>
+                )}
+                {classification.yolo_detection && (
+                  <div className="mb-3 p-2.5 bg-slate-100 rounded-lg border border-slate-200">
+                    <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1">YOLO detectó</p>
+                    <p className="text-sm text-slate-800">
+                      <span className="font-medium">
+                        {classification.yolo_detection.tipo
+                          ? classification.yolo_detection.tipo.charAt(0).toUpperCase() + classification.yolo_detection.tipo.slice(1)
+                          : classification.yolo_detection.category}
+                      </span>
+                      {' '}({(classification.yolo_detection.confidence * 100).toFixed(1)}%)
+                    </p>
+                  </div>
+                )}
+                {classification.pipeline_steps && classification.pipeline_steps.length > 0 && (
+                  <div className="mb-3 p-2.5 bg-blue-50 rounded-lg border border-blue-100">
+                    <p className="text-xs font-semibold text-blue-800 uppercase tracking-wide mb-2">Pasos del pipeline</p>
+                    <ul className="text-xs text-blue-900 space-y-1">
+                      {classification.pipeline_steps.map((step, idx) => (
+                        <li key={idx} className="flex items-start gap-1.5">
+                          <span className="text-blue-500 flex-shrink-0">{idx + 1}.</span>
+                          <span>{step}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
                 <div className="space-y-2 text-sm">
                   <p className="text-gray-700"><span className="font-medium text-gray-900">Garment:</span> {classification.clase_nombre || 'unknown'}</p>
@@ -351,8 +487,8 @@ const UploadModal = ({ onClose, onSuccess }) => {
               <FaBrain className="flex-shrink-0" />
               <span>
                 {vitReady
-                  ? 'ML service ready — CNN and ViT (vision_transformer_moda_modelo.keras) available.'
-                  : 'ML service ready — CNN available; ViT still loading (wait ~1 min) or check logs/ml-service.log.'}
+                  ? 'ML service ready — ViT available.'
+                  : 'ML service ready — ViT still loading (wait ~1 min) or check logs/ml-service.log.'}
               </span>
               {!vitReady && (
                 <button
@@ -370,17 +506,16 @@ const UploadModal = ({ onClose, onSuccess }) => {
           {error && <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-800 text-sm">{error}</div>}
 
           <div className="space-y-3">
-            <div className="flex space-x-3">
+            {SHOW_CLASSIFY_STEPS && classifyingVit && classifyStep && (
+              <p className="text-sm text-gray-600 bg-gray-100 rounded-lg px-3 py-2 flex items-center gap-2">
+                <FaSpinner className="animate-spin flex-shrink-0" />
+                <span>{classifyStep}</span>
+              </p>
+            )}
+            <div className="flex flex-col sm:flex-row sm:space-x-3 space-y-3 sm:space-y-0">
               <button
-                onClick={() => handleClassify(false)}
-                disabled={!file || classifying || classifyingVit}
-                className="flex-1 bg-emerald-600 text-white px-4 py-3 rounded-xl font-medium hover:bg-emerald-700 transition-all shadow-soft disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-              >
-                {classifying ? <><FaSpinner className="animate-spin" /><span>Classifying...</span></> : <><FaNetworkWired /><span>Classify (CNN)</span></>}
-              </button>
-              <button
-                onClick={() => handleClassify(true)}
-                disabled={!file || classifying || classifyingVit}
+                onClick={handleClassify}
+                disabled={!file || classifyingVit || !vitReady}
                 className="flex-1 bg-purple-600 text-white px-4 py-3 rounded-xl font-medium hover:bg-purple-700 transition-all shadow-soft disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
               >
                 {classifyingVit ? <><FaSpinner className="animate-spin" /><span>Classifying...</span></> : <><FaBrain /><span>Classify (ViT)</span></>}

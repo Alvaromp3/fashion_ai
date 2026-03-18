@@ -7,10 +7,13 @@ services:
     build:
       context: ./ml-service
       dockerfile: Dockerfile
-      args:
-        GITHUB_REPO: ${GITHUB_REPO}
-        MODELS_RELEASE_TAG: ${MODELS_RELEASE_TAG:-models-v1.0}
-        GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+    environment:
+      # Forzar el modelo ViT nuevo (host -> container).
+      ML_VIT_PATH: /app/models/best_model_17_marzo.keras
+      # CNN ya no se usa (se deja vacío / inexistente).
+      ML_CNN_PATH: /app/models/modelo_ropa.h5
+    volumes:
+      - /Users/alvaromartin-pena/Desktop/vit_fashion_outputs/best_model_17_marzo.keras:/app/models/best_model_17_marzo.keras:ro
     ports:
       - "6001:6001"
     container_name: fashion-ml

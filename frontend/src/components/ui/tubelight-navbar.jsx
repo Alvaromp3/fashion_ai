@@ -9,7 +9,6 @@ const defaultNavItems = [
   { name: 'Garments', url: '/prendas', icon: Shirt },
   { name: 'Outfits', url: '/outfits', icon: Sparkles },
   { name: 'Mirror', url: '/mirror', icon: ScanLine },
-  { name: 'Metrics', url: '/modelo/confusion-matrix', icon: BarChart3 },
   { name: 'Examples', url: '/modelo/ejemplos', icon: Image },
 ]
 

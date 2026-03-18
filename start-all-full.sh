@@ -39,9 +39,23 @@ echo -e "${BLUE}Starting Frontend (3000)...${NC}"
 sleep 1
 
 echo -e "${BLUE}Starting ML (6001)...${NC}"
-cd "$SCRIPT_DIR/ml-service"
+ML_DIR="$SCRIPT_DIR/ml-service"
+cd "$ML_DIR"
+# Asegurar venv funcional (algunos commits tenían venv incompleto sin bin/)
+if [ ! -x "$ML_DIR/venv/bin/python" ]; then
+  if command -v python3.11 >/dev/null 2>&1; then
+    echo -e "${YELLOW}  ML: creando venv con python3.11 (primera vez)...${NC}"
+    ( cd "$ML_DIR" && python3.11 -m venv venv ) || true
+  fi
+fi
 export ML_CNN_PATH="${ML_CNN_PATH:-$SCRIPT_DIR/ml-service/modelo_ropa.h5}"
-export ML_VIT_PATH="${ML_VIT_PATH:-$SCRIPT_DIR/ml-service/vision_transformer_moda_modelo.keras}"
+DEFAULT_USER_VIT="/Users/alvaromartin-pena/Desktop/vit_fashion_outputs/best_model_17_marzo.keras"
+if [ -z "${ML_VIT_PATH:-}" ] && [ -f "$DEFAULT_USER_VIT" ]; then
+  export ML_VIT_PATH="$DEFAULT_USER_VIT"
+else
+  export ML_VIT_PATH="${ML_VIT_PATH:-$SCRIPT_DIR/ml-service/vision_transformer_fashion_model.keras}"
+fi
+export ML_VIT_REAL_PATH="${ML_VIT_REAL_PATH:-$SCRIPT_DIR/ml-service/vit_real_pictures/best_model_real_pictures.keras}"
 if [ -x venv/bin/python ]; then
   : > "$SCRIPT_DIR/logs/ml-service.log"
   nohup env ML_CNN_PATH="$ML_CNN_PATH" ML_VIT_PATH="$ML_VIT_PATH" venv/bin/python app.py >> "$SCRIPT_DIR/logs/ml-service.log" 2>&1 </dev/null &

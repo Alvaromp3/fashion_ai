@@ -7,7 +7,6 @@ import { AuthTokenSetup } from './components/AuthTokenSetup'
 import Dashboard from './pages/Dashboard'
 import MisPrendas from './pages/MisPrendas'
 import MisOutfits from './pages/MisOutfits'
-import ConfusionMatrix from './pages/ConfusionMatrix'
 import ModelExamples from './pages/ModelExamples'
 import Mirror from './pages/Mirror'
 import { getRedirectOrigin } from './utils/auth0Redirect'
@@ -50,7 +49,6 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/prendas" element={<MisPrendas />} />
             <Route path="/outfits" element={<MisOutfits />} />
-            <Route path="/modelo/confusion-matrix" element={<ConfusionMatrix />} />
             <Route path="/modelo/ejemplos" element={<ModelExamples />} />
             <Route path="/mirror" element={<Mirror />} />
           </Routes>

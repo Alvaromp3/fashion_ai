@@ -10,8 +10,8 @@ import threading
 app = Flask(__name__)
 CORS(app)
 
-UPLOAD_FOLDER = 'temp'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'heif', 'bmp', 'tiff', 'tif'}
+UPLOAD_FOLDER = "temp"
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp", "heic", "heif", "bmp", "tiff", "tif"}
 IMG_SIZE = 224
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -24,32 +24,36 @@ class_to_tipo = None
 tipo_por_indice = None
 KERAS_HUB_AVAILABLE = False
 
-# Rutas de modelos: CNN (modelo_ropa.h5) y ViT (vision_transformer_moda_modelo.keras).
-# Se pueden fijar con ML_CNN_PATH y ML_VIT_PATH (p. ej. en start-all.sh o run_ml.sh).
 _ML_DIR = os.path.dirname(os.path.abspath(__file__))
-_DEFAULT_CNN = os.path.join(_ML_DIR, 'modelo_ropa.h5')
-_DEFAULT_VIT = os.path.join(_ML_DIR, 'vision_transformer_moda_modelo.keras')
-CNN_MODEL_PATH = os.path.abspath(os.environ.get('ML_CNN_PATH', _DEFAULT_CNN))
-VIT_MODEL_PATH = os.path.abspath(os.environ.get('ML_VIT_PATH', _DEFAULT_VIT))
-# Fallback si no existen en la ruta indicada
+
+# CNN (opcional) y ViT. Se pueden fijar con ML_CNN_PATH y ML_VIT_PATH.
+_DEFAULT_CNN = os.path.join(_ML_DIR, "modelo_ropa.h5")
+_DEFAULT_VIT = os.path.join(_ML_DIR, "vision_transformer_fashion_model.keras")
+CNN_MODEL_PATH = os.path.abspath(os.environ.get("ML_CNN_PATH", _DEFAULT_CNN))
+VIT_MODEL_PATH = os.path.abspath(os.environ.get("ML_VIT_PATH", _DEFAULT_VIT))
+
+# Fallbacks: si el env apunta a algo que no existe, usar los defaults del directorio.
 if not os.path.exists(CNN_MODEL_PATH):
-    CNN_MODEL_PATH = os.path.abspath(os.path.join(_ML_DIR, 'modelo_ropa.h5'))
+    CNN_MODEL_PATH = os.path.abspath(_DEFAULT_CNN)
 if not os.path.exists(VIT_MODEL_PATH):
-    VIT_MODEL_PATH = os.path.abspath(os.path.join(_ML_DIR, 'vision_transformer_moda_modelo.keras'))
+    VIT_MODEL_PATH = os.path.abspath(_DEFAULT_VIT)
+
 
 def load_model():
     global model, vit_model, vit_input_size, class_names, class_to_tipo, tipo_por_indice, KERAS_HUB_AVAILABLE
     import tensorflow as tf
+
     try:
         import keras_hub
         import importlib
+
         for mod_name in [
-            'keras_hub.models.vit.vit_image_classifier',
-            'keras_hub.models.vit.vit_backbone',
-            'keras_hub.models.vit.vit_image_classifier_preprocessor',
-            'keras_hub.models.vit.vit_image_converter',
-            'keras_hub.src.models.vit.vit_image_classifier',
-            'keras_hub.src.models.vit.vit_backbone',
+            "keras_hub.models.vit.vit_image_classifier",
+            "keras_hub.models.vit.vit_backbone",
+            "keras_hub.models.vit.vit_image_classifier_preprocessor",
+            "keras_hub.models.vit.vit_image_converter",
+            "keras_hub.src.models.vit.vit_image_classifier",
+            "keras_hub.src.models.vit.vit_backbone",
         ]:
             try:
                 importlib.import_module(mod_name)
@@ -60,8 +64,9 @@ def load_model():
         KERAS_HUB_AVAILABLE = False
         keras_hub = None
 
+    # CNN (opcional)
     model_path = os.path.abspath(os.path.realpath(CNN_MODEL_PATH))
-    print(f"   Loading CNN: {model_path}", flush=True)
+    print(f"   Loading CNN (optional): {model_path}", flush=True)
     if os.path.exists(model_path):
         try:
             model = tf.keras.models.load_model(model_path, compile=False)
@@ -69,137 +74,140 @@ def load_model():
         except Exception as e1:
             try:
                 model = tf.keras.models.load_model(model_path)
-                print(f"✅ CNN model loaded: {model_path} ({os.path.getsize(model_path) / (1024*1024):.2f} MB)")
-            except Exception as e2:
+                print(f"✅ CNN loaded ({os.path.getsize(model_path) / (1024*1024):.1f} MB)", flush=True)
+            except Exception:
                 import traceback
+
                 print(f"CNN load error: {e1}", flush=True)
                 traceback.print_exc()
                 model = None
     else:
-        print(f"CNN not found: {model_path}", flush=True)
+        print("   CNN not found (ok): running ViT-only mode.", flush=True)
         model = None
 
+    # ViT
     vit_model_path = os.path.abspath(os.path.realpath(VIT_MODEL_PATH))
     print(f"   Loading ViT: {vit_model_path}", flush=True)
     if os.path.exists(vit_model_path):
-        # Detectar puntero Git LFS (archivo pequeño con "git-lfs" y "oid sha256")
-        vit_size = os.path.getsize(vit_model_path)
-        if vit_size < 500:
+        vit_custom_objects = {}
+        if KERAS_HUB_AVAILABLE:
             try:
-                with open(vit_model_path, 'rb') as f:
-                    head = f.read(200).decode('utf-8', errors='ignore')
-                if 'git-lfs' in head and 'oid sha256' in head:
-                    print("   ViT no cargó: el archivo .keras es un puntero de Git LFS, no el modelo (~1 GB).", flush=True)
-                    print("   Ejecuta 'git lfs pull' en este repo o copia el archivo real desde otro clone.", flush=True)
-                    vit_model = None
-                    vit_model_path = None  # skip loading below
+                for mod in [getattr(keras_hub, "models", None), getattr(keras_hub, "layers", None)]:
+                    if mod is None:
+                        continue
+                    for name in dir(mod):
+                        if name.startswith("_"):
+                            continue
+                        obj = getattr(mod, name)
+                        if isinstance(obj, type):
+                            vit_custom_objects[name] = obj
+                            vit_custom_objects[f"keras_hub>{name}"] = obj
+                vit_mod = getattr(getattr(keras_hub, "models", None), "vit", None)
+                if vit_mod is not None:
+                    for name in dir(vit_mod):
+                        if name.startswith("_"):
+                            continue
+                        obj = getattr(vit_mod, name)
+                        if isinstance(obj, type):
+                            vit_custom_objects[name] = obj
+                            vit_custom_objects[f"keras_hub>{name}"] = obj
             except Exception:
                 pass
-        if vit_model_path and os.path.exists(vit_model_path):
-            vit_custom_objects = {}
-            if KERAS_HUB_AVAILABLE:
-                try:
-                    # Registrar todas las clases de keras_hub (models, layers y submodulos vit)
-                    for mod in [getattr(keras_hub, 'models', None), getattr(keras_hub, 'layers', None)]:
-                        if mod is None:
-                            continue
-                        for name in dir(mod):
-                            if name.startswith('_'):
-                                continue
-                            obj = getattr(mod, name)
-                            if isinstance(obj, type):
-                                vit_custom_objects[name] = obj
-                                vit_custom_objects[f"keras_hub>{name}"] = obj
-                    # Importar módulo vit para que ViTImageClassifier quede registrado
-                    vit_mod = getattr(getattr(keras_hub, 'models', None), 'vit', None)
-                    if vit_mod is not None:
-                        for name in dir(vit_mod):
-                            if name.startswith('_'):
-                                continue
-                            obj = getattr(vit_mod, name)
-                            if isinstance(obj, type):
-                                vit_custom_objects[name] = obj
-                                vit_custom_objects[f"keras_hub>{name}"] = obj
-                except Exception:
-                    pass
-            vit_loaded = False
+
+        vit_loaded = False
+        vit_model = None
+        vit_last_error = None
+
+        # 1) tf.keras con safe_mode=False
+        try:
+            vit_model = tf.keras.models.load_model(vit_model_path, compile=False, safe_mode=False)
+            if vit_model is not None:
+                vit_loaded = True
+        except (TypeError, Exception) as e0:
+            vit_last_error = e0
             vit_model = None
-            vit_last_error = None
-            # 1) tf.keras con safe_mode=False (muchos .keras cargan así sin custom_objects)
+
+        # 2) tf.keras con custom_objects
+        if not vit_loaded and vit_custom_objects:
             try:
-                vit_model = tf.keras.models.load_model(
-                    vit_model_path, compile=False, safe_mode=False
-                )
+                vit_model = tf.keras.models.load_model(vit_model_path, compile=False, custom_objects=vit_custom_objects)
+                vit_loaded = True
+            except Exception as e2:
+                vit_last_error = e2
+                vit_model = None
+
+        # 3) Keras 3
+        if not vit_loaded:
+            try:
+                import keras as k3
+
+                try:
+                    vit_model = k3.models.load_model(vit_model_path, compile=False, safe_mode=False)
+                except TypeError:
+                    vit_model = k3.models.load_model(vit_model_path, compile=False)
                 if vit_model is not None:
                     vit_loaded = True
-            except (TypeError, Exception) as e0:
-                vit_last_error = e0
+            except Exception as e1:
+                vit_last_error = e1
+
+        # 4) tf.keras sin safe_mode (Keras 2)
+        if not vit_loaded:
+            try:
+                vit_model = tf.keras.models.load_model(vit_model_path, compile=False)
+                vit_loaded = True
+            except (TypeError, Exception) as e3:
+                vit_last_error = e3
                 vit_model = None
-            # 2) tf.keras con custom_objects (para ViT de keras_hub)
-            if not vit_loaded and vit_custom_objects:
-                try:
-                    vit_model = tf.keras.models.load_model(
-                        vit_model_path, compile=False, custom_objects=vit_custom_objects
-                    )
-                    vit_loaded = True
-                except Exception as e2:
-                    vit_last_error = e2
-                    vit_model = None
-            # 3) Keras 3 con safe_mode=False
-            if not vit_loaded:
-                try:
-                    import keras as k3
-                    try:
-                        vit_model = k3.models.load_model(vit_model_path, compile=False, safe_mode=False)
-                    except TypeError:
-                        vit_model = k3.models.load_model(vit_model_path, compile=False)
-                    if vit_model is not None:
-                        vit_loaded = True
-                except Exception as e1:
-                    vit_last_error = e1
-            # 4) tf.keras sin safe_mode (Keras 2)
-            if not vit_loaded:
-                try:
-                    vit_model = tf.keras.models.load_model(vit_model_path, compile=False)
-                    vit_loaded = True
-                except (TypeError, Exception) as e3:
-                    vit_last_error = e3
-                    vit_model = None
-            if vit_loaded and vit_model is not None:
-                print(f"✅ ViT loaded ({os.path.getsize(vit_model_path) / (1024*1024):.1f} MB)", flush=True)
-                if vit_model.input_shape and len(vit_model.input_shape) >= 3:
-                    detected_size = vit_model.input_shape[1]
-                    if detected_size and detected_size > 0:
-                        vit_input_size = detected_size
-            else:
-                vit_model = None
-                err_msg = str(vit_last_error) if vit_last_error else "unknown"
-                print(f"ViT did not load; CNN only. Error: {err_msg[:150]}", flush=True)
-                if not KERAS_HUB_AVAILABLE:
-                    print("   pip install keras-hub para ViT", flush=True)
+
+        if vit_loaded and vit_model is not None:
+            print(f"✅ ViT loaded ({os.path.getsize(vit_model_path) / (1024*1024):.1f} MB)", flush=True)
+            if vit_model.input_shape and len(vit_model.input_shape) >= 3:
+                detected_size = vit_model.input_shape[1]
+                if detected_size and detected_size > 0:
+                    vit_input_size = detected_size
+        else:
+            vit_model = None
+            err_msg = str(vit_last_error) if vit_last_error else "unknown"
+            print(f"❌ ViT did not load. Error: {err_msg[:200]}", flush=True)
+            if not KERAS_HUB_AVAILABLE:
+                print("   Tip: pip install keras-hub (si tu .keras lo necesita)", flush=True)
     else:
-        print(f"ViT not found: {vit_model_path}", flush=True)
+        print(f"❌ ViT not found: {vit_model_path}", flush=True)
         vit_model = None
-    
-    class_names = ['Ankle_boot', 'Bag', 'Coat', 'Dress', 'Pullover', 'Sandal', 'Shirt', 'Sneaker', 'T-shirt', 'Trouser']
-    
+
+    class_names = ["Ankle_boot", "Bag", "Coat", "Dress", "Pullover", "Sandal", "Shirt", "Sneaker", "T-shirt", "Trouser"]
     class_to_tipo = {
-        'Ankle_boot': 'zapatos', 'Bag': 'accesorio', 'Coat': 'abrigo', 'Dress': 'vestido',
-        'Pullover': 'superior', 'Sandal': 'zapatos', 'Shirt': 'superior', 'Sneaker': 'zapatos',
-        'T-shirt': 'superior', 'Trouser': 'inferior'
+        "Ankle_boot": "zapatos",
+        "Bag": "accesorio",
+        "Coat": "abrigo",
+        "Dress": "vestido",
+        "Pullover": "superior",
+        "Sandal": "zapatos",
+        "Shirt": "superior",
+        "Sneaker": "zapatos",
+        "T-shirt": "superior",
+        "Trouser": "inferior",
     }
-    
     tipo_por_indice = {
-        0: 'zapatos', 1: 'accesorio', 2: 'abrigo', 3: 'vestido', 4: 'superior',
-        5: 'zapatos', 6: 'superior', 7: 'zapatos', 8: 'superior', 9: 'inferior'
+        0: "zapatos",
+        1: "accesorio",
+        2: "abrigo",
+        3: "vestido",
+        4: "superior",
+        5: "zapatos",
+        6: "superior",
+        7: "zapatos",
+        8: "superior",
+        9: "inferior",
     }
 
+
 def preprocess_image(image, target_size=IMG_SIZE, normalize=True):
-    if image.mode != 'RGB':
-        image = image.convert('RGB')
-    
+    if image.mode != "RGB":
+        image = image.convert("RGB")
+
     width, height = image.size
-    
+
     if width < target_size or height < target_size:
         if width < height:
             new_width = target_size
@@ -209,79 +217,77 @@ def preprocess_image(image, target_size=IMG_SIZE, normalize=True):
             new_width = int(width * (target_size / height))
         image = image.resize((new_width, new_height), Image.LANCZOS)
         width, height = image.size
-    
+
     if width != target_size or height != target_size:
         left = (width - target_size) / 2
         top = (height - target_size) / 2
         right = (width + target_size) / 2
         bottom = (height + target_size) / 2
         image = image.crop((left, top, right, bottom))
-    
+
     image = image.resize((target_size, target_size), Image.LANCZOS)
     img_array = np.array(image)
-    
+
     if normalize:
-        img_array = img_array.astype('float32') / 255.0
+        img_array = img_array.astype("float32") / 255.0
     else:
-        img_array = img_array.astype('float32')
-    
+        img_array = img_array.astype("float32")
+
     return np.expand_dims(img_array, axis=0)
 
+
 def preprocess_image_vit(image):
-    # ViT suele entrenarse con imágenes normalizadas [0,1]; usar normalize=True para coincidir con el entrenamiento.
-    return preprocess_image(image, target_size=vit_input_size, normalize=True)
+    return preprocess_image(image, target_size=vit_input_size, normalize=False)
+
 
 def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 def logits_to_probs(logits):
-    """Convierte logits del modelo en probabilidades (0-1). Si la salida ya suma ~1 y está en [0,1], se usa como probs."""
     x = np.asarray(logits, dtype=np.float64).ravel()
-    if len(x) == 0:
-        return x
-    if np.all(x >= 0) and np.all(x <= 1.0) and np.abs(np.sum(x) - 1.0) < 0.01:
-        return x / np.sum(x)
     x = x - x.max()
     exp_x = np.exp(x)
     return exp_x / exp_x.sum()
+
 
 def detect_color(image):
     try:
         img_array = np.array(image)
         img_small = Image.fromarray(img_array).resize((400, 400))
         img_array = np.array(img_small)
-        
+
         if len(img_array.shape) == 3 and img_array.shape[2] == 4:
             alpha = img_array[:, :, 3]
             mask = alpha > 128
             img_array = img_array[mask][:, :3]
             if len(img_array) == 0:
-                return 'desconocido'
-        
+                return "desconocido"
+
         height, width = img_array.shape[:2]
         border_width = max(8, int(min(height, width) * 0.12))
         border_pixels = []
-        
+
         border_pixels.extend(img_array[0:border_width, :].reshape(-1, 3))
         border_pixels.extend(img_array[-border_width:, :].reshape(-1, 3))
         border_pixels.extend(img_array[:, 0:border_width].reshape(-1, 3))
         border_pixels.extend(img_array[:, -border_width:].reshape(-1, 3))
-        
+
         border_pixels = np.array(border_pixels)
-        
+
         if len(border_pixels) > 0:
             border_rounded = (border_pixels / 15).astype(int) * 15
             unique_colors, counts = np.unique(border_rounded, axis=0, return_counts=True)
             bg_color = unique_colors[np.argsort(counts)[-1]].astype(float)
         else:
             bg_color = np.array([255.0, 255.0, 255.0])
-        
+
         img_flat = img_array.reshape(-1, 3).astype(np.float32)
         distances = np.sqrt(np.sum((img_flat - bg_color) ** 2, axis=1))
-        
+
         bg_brightness = np.mean(bg_color) / 255.0
         threshold = 55 if bg_brightness > 0.85 else (35 if bg_brightness < 0.2 else 45)
-        
+
         object_mask = distances > threshold
         center_y, center_x = height // 2, width // 2
         center_region_size = int(min(height, width) / 2.5)
@@ -289,19 +295,20 @@ def detect_color(image):
         y_start, y_end = max(0, center_y - center_region_size), min(height, center_y + center_region_size)
         x_start, x_end = max(0, center_x - center_region_size), min(width, center_x + center_region_size)
         center_mask[y_start:y_end, x_start:x_end] = True
-        
+
         final_mask = object_mask & center_mask.reshape(-1)
-        
+
         if np.sum(final_mask) < 100:
             pixels = img_flat[object_mask] if np.sum(object_mask) >= 100 else img_flat
         else:
             pixels = img_flat[final_mask]
-        
+
         if len(pixels) == 0:
-            return 'desconocido'
-        
+            return "desconocido"
+
         try:
             from sklearn.cluster import KMeans
+
             sample_size = min(3000, len(pixels))
             if sample_size >= 30:
                 sample_indices = np.random.choice(len(pixels), sample_size, replace=False)
@@ -313,14 +320,14 @@ def detect_color(image):
                 r_avg, g_avg, b_avg = dominant_color
             else:
                 r_avg, g_avg, b_avg = np.mean(pixels, axis=0)
-        except:
+        except Exception:
             r_avg, g_avg, b_avg = np.mean(pixels, axis=0)
-        
+
         max_ch, min_ch = max(r_avg, g_avg, b_avg), min(r_avg, g_avg, b_avg)
         delta = max_ch - min_ch
         brightness = max_ch / 255.0
         saturation = (delta / max_ch) if max_ch > 0 else 0
-        
+
         if delta == 0:
             hue = 0
         elif max_ch == r_avg:
@@ -330,119 +337,132 @@ def detect_color(image):
         else:
             hue = 60 * (((r_avg - g_avg) / delta) + 4)
         hue = hue / 360.0
-        
+
         if brightness < 0.22 or (saturation < 0.12 and brightness < 0.32):
-            return 'negro'
+            return "negro"
         if brightness > 0.94 and saturation < 0.06:
-            return 'blanco'
+            return "blanco"
         if saturation < 0.1:
-            return 'negro' if brightness < 0.35 else ('blanco' if brightness > 0.88 else 'gris')
-        
+            return "negro" if brightness < 0.35 else ("blanco" if brightness > 0.88 else "gris")
+
         if saturation > 0.28:
             if hue < 0.07 or hue > 0.93:
-                return 'rojo' if brightness > 0.55 else 'rojo oscuro'
-            elif 0.05 < hue < 0.12:
-                return 'naranja' if brightness > 0.48 else 'marrón'
-            elif 0.12 < hue < 0.20:
-                return 'amarillo' if brightness > 0.48 else 'amarillo oscuro'
-            elif 0.20 < hue < 0.48:
-                return 'verde' if brightness > 0.48 else 'verde oscuro'
-            elif 0.48 < hue < 0.72:
-                return 'azul' if brightness > 0.48 else 'azul oscuro'
-            elif 0.72 < hue < 0.93:
-                return 'rosa' if brightness > 0.68 else 'magenta'
-        
+                return "rojo" if brightness > 0.55 else "rojo oscuro"
+            if 0.05 < hue < 0.12:
+                return "naranja" if brightness > 0.48 else "marrón"
+            if 0.12 < hue < 0.20:
+                return "amarillo" if brightness > 0.48 else "amarillo oscuro"
+            if 0.20 < hue < 0.48:
+                return "verde" if brightness > 0.48 else "verde oscuro"
+            if 0.48 < hue < 0.72:
+                return "azul" if brightness > 0.48 else "azul oscuro"
+            if 0.72 < hue < 0.93:
+                return "rosa" if brightness > 0.68 else "magenta"
+
         if 0.05 < hue < 0.12 and saturation < 0.42 and brightness < 0.58:
-            return 'marrón'
+            return "marrón"
         if brightness > 0.72 and saturation < 0.28:
-            return 'beige'
-        
-        return 'gris' if saturation < 0.18 else 'multicolor'
-        
-    except:
-        return 'desconocido'
+            return "beige"
+
+        return "gris" if saturation < 0.18 else "multicolor"
+    except Exception:
+        return "desconocido"
+
 
 def _send_static_file(filename, mimetype=None):
-    """Serve a file from the ML service directory (for split deployment: backend proxies here)."""
     filepath = os.path.join(_ML_DIR, filename)
     if not os.path.exists(filepath):
         return None
     return send_file(filepath, mimetype=mimetype, as_attachment=False)
 
-@app.route('/confusion-matrix', methods=['GET'])
+
+@app.route("/", methods=["GET"])
+def root():
+    return jsonify({"message": "Fashion AI ML API", "health": "/health"})
+
+
+@app.route("/confusion-matrix", methods=["GET"])
 def serve_confusion_matrix():
-    r = _send_static_file('confusion_matrix.png', 'image/png')
-    return r if r is not None else (jsonify({'error': 'Not found'}), 404)
+    r = _send_static_file("confusion_matrix.png", "image/png")
+    return r if r is not None else (jsonify({"error": "Not found"}), 404)
 
-@app.route('/confusion-matrix-vit', methods=['GET'])
+
+@app.route("/confusion-matrix-vit", methods=["GET"])
 def serve_confusion_matrix_vit():
-    r = _send_static_file('confusion_matrix_vit.png', 'image/png')
-    return r if r is not None else (jsonify({'error': 'Not found'}), 404)
+    r = _send_static_file("confusion_matrix_vit.png", "image/png")
+    return r if r is not None else (jsonify({"error": "Not found"}), 404)
 
-@app.route('/metrics', methods=['GET'])
+
+@app.route("/metrics", methods=["GET"])
 def serve_metrics():
-    filepath = os.path.join(_ML_DIR, 'model_metrics.json')
+    filepath = os.path.join(_ML_DIR, "model_metrics.json")
     if not os.path.exists(filepath):
-        return jsonify({'error': 'Not found'}), 404
-    with open(filepath, 'r', encoding='utf-8') as f:
+        return jsonify({"error": "Not found"}), 404
+    with open(filepath, "r", encoding="utf-8") as f:
         import json
+
         return jsonify(json.load(f))
 
-@app.route('/metrics-vit', methods=['GET'])
+
+@app.route("/metrics-vit", methods=["GET"])
 def serve_metrics_vit():
-    filepath = os.path.join(_ML_DIR, 'model_metrics_vit.json')
+    filepath = os.path.join(_ML_DIR, "model_metrics_vit.json")
     if not os.path.exists(filepath):
-        return jsonify({'error': 'Not found'}), 404
-    with open(filepath, 'r', encoding='utf-8') as f:
+        return jsonify({"error": "Not found"}), 404
+    with open(filepath, "r", encoding="utf-8") as f:
         import json
+
         return jsonify(json.load(f))
 
-@app.route('/data-audit', methods=['GET'])
+
+@app.route("/data-audit", methods=["GET"])
 def serve_data_audit():
-    r = _send_static_file('data_audit.png', 'image/png')
-    return r if r is not None else (jsonify({'error': 'Not found'}), 404)
+    r = _send_static_file("data_audit.png", "image/png")
+    return r if r is not None else (jsonify({"error": "Not found"}), 404)
 
-@app.route('/training-curves-vit', methods=['GET'])
+
+@app.route("/training-curves-vit", methods=["GET"])
 def serve_training_curves_vit():
-    r = _send_static_file('training_curves_vit.png', 'image/png')
-    return r if r is not None else (jsonify({'error': 'Not found'}), 404)
+    r = _send_static_file("training_curves_vit.png", "image/png")
+    return r if r is not None else (jsonify({"error": "Not found"}), 404)
 
-@app.route('/health', methods=['GET'])
+
+@app.route("/health", methods=["GET"])
 def health():
-    model_path = CNN_MODEL_PATH
-    vit_model_path = VIT_MODEL_PATH
-    
-    return jsonify({
-        'status': 'OK',
-        'model_loaded': model is not None,
-        'model_file_exists': os.path.exists(model_path),
-        'model_path': os.path.abspath(model_path) if os.path.exists(model_path) else None,
-        'vit_model_loaded': vit_model is not None,
-        'vit_model_file_exists': os.path.exists(vit_model_path),
-        'vit_model_path': os.path.abspath(vit_model_path) if os.path.exists(vit_model_path) else None,
-        'classes_count': len(class_names) if class_names else 0
-    })
+    return jsonify(
+        {
+            "status": "OK",
+            "model_loaded": model is not None,
+            "model_file_exists": os.path.exists(CNN_MODEL_PATH),
+            "model_path": os.path.abspath(CNN_MODEL_PATH) if os.path.exists(CNN_MODEL_PATH) else None,
+            "vit_model_loaded": vit_model is not None,
+            "vit_model_file_exists": os.path.exists(VIT_MODEL_PATH),
+            "vit_model_path": os.path.abspath(VIT_MODEL_PATH) if os.path.exists(VIT_MODEL_PATH) else None,
+            "classes_count": len(class_names) if class_names else 0,
+        }
+    )
 
-@app.route('/classify', methods=['POST'])
+
+@app.route("/classify", methods=["POST"])
 def classify():
-    """Clasificación con el modelo CNN: modelo_ropa.h5 (siempre desde CNN_MODEL_PATH)."""
+    """Clasificación con CNN (si está disponible)."""
     try:
-        if 'imagen' not in request.files:
-            return jsonify({'error': 'No image provided'}), 400
-        
-        file = request.files['imagen']
-        if file.filename == '' or not allowed_file(file.filename):
-            return jsonify({'error': 'Invalid file'}), 400
-        
+        if "imagen" not in request.files:
+            return jsonify({"error": "No image provided"}), 400
+
+        file = request.files["imagen"]
+        if file.filename == "" or not allowed_file(file.filename):
+            return jsonify({"error": "Invalid file"}), 400
+
         image = Image.open(io.BytesIO(file.read()))
-        if image.mode != 'RGB':
-            image = image.convert('RGB')
-        
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+
         color = detect_color(image)
         top3_info = []
-        # Siempre usa el modelo CNN cargado desde CNN_MODEL_PATH (modelo_ropa.h5)
+
         if model is None:
-            return jsonify({'error': 'Models still loading', 'loading': True}), 503
+            return jsonify({"error": "CNN model not available", "model_loaded": False}), 503
 
         img_array = preprocess_image(image)
         prediction = model.predict(img_array, verbose=0)
@@ -459,49 +479,53 @@ def classify():
         top3_indices = np.argsort(probs)[-3:][::-1]
         for idx in top3_indices:
             if idx < len(class_names):
-                top3_info.append({
-                    'clase_nombre': class_names[idx],
-                    'confianza': float(probs[idx]),
-                    'tipo': class_to_tipo.get(class_names[idx], 'desconocido')
-                })
-        clase_nombre = class_names[clase] if clase < len(class_names) else 'desconocido'
-        tipo = class_to_tipo.get(clase_nombre, tipo_por_indice.get(clase, 'desconocido'))
+                top3_info.append(
+                    {
+                        "clase_nombre": class_names[idx],
+                        "confianza": float(probs[idx]),
+                        "tipo": class_to_tipo.get(class_names[idx], "desconocido"),
+                    }
+                )
+        clase_nombre = class_names[clase] if clase < len(class_names) else "desconocido"
+        tipo = class_to_tipo.get(clase_nombre, tipo_por_indice.get(clase, "desconocido"))
 
-        return jsonify({
-            'clase': int(clase),
-            'clase_nombre': clase_nombre,
-            'tipo': tipo,
-            'confianza': float(confianza),
-            'color': color,
-            'top3': top3_info,
-            'model': 'cnn',
-            'model_file': os.path.basename(CNN_MODEL_PATH)
-        })
-    
+        return jsonify(
+            {
+                "clase": int(clase),
+                "clase_nombre": clase_nombre,
+                "tipo": tipo,
+                "confianza": float(confianza),
+                "color": color,
+                "top3": top3_info,
+                "model": "cnn",
+                "model_file": os.path.basename(CNN_MODEL_PATH),
+            }
+        )
     except Exception as e:
-        return jsonify({'error': f'Error processing image: {str(e)}'}), 500
+        return jsonify({"error": f"Error processing image: {str(e)}"}), 500
 
-@app.route('/classify-vit', methods=['POST'])
+
+@app.route("/classify-vit", methods=["POST"])
 def classify_vit():
-    """Clasificación con el modelo ViT: vision_transformer_moda_modelo.keras (siempre desde VIT_MODEL_PATH)."""
+    """Clasificación con el modelo ViT: siempre desde ML_VIT_PATH/VIT_MODEL_PATH."""
     try:
-        if 'imagen' not in request.files:
-            return jsonify({'error': 'No image provided'}), 400
-        
-        file = request.files['imagen']
-        if file.filename == '' or not allowed_file(file.filename):
-            return jsonify({'error': 'Invalid file'}), 400
-        
+        if "imagen" not in request.files:
+            return jsonify({"error": "No image provided"}), 400
+
+        file = request.files["imagen"]
+        if file.filename == "" or not allowed_file(file.filename):
+            return jsonify({"error": "Invalid file"}), 400
+
         image = Image.open(io.BytesIO(file.read()))
-        if image.mode != 'RGB':
-            image = image.convert('RGB')
-        
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+
         color = detect_color(image)
         top3_info = []
-        # Siempre usa el modelo ViT cargado desde VIT_MODEL_PATH (vision_transformer_moda_modelo.keras)
+
         if vit_model is None:
-            return jsonify({'error': 'Vision Transformer model not available', 'model_loaded': False}), 503
-        
+            return jsonify({"error": "Vision Transformer model not available", "model_loaded": False}), 503
+
         img_array = preprocess_image_vit(image)
         prediction = vit_model.predict(img_array, verbose=0)
         out = prediction[0] if isinstance(prediction, (list, tuple)) else prediction
@@ -514,56 +538,53 @@ def classify_vit():
         probs = logits_to_probs(logits)
         clase = int(np.argmax(probs))
         confianza = float(probs[clase])
-        
+
         top3_indices = np.argsort(probs)[-3:][::-1]
         for idx in top3_indices:
             if idx < len(class_names):
-                top3_info.append({
-                    'clase_nombre': class_names[idx],
-                    'confianza': float(probs[idx]),
-                    'tipo': class_to_tipo.get(class_names[idx], 'desconocido')
-                })
-        
-        clase_nombre = class_names[clase] if clase < len(class_names) else 'desconocido'
-        tipo = class_to_tipo.get(clase_nombre, tipo_por_indice.get(clase, 'desconocido'))
-        
-        return jsonify({
-            'clase': int(clase),
-            'clase_nombre': clase_nombre,
-            'tipo': tipo,
-            'confianza': float(confianza),
-            'color': color,
-            'top3': top3_info,
-            'model': 'vision_transformer',
-            'model_file': os.path.basename(VIT_MODEL_PATH)
-        })
-    
+                top3_info.append(
+                    {
+                        "clase_nombre": class_names[idx],
+                        "confianza": float(probs[idx]),
+                        "tipo": class_to_tipo.get(class_names[idx], "desconocido"),
+                    }
+                )
+
+        clase_nombre = class_names[clase] if clase < len(class_names) else "desconocido"
+        tipo = class_to_tipo.get(clase_nombre, tipo_por_indice.get(clase, "desconocido"))
+
+        return jsonify(
+            {
+                "clase": int(clase),
+                "clase_nombre": clase_nombre,
+                "tipo": tipo,
+                "confianza": float(confianza),
+                "color": color,
+                "top3": top3_info,
+                "model": "vision_transformer",
+                "model_file": os.path.basename(VIT_MODEL_PATH),
+            }
+        )
     except Exception as e:
-        return jsonify({'error': f'Error processing image: {str(e)}'}), 500
+        return jsonify({"error": f"Error processing image: {str(e)}"}), 500
+
 
 def _load_models_background():
-    """Carga modelos en segundo plano; el servidor ya está escuchando en 6001."""
     load_model()
-    if model is not None:
-        print("✅ CNN listo para clasificar.", flush=True)
     if vit_model is not None:
         print("✅ ViT listo para clasificar.", flush=True)
-    elif os.path.exists(VIT_MODEL_PATH):
-        print("ViT did not load; CNN only. pip install keras-hub for ViT.", flush=True)
+    else:
+        print("❌ ViT no está listo (revisa ML_VIT_PATH y logs).", flush=True)
+    if model is not None:
+        print("✅ CNN listo para clasificar.", flush=True)
 
 
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 6001))
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 6001))
     print("Fashion AI ML Service", flush=True)
-    print(f"   CNN: {CNN_MODEL_PATH}", flush=True)
+    print(f"   CNN (optional): {CNN_MODEL_PATH}", flush=True)
     print(f"   ViT: {VIT_MODEL_PATH}", flush=True)
-    if not os.path.exists(CNN_MODEL_PATH):
-        print(f"CNN not found: {CNN_MODEL_PATH}", flush=True)
-        sys.exit(1)
-    if not os.path.exists(VIT_MODEL_PATH):
-        print(f"ViT not found (CNN only): {VIT_MODEL_PATH}", flush=True)
-        # No sys.exit(1): arrancar con solo CNN para que /health responda
     print(f"Binding to http://0.0.0.0:{port} (models loading in background)...", flush=True)
     t = threading.Thread(target=_load_models_background, daemon=True)
     t.start()
-    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)

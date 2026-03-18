@@ -5,6 +5,7 @@ const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
 const sharp = require('sharp');
+const heicConvert = require('heic-convert');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -41,7 +42,7 @@ async function processAndClassify(req, res, endpoint) {
     if (!req.file) return res.status(400).json({ error: 'No image provided' });
 
     // Use separate ViT Space when set (ViT called rarely; keeps main Space lighter)
-    const isVit = endpoint === '/classify-vit';
+    const isVit = endpoint.startsWith('/classify-vit');
     const mlServiceUrl = isVit && process.env.ML_VIT_SERVICE_URL
       ? process.env.ML_VIT_SERVICE_URL
       : (process.env.ML_SERVICE_URL || 'http://localhost:6001');
@@ -52,11 +53,20 @@ async function processAndClassify(req, res, endpoint) {
 
     if (isHeic) {
       try {
+        const inputBuffer = fs.readFileSync(filePath);
+        const outputBuffer = await heicConvert({
+          buffer: inputBuffer,
+          format: 'JPEG',
+          quality: 0.9
+        });
         convertedFilePath = path.join(path.dirname(filePath), `converted-${Date.now()}.jpg`);
-        await sharp(filePath).jpeg({ quality: 90 }).toFile(convertedFilePath);
+        fs.writeFileSync(convertedFilePath, outputBuffer);
         filePath = convertedFilePath;
       } catch (e) {
-        console.error('Error converting HEIC:', e);
+        console.error('Error converting HEIC with heic-convert:', e);
+        // Si no podemos convertir HEIC/HEIF a JPEG, intentamos enviar el archivo original;
+        // si el ML falla, devolverá su propio mensaje de error.
+        convertedFilePath = null;
       }
     }
 
@@ -65,9 +75,7 @@ async function processAndClassify(req, res, endpoint) {
     formData.append('imagen', fs.createReadStream(filePath), { filename: path.basename(filePath), contentType: 'image/jpeg' });
 
     try {
-      const requestUrl = (isVit && process.env.ML_VIT_SERVICE_URL)
-        ? `${mlServiceUrl}/classify-vit`
-        : `${mlServiceUrl}${endpoint}`;
+      const requestUrl = `${mlServiceUrl}${endpoint}`;
       const response = await axios.post(requestUrl, formData, {
         headers: formData.getHeaders(),
         timeout: 30000
@@ -82,15 +90,17 @@ async function processAndClassify(req, res, endpoint) {
         clase: response.data.clase || 0,
         clase_nombre: response.data.clase_nombre || 'desconocido',
         top3: response.data.top3 || [],
-        model: response.data.model || 'cnn',
-        model_file: response.data.model_file || (response.data.model === 'vision_transformer' ? 'vision_transformer_moda_modelo.keras' : 'modelo_ropa.h5')
+        model: response.data.model || 'vision_transformer',
+        model_file: response.data.model_file || (response.data.model === 'vision_transformer' ? 'best_model_17_marzo.keras' : 'best_model_17_marzo.keras'),
+        yolo_detection: response.data.yolo_detection || null,
+        pipeline_steps: response.data.pipeline_steps || []
       });
     } catch (mlError) {
       [req.file.path, convertedFilePath].forEach(p => p && fs.existsSync(p) && fs.unlinkSync(p));
       const status = mlError.response?.status;
       const data = mlError.response?.data;
 
-      if (endpoint === '/classify-vit') {
+      if (isVit) {
         return res.status(503).json({ error: data?.error || 'Vision Transformer model not available', model_loaded: false });
       }
       if (status === 503 && data?.loading) {
@@ -107,8 +117,11 @@ async function processAndClassify(req, res, endpoint) {
   }
 }
 
-router.post('/', upload.single('imagen'), (req, res) => processAndClassify(req, res, '/classify'));
+// Ya no usamos CNN: mantenemos compatibilidad pero enrutamos '/' a ViT.
+router.post('/', upload.single('imagen'), (req, res) => processAndClassify(req, res, '/classify-vit'));
 router.post('/vit', upload.single('imagen'), (req, res) => processAndClassify(req, res, '/classify-vit'));
+// Ya no usamos el modelo "vit-real" en el producto.
+// router.post('/vit-real', upload.single('imagen'), (req, res) => processAndClassify(req, res, '/classify-vit-real'));
 
 /** POST /api/classify/vit-base64 — Mirror: classify from data URL (no multipart) */
 router.post('/vit-base64', async (req, res) => {
