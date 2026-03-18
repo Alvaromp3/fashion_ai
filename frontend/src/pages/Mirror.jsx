@@ -59,6 +59,47 @@ const OCCASION_OPTIONS = [
 ]
 
 export default function Mirror() {
+  const typeToEnglish = (raw) => {
+    if (raw == null || raw === '') return ''
+    const map = {
+      superior: 'TOP',
+      inferior: 'BOTTOM',
+      zapatos: 'SHOES',
+      abrigo: 'COAT',
+      vestido: 'DRESS',
+      bolso: 'BAG',
+      accesorio: 'ACCESSORY',
+      'joyería': 'JEWELRY',
+      joyeria: 'JEWELRY',
+      sombrero: 'HAT',
+      'cinturón': 'BELT',
+      cinturon: 'BELT',
+      gafas: 'GLASSES',
+    }
+    const s = String(raw).toLowerCase().trim()
+    return map[s] || String(raw).replace(/_/g, ' ').toUpperCase()
+  }
+
+  const colorToEnglish = (raw) => {
+    if (raw == null || raw === '') return ''
+    const map = {
+      desconocido: 'Unknown',
+      negro: 'Black',
+      blanco: 'White',
+      gris: 'Gray',
+      rojo: 'Red',
+      azul: 'Blue',
+      verde: 'Green',
+      amarillo: 'Yellow',
+      naranja: 'Orange',
+      rosa: 'Pink',
+      beige: 'Beige',
+      marrón: 'Brown',
+    }
+    const s = String(raw).toLowerCase().trim()
+    return map[s] || String(raw)
+  }
+
   const videoRef = useRef(null)
   const streamRef = useRef(null)
   const liveTimerRef = useRef(null)
@@ -360,90 +401,89 @@ export default function Mirror() {
   const newItems = result?.new_detected_items ?? []
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div className="min-h-screen" style={{ background: 'var(--sw-white)' }}>
       <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8">
         <header className="mb-6">
-          <h1 className="text-2xl font-semibold text-white tracking-tight">Mirror</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">Get AI feedback on your outfit in real time</p>
+          <h1 className="sw-heading text-[#0D0D0D] text-2xl font-semibold tracking-tight">Mirror</h1>
+          <p className="text-sm text-[#888] mt-0.5">Get AI feedback on your outfit in real time</p>
         </header>
 
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Camera / Mirror block */}
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 overflow-hidden">
-            <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
-              <span className="text-sm font-medium text-zinc-400">Camera</span>
+          <section className="sw-card overflow-hidden">
+            <div className="px-4 py-3 border-b border-[#D0CEC8] flex items-center justify-between">
+              <span className="text-sm font-medium text-[#888]">Camera</span>
               {!cameraOn ? (
-                <button onClick={startCamera} disabled={cameraStarting} className="text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg disabled:opacity-50 flex items-center gap-2 transition-colors">
+                <button onClick={startCamera} disabled={cameraStarting} className="sw-btn sw-btn-accent sw-btn-sm disabled:opacity-50 flex items-center gap-2 transition-colors">
                   {cameraStarting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
                   Start camera
                 </button>
               ) : (
-                <button onClick={stopCamera} className="text-sm text-zinc-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-zinc-800 flex items-center gap-2 transition-colors">
+                <button onClick={stopCamera} className="sw-btn sw-btn-outline sw-btn-sm flex items-center gap-2 transition-colors">
                   <CameraOff className="h-4 w-4" /> Stop
                 </button>
               )}
             </div>
             <div className="p-4">
-              <div className="aspect-video rounded-xl overflow-hidden border border-zinc-800 bg-zinc-900 flex items-center justify-center relative shadow-inner">
+              <div className="aspect-video rounded-xl overflow-hidden border border-[#D0CEC8] bg-white flex items-center justify-center relative">
                 {!cameraOn ? (
                   <div className="text-center py-8 px-4">
-                    <div className="w-14 h-14 rounded-full bg-zinc-800 flex items-center justify-center mx-auto mb-3">
-                      <Camera className="h-7 w-7 text-zinc-500" />
+                    <div className="w-14 h-14 rounded-full bg-[#E8E6E0] flex items-center justify-center mx-auto mb-3">
+                      <Camera className="h-7 w-7 text-[#888]" />
                     </div>
-                    <p className="text-sm text-zinc-500">Start camera to see yourself and evaluate your outfit</p>
+                    <p className="text-sm text-[#888]">Start camera to see yourself and evaluate your outfit</p>
                   </div>
                 ) : (
                   <video ref={videoRef} className="w-full h-full object-cover scale-x-[-1]" autoPlay playsInline muted />
                 )}
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                <button onClick={handleAnalyzeFrame} disabled={!cameraOn || loading} className="text-sm font-medium bg-white text-zinc-900 hover:bg-zinc-200 disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2.5 rounded-lg flex items-center gap-2 transition-colors">
+                <button onClick={handleAnalyzeFrame} disabled={!cameraOn || loading} className="sw-btn sw-btn-primary sw-btn-sm disabled:cursor-not-allowed flex items-center gap-2 transition-colors">
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                   Evaluate outfit
                 </button>
-                <button onClick={handleClassifyVit} disabled={!cameraOn || vitLoading} className="text-sm font-medium bg-zinc-700 text-white hover:bg-zinc-600 disabled:opacity-40 px-3 py-2.5 rounded-lg flex items-center gap-2 transition-colors">
+                <button onClick={handleClassifyVit} disabled={!cameraOn || vitLoading} className="sw-btn sw-btn-outline sw-btn-sm disabled:opacity-40 flex items-center gap-2 transition-colors">
                   {vitLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                   Classify ViT
                 </button>
-                <button onClick={() => setLiveMode((v) => !v)} disabled={!cameraOn} className={`text-sm font-medium px-3 py-2.5 rounded-lg flex items-center gap-2 transition-colors ${liveMode ? 'bg-emerald-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}>
+                <button onClick={() => setLiveMode((v) => !v)} disabled={!cameraOn} className={`sw-btn sw-btn-sm flex items-center gap-2 transition-colors ${liveMode ? 'sw-btn-accent' : 'sw-btn-ghost'}`}>
                   <Zap className="h-4 w-4" /> Live {liveMode ? 'ON' : 'OFF'}
                 </button>
               </div>
               {vitResult && (
-                <div className="mt-4 p-4 rounded-xl border border-zinc-700 bg-zinc-800/50">
-                  <p className="text-xs text-zinc-500 mb-1">Detected (ViT)</p>
-                  <p className="text-base font-medium text-white">{vitResult.clase_nombre}</p>
-                  <p className="text-sm text-zinc-400">{vitResult.tipo} · {vitResult.color} · {(vitResult.confianza * 100).toFixed(0)}%</p>
-                  <button onClick={handleAddToWardrobe} disabled={addToWardrobeLoading} className="mt-3 text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-500 px-3 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors">
+                <div className="mt-4 p-4 sw-card rounded-xl">
+                  <p className="text-xs text-[#888] mb-1">Detected (ViT)</p>
+                  <p className="text-base font-medium text-[#0D0D0D]">{vitResult.clase_nombre}</p>
+                  <p className="text-sm text-[#888]">
+                    {typeToEnglish(vitResult.tipo)} · {colorToEnglish(vitResult.color)} · {(vitResult.confianza * 100).toFixed(0)}%
+                  </p>
+                  <button onClick={handleAddToWardrobe} disabled={addToWardrobeLoading} className="mt-3 sw-btn sw-btn-accent sw-btn-sm flex items-center gap-2 disabled:opacity-50 transition-colors">
                     {addToWardrobeLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-4 w-4" />}
                     Add to wardrobe
                   </button>
                 </div>
               )}
-              <p className="mt-3 text-xs text-zinc-500">Analysis uses OpenRouter + ViT. Items are only saved when you click Add to wardrobe.</p>
+              <p className="mt-3 text-xs text-[#888]">Analysis uses OpenRouter + ViT. Items are only saved when you click Add to wardrobe.</p>
             </div>
           </section>
 
           {/* Context panel */}
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 overflow-hidden">
-            <div className="px-4 py-3 border-b border-zinc-800">
-              <span className="text-sm font-medium text-zinc-400">Context</span>
+          <section className="sw-card overflow-hidden">
+            <div className="px-4 py-3 border-b border-[#D0CEC8]">
+              <span className="text-sm font-medium text-[#888]">Context</span>
             </div>
             <div className="p-4 space-y-4">
               <div>
-                <label className="block text-xs text-zinc-500 mb-1">Get feedback for</label>
-                <p className="text-xs text-zinc-600 mb-2">Choose the look you want feedback on</p>
+                <label className="block text-xs text-[#888] mb-1">Get feedback for</label>
+                <p className="text-xs text-[#888] mb-2">Choose the look you want feedback on</p>
                 <div className="flex flex-wrap gap-2">
                   {OCCASION_OPTIONS.map((opt) => (
                     <button
                       key={opt.id}
                       type="button"
                       onClick={() => setOccasionId(opt.id)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${
-                        occasionId === opt.id
-                          ? 'bg-zinc-600 border-zinc-500 text-white'
-                          : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
-                      }`}
+                      className={`sw-chip ${occasionId === opt.id ? 'active' : ''}`}
+                      style={{ fontSize: '0.55rem', padding: '7px 12px' }}
                     >
                       {opt.label}
                     </button>
@@ -451,42 +491,42 @@ export default function Mirror() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-zinc-500 mb-1">Location</label>
+                <label className="block text-xs text-[#888] mb-1">Location</label>
                 <div className="flex gap-2 flex-wrap items-center">
-                  <button type="button" onClick={requestLocation} disabled={locationStatus === 'asking'} className="text-sm bg-zinc-800 text-zinc-200 hover:bg-zinc-700 px-3 py-2 rounded-lg border border-zinc-700 disabled:opacity-50 flex items-center gap-2 transition-colors">
+                  <button type="button" onClick={requestLocation} disabled={locationStatus === 'asking'} className="sw-btn sw-btn-outline sw-btn-sm disabled:opacity-50 flex items-center gap-2 transition-colors">
                     {locationStatus === 'asking' ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
                     Weather & time
                   </button>
-                  {locationLabel && <span className="text-sm text-zinc-500 truncate max-w-[140px]">{locationLabel}</span>}
+                  {locationLabel && <span className="text-sm text-[#888] truncate max-w-[140px]">{locationLabel}</span>}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-zinc-500 mb-1">Weather</label>
-                  <input value={weather} onChange={(e) => setWeather(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-600" placeholder="e.g. 18°C" />
+                  <label className="block text-xs text-[#888] mb-1">Weather</label>
+                  <input value={weather} onChange={(e) => setWeather(e.target.value)} className="sw-input" placeholder="e.g. 18°C" />
                 </div>
                 <div>
-                  <label className="block text-xs text-zinc-500 mb-1">Time</label>
-                  <input value={timeOfDay} onChange={(e) => setTimeOfDay(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-600" />
+                  <label className="block text-xs text-[#888] mb-1">Time</label>
+                  <input value={timeOfDay} onChange={(e) => setTimeOfDay(e.target.value)} className="sw-input" />
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-zinc-500 mb-1">Style</label>
-                <input value={stylePref} onChange={(e) => setStylePref(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-600" />
+                <label className="block text-xs text-[#888] mb-1">Style</label>
+                <input value={stylePref} onChange={(e) => setStylePref(e.target.value)} className="sw-input" />
               </div>
               <div>
-                <label className="block text-xs text-zinc-500 mb-1">Notes</label>
-                <textarea value={userNotes} onChange={(e) => setUserNotes(e.target.value)} placeholder="Optional" className="w-full h-20 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-600 resize-none" />
+                <label className="block text-xs text-[#888] mb-1">Notes</label>
+                <textarea value={userNotes} onChange={(e) => setUserNotes(e.target.value)} placeholder="Optional" className="sw-input resize-none h-20" />
               </div>
-              <button onClick={() => setShowAdvanced((v) => !v)} className="text-sm text-zinc-500 hover:text-zinc-300 flex items-center gap-1">
+              <button onClick={() => setShowAdvanced((v) => !v)} className="sw-btn sw-btn-ghost sw-btn-sm flex items-center gap-1">
                 {showAdvanced ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 Advanced mode
               </button>
               {showAdvanced && (
-                <div className="pt-2 border-t border-zinc-800 space-y-2">
-                  <label className="block text-xs text-zinc-500">Text input</label>
-                  <textarea value={userPrompt} onChange={(e) => setUserPrompt(e.target.value)} className="w-full h-32 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs font-mono text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-600 resize-none" spellCheck={false} />
-                  <button onClick={handleAnalyzeAdvancedText} disabled={loading} className="text-sm bg-zinc-700 text-white hover:bg-zinc-600 px-3 py-2 rounded-lg disabled:opacity-50 flex items-center gap-2">
+                <div className="pt-2 border-t border-[#D0CEC8] space-y-2">
+                  <label className="block text-xs text-[#888]">Text input</label>
+                  <textarea value={userPrompt} onChange={(e) => setUserPrompt(e.target.value)} className="sw-input resize-none h-32 text-xs" spellCheck={false} />
+                  <button onClick={handleAnalyzeAdvancedText} disabled={loading} className="sw-btn sw-btn-primary sw-btn-sm disabled:opacity-50 flex items-center gap-2">
                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
                     Evaluate text
                   </button>
@@ -497,7 +537,7 @@ export default function Mirror() {
         </div>
 
         {error && (
-          <div className="mt-6 p-4 rounded border border-red-900/50 bg-red-950/30 text-red-200 text-sm" role="alert">
+          <div className="mt-6 p-4 sw-card rounded border border-[#FF3B00] text-sm" role="alert">
             {error}
           </div>
         )}
@@ -505,56 +545,56 @@ export default function Mirror() {
         {result && (
           <div className="mt-8 space-y-6">
             {analysis && (
-              <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 overflow-hidden">
-                <div className="px-4 py-3 border-b border-zinc-800">
-                  <span className="text-sm font-medium text-zinc-400">Analysis</span>
+              <section className="sw-card overflow-hidden">
+                <div className="px-4 py-3 border-b border-[#D0CEC8]">
+                  <span className="text-sm font-medium text-[#888]">Analysis</span>
                 </div>
                 <div className="p-5">
                   <div className="flex gap-6 sm:gap-8 mb-6">
                     <div className="flex flex-col items-center">
-                      <div className="w-16 h-16 rounded-full border-2 border-zinc-700 flex flex-col items-center justify-center">
-                        <span className="text-xl font-semibold text-white tabular-nums leading-none">{analysis.overall_score ?? '—'}</span>
-                        <span className="text-[10px] text-zinc-500">/100</span>
+                      <div className="w-16 h-16 rounded-full border-2 border-[#D0CEC8] bg-white flex flex-col items-center justify-center">
+                        <span className="text-xl font-semibold text-[#0D0D0D] tabular-nums leading-none">{analysis.overall_score ?? '—'}</span>
+                        <span className="text-[10px] text-[#888]">/100</span>
                       </div>
-                      <p className="text-xs text-zinc-500 mt-2">Score</p>
+                      <p className="text-xs text-[#888] mt-2">Score</p>
                     </div>
                     <div className="flex flex-col items-center">
-                      <div className="w-16 h-16 rounded-full border-2 border-zinc-700 flex flex-col items-center justify-center">
-                        <span className="text-xl font-semibold text-white tabular-nums leading-none">{analysis.confidence_score ?? '—'}</span>
-                        <span className="text-[10px] text-zinc-500">/100</span>
+                      <div className="w-16 h-16 rounded-full border-2 border-[#D0CEC8] bg-white flex flex-col items-center justify-center">
+                        <span className="text-xl font-semibold text-[#0D0D0D] tabular-nums leading-none">{analysis.confidence_score ?? '—'}</span>
+                        <span className="text-[10px] text-[#888]">/100</span>
                       </div>
-                      <p className="text-xs text-zinc-500 mt-2">Confidence</p>
+                      <p className="text-xs text-[#888] mt-2">Confidence</p>
                     </div>
                   </div>
                   <dl className="space-y-3 text-sm">
-                    {analysis.style_identity && <div className="flex justify-between gap-4 border-b border-zinc-800/80 pb-2"><dt className="text-zinc-500">Style</dt><dd className="text-zinc-200 text-right">{analysis.style_identity}</dd></div>}
-                    {analysis.silhouette_balance && <div className="flex justify-between gap-4 border-b border-zinc-800/80 pb-2"><dt className="text-zinc-500">Silhouette</dt><dd className="text-zinc-200 text-right">{analysis.silhouette_balance}</dd></div>}
+                    {analysis.style_identity && <div className="flex justify-between gap-4 border-b border-[#D0CEC8]/80 pb-2"><dt className="text-[#888]">Style</dt><dd className="text-[#0D0D0D] text-right">{analysis.style_identity}</dd></div>}
+                    {analysis.silhouette_balance && <div className="flex justify-between gap-4 border-b border-[#D0CEC8]/80 pb-2"><dt className="text-[#888]">Silhouette</dt><dd className="text-[#0D0D0D] text-right">{analysis.silhouette_balance}</dd></div>}
                     {analysis.color_analysis && (
-                      <div className="flex justify-between gap-4 border-b border-zinc-800/80 pb-2">
-                        <dt className="text-zinc-500">Color</dt>
-                        <dd className="text-zinc-200 text-right">
+                      <div className="flex justify-between gap-4 border-b border-[#D0CEC8]/80 pb-2">
+                        <dt className="text-[#888]">Color</dt>
+                        <dd className="text-[#0D0D0D] text-right">
                           {[analysis.color_analysis.palette_type, analysis.color_analysis.contrast_level, analysis.color_analysis.harmony_score != null && `harmony ${analysis.color_analysis.harmony_score}`].filter(Boolean).join(' · ')}
                         </dd>
                       </div>
                     )}
-                    {analysis.fit_evaluation && <div className="flex justify-between gap-4 border-b border-zinc-800/80 pb-2"><dt className="text-zinc-500">Fit</dt><dd className="text-zinc-200 text-right">{analysis.fit_evaluation}</dd></div>}
-                    {analysis.occasion_alignment && <div className="flex justify-between gap-4 border-b border-zinc-800/80 pb-2"><dt className="text-zinc-500">Occasion</dt><dd className="text-zinc-200 text-right">{analysis.occasion_alignment}</dd></div>}
-                    {analysis.seasonal_match && <div className="flex justify-between gap-4 border-b border-zinc-800/80 pb-2"><dt className="text-zinc-500">Season</dt><dd className="text-zinc-200 text-right">{analysis.seasonal_match}</dd></div>}
+                    {analysis.fit_evaluation && <div className="flex justify-between gap-4 border-b border-[#D0CEC8]/80 pb-2"><dt className="text-[#888]">Fit</dt><dd className="text-[#0D0D0D] text-right">{analysis.fit_evaluation}</dd></div>}
+                    {analysis.occasion_alignment && <div className="flex justify-between gap-4 border-b border-[#D0CEC8]/80 pb-2"><dt className="text-[#888]">Occasion</dt><dd className="text-[#0D0D0D] text-right">{analysis.occasion_alignment}</dd></div>}
+                    {analysis.seasonal_match && <div className="flex justify-between gap-4 border-b border-[#D0CEC8]/80 pb-2"><dt className="text-[#888]">Season</dt><dd className="text-[#0D0D0D] text-right">{analysis.seasonal_match}</dd></div>}
                   </dl>
                   {analysis.expert_feedback && (
-                    <div className="mt-5 pt-4 border-t border-zinc-800">
-                      <p className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-2">Tips for {event}</p>
-                      <div className="rounded-xl bg-zinc-800/50 border border-zinc-700/80 px-4 py-3">
-                        <p className="text-sm text-zinc-200 leading-relaxed">{analysis.expert_feedback}</p>
+                    <div className="mt-5 pt-4 border-t border-[#D0CEC8]">
+                      <p className="text-xs font-medium text-[#888] uppercase tracking-wider mb-2">Tips for {event}</p>
+                      <div className="rounded-xl bg-[#E8E6E0] border border-[#D0CEC8] px-4 py-3">
+                        <p className="text-sm text-[#0D0D0D] leading-relaxed">{analysis.expert_feedback}</p>
                       </div>
                     </div>
                   )}
                   {Array.isArray(analysis.upgrade_suggestions) && analysis.upgrade_suggestions.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-zinc-800">
-                      <p className="text-xs text-zinc-500 mb-2">Suggestions</p>
+                    <div className="mt-4 pt-4 border-t border-[#D0CEC8]">
+                      <p className="text-xs text-[#888] mb-2">Suggestions</p>
                       <div className="flex flex-wrap gap-2">
                         {analysis.upgrade_suggestions.map((s, i) => (
-                          <span key={i} className="text-xs px-3 py-1.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">
+                          <span key={i} className="text-xs px-3 py-1.5 rounded-full bg-[#E8E6E0] text-[#0D0D0D] border border-[#D0CEC8]">
                             {s}
                           </span>
                         ))}
@@ -566,30 +606,33 @@ export default function Mirror() {
             )}
 
             {newItems.length > 0 && (
-              <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 overflow-hidden">
-                <div className="px-4 py-3 border-b border-zinc-800 flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-zinc-500" />
-                  <span className="text-sm font-medium text-zinc-400">Detected items</span>
+              <section className="sw-card overflow-hidden">
+                <div className="px-4 py-3 border-b border-[#D0CEC8] flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-[#888]" />
+                  <span className="text-sm font-medium text-[#888]">Detected items</span>
                 </div>
                 <ul className="p-4 space-y-3">
                   {newItems.map((item, i) => (
-                    <li key={i} className="py-2 border-b border-zinc-800/80 last:border-0 last:pb-0">
-                      <p className="text-sm font-medium text-white">{item.name || 'Unnamed'}</p>
-                      <p className="text-xs text-zinc-500">{item.category} · {item.primary_color}{item.style_category ? ` · ${item.style_category}` : ''}</p>
+                    <li key={i} className="py-2 border-b border-[#D0CEC8]/80 last:border-0 last:pb-0">
+                      <p className="text-sm font-medium text-[#0D0D0D]">{item.name || 'Unnamed'}</p>
+                      <p className="text-xs text-[#888]">
+                        {typeToEnglish(item.category)} · {colorToEnglish(item.primary_color)}
+                        {item.style_category ? ` · ${item.style_category}` : ''}
+                      </p>
                       {item.recommend_add_to_database && <span className="text-xs text-emerald-500 mt-1 block">Recommended to add to wardrobe</span>}
                     </li>
                   ))}
                 </ul>
-                <p className="px-4 pb-4 text-xs text-zinc-500">Use Classify ViT + Add to wardrobe to save.</p>
+                <p className="px-4 pb-4 text-xs text-[#888]">Use Classify ViT + Add to wardrobe to save.</p>
               </section>
             )}
 
             <div>
-              <button onClick={() => setShowRawJson((v) => !v)} className="text-sm text-zinc-500 hover:text-zinc-300 flex items-center gap-1">
+              <button onClick={() => setShowRawJson((v) => !v)} className="sw-btn sw-btn-ghost sw-btn-sm flex items-center gap-1">
                 {showRawJson ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 JSON
               </button>
-              {showRawJson && <pre className="mt-2 p-4 rounded border border-zinc-800 bg-zinc-900 text-zinc-400 text-xs overflow-auto max-h-80 font-mono">{JSON.stringify(result, null, 2)}</pre>}
+              {showRawJson && <pre className="mt-2 p-4 rounded border border-[#D0CEC8] bg-[#E8E6E0] text-[#0D0D0D] text-xs overflow-auto max-h-80 font-mono">{JSON.stringify(result, null, 2)}</pre>}
             </div>
           </div>
         )}

@@ -12,7 +12,7 @@ const PrendaModal = ({ prenda, label, onClose }) => {
   }
 
   const imagenUrl = getImageUrl(prenda.imagen_url)
-  const nombre = prenda.clase_nombre || 'Prenda'
+  const nombre = prenda.clase_nombre || 'Garment'
   const color = prenda.color && prenda.color !== 'desconocido' ? prenda.color : null
 
   return (
@@ -29,13 +29,13 @@ const PrendaModal = ({ prenda, label, onClose }) => {
               className="w-full h-full object-contain"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">Sin imagen</div>
+            <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">No image</div>
           )}
           <button
             type="button"
             onClick={onClose}
             className="absolute top-3 right-3 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
-            aria-label="Cerrar"
+            aria-label="Close"
           >
             ×
           </button>
@@ -48,13 +48,13 @@ const PrendaModal = ({ prenda, label, onClose }) => {
         <div className="p-5">
           <h3 className="text-lg font-semibold text-slate-900 capitalize">{nombre}</h3>
           {color && <p className="text-slate-600 mt-1 capitalize">Color: {color}</p>}
-          <p className="text-slate-500 text-sm mt-1">Categoría: {label || '—'}</p>
+          <p className="text-slate-500 text-sm mt-1">Category: {label || '—'}</p>
           <Link
             to="/prendas"
             className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 transition-colors"
             onClick={onClose}
           >
-            Ver en Mis Prendas →
+            View in My Garments →
           </Link>
         </div>
       </div>

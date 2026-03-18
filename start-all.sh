@@ -57,12 +57,15 @@ fi
 ML_VENV_PYTHON="$ML_DIR/venv/bin/python3.11"
 [ ! -x "$ML_VENV_PYTHON" ] && ML_VENV_PYTHON="$ML_DIR/venv/bin/python"
 export ML_CNN_PATH="${ML_CNN_PATH:-$ML_DIR/modelo_ropa.h5}"
-# Preferir el modelo ViT nuevo si existe en tu máquina.
+
+# ViT: forzar SIEMPRE el modelo solicitado (sin fallback a otros modelos).
 DEFAULT_USER_VIT="/Users/alvaromartin-pena/Desktop/vit_fashion_outputs/best_model_17_marzo.keras"
-if [ -z "${ML_VIT_PATH:-}" ] && [ -f "$DEFAULT_USER_VIT" ]; then
+if [ -f "$DEFAULT_USER_VIT" ]; then
   export ML_VIT_PATH="$DEFAULT_USER_VIT"
 else
-  export ML_VIT_PATH="${ML_VIT_PATH:-$ML_DIR/vision_transformer_fashion_model.keras}"
+  echo -e "${YELLOW}ML: ERROR — no se encontró: $DEFAULT_USER_VIT${NC}"
+  echo -e "${YELLOW}Copia/ubica el archivo best_model_17_marzo.keras y vuelve a ejecutar ./start-all.sh${NC}"
+  exit 1
 fi
 
 if [ ! -x "$ML_VENV_PYTHON" ]; then

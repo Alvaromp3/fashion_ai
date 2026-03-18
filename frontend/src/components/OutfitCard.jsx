@@ -35,14 +35,6 @@ const OutfitCard = ({ outfit, onDelete, onPrendaClick, showPuntuacion = true, sh
   const explicaciones = outfit.explicaciones || []
   const placeholderImg = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect width="200" height="200" fill="%23f1f5f9"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%2394a3b8" font-size="12"%3ENo img%3C/text%3E%3C/svg%3E'
 
-  const categoryStyles = {
-    Top: 'border-l-sky-500 bg-sky-500/5',
-    Pullover: 'border-l-violet-500 bg-violet-500/5',
-    Bottom: 'border-l-emerald-500 bg-emerald-500/5',
-    Shoes: 'border-l-amber-500 bg-amber-500/5',
-    Coat: 'border-l-slate-500 bg-slate-500/5'
-  }
-
   const pieces = [
     superior && { item: superior, label: 'Top' },
     superiorSecundario && { item: superiorSecundario, label: 'Pullover' },
@@ -53,15 +45,26 @@ const OutfitCard = ({ outfit, onDelete, onPrendaClick, showPuntuacion = true, sh
 
   const ItemBlock = ({ item, label, onClick }) => {
     if (!item?.imagen_url) return null
-    const style = categoryStyles[label] || 'border-l-slate-400 bg-slate-500/5'
     const Wrapper = onClick ? 'button' : 'div'
+    const accentByLabel = {
+      Top: 'var(--sw-accent2)',
+      Pullover: '#7C3AED',
+      Bottom: '#00A550',
+      Shoes: 'var(--sw-accent)',
+      Coat: 'var(--sw-black)',
+    }
+    const accent = accentByLabel[label] || 'var(--sw-border)'
     return (
       <Wrapper
         type={onClick ? 'button' : undefined}
         onClick={onClick}
-        className={`group flex flex-col rounded-xl border-l-4 ${style} p-3 transition-all duration-300 hover:shadow-md text-left ${onClick ? 'cursor-pointer' : ''}`}
+        className={`group flex flex-col rounded-xl border border-[#D0CEC8] bg-white p-3 transition-all duration-300 hover:shadow-md text-left ${onClick ? 'cursor-pointer' : ''}`}
+        style={{ borderLeft: `4px solid ${accent}` }}
       >
-        <div className="relative w-full aspect-square max-w-[100px] mx-auto rounded-lg overflow-hidden ring-1 ring-slate-200/80 bg-slate-50 group-hover:ring-slate-300 transition-all">
+        <div
+          className="relative w-full aspect-square max-w-[100px] mx-auto rounded-lg overflow-hidden bg-white border transition-all"
+          style={{ borderColor: accent }}
+        >
           <img
             src={getImageUrl(item.imagen_url)}
             alt={label}
@@ -72,10 +75,10 @@ const OutfitCard = ({ outfit, onDelete, onPrendaClick, showPuntuacion = true, sh
             }}
           />
         </div>
-        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase tracking-widest">{label}</p>
-        <p className="text-xs font-medium text-slate-700 truncate capitalize" title={item.clase_nombre}>{item.clase_nombre || '—'}</p>
+        <p className="sw-label mt-2" style={{ fontSize: '0.6rem', color: accent }}>{label}</p>
+        <p className="text-xs font-medium text-[#0D0D0D] truncate capitalize" title={item.clase_nombre}>{item.clase_nombre || '—'}</p>
         {item.color && item.color !== 'desconocido' && (
-          <p className="text-xs text-slate-500 capitalize">{item.color}</p>
+          <p className="text-xs text-[#888] capitalize">{item.color}</p>
         )}
       </Wrapper>
     )
@@ -84,10 +87,10 @@ const OutfitCard = ({ outfit, onDelete, onPrendaClick, showPuntuacion = true, sh
   const puntuacion = outfit.puntuacion != null ? Number(outfit.puntuacion) : null
   const ocasionChip = explicaciones.find(t => t.startsWith('Perfect for '))?.replace('Perfect for ', '').replace(' occasion', '') || null
   const estiloChips = explicaciones.filter(t => ['Minimalist and elegant style', 'Colorful and vibrant look', 'Elegant and sophisticated combination', 'Modern and current look'].includes(t)).map(t => {
-    if (t.includes('Minimalist')) return 'Minimalista'
-    if (t.includes('Colorful')) return 'Colorido'
-    if (t.includes('Elegant')) return 'Elegante'
-    if (t.includes('Modern')) return 'Moderno'
+    if (t.includes('Minimalist')) return 'Minimalist'
+    if (t.includes('Colorful')) return 'Colorful'
+    if (t.includes('Elegant')) return 'Elegant'
+    if (t.includes('Modern')) return 'Modern'
     return t
   })
   const showHeader = onDelete || explicaciones.length > 0 || puntuacion != null || ocasionChip || estiloChips.length > 0
@@ -96,31 +99,31 @@ const OutfitCard = ({ outfit, onDelete, onPrendaClick, showPuntuacion = true, sh
   const restTags = explicaciones.filter(t => t !== titleTag && !t.startsWith('Perfect for ') && !stylePhrases.includes(t)).slice(0, 3)
 
   return (
-    <div className="bg-gradient-to-b from-white to-slate-50/80 rounded-2xl overflow-hidden border border-slate-200/90 shadow-sm hover:shadow-lg hover:border-slate-300 transition-all duration-300">
+    <div className="sw-card rounded-2xl overflow-hidden border-[#D0CEC8]">
       {showHeader && (
-        <div className="px-5 pt-4 pb-3 border-b border-slate-100 space-y-2">
+        <div className="px-5 pt-4 pb-3 border-b border-[#D0CEC8] space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2">
               {puntuacion != null && showPuntuacion && (
-                <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200">
+                <span className="sw-badge sw-badge-green">
                   Match {Math.round(puntuacion)}%
                 </span>
               )}
               {ocasionChip && (
-                <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-sky-100 text-sky-800 text-xs font-medium capitalize border border-sky-200">
+                <span className="sw-badge sw-badge-red">
                   {ocasionChip}
                 </span>
               )}
               {estiloChips.map((s, i) => (
-                <span key={i} className="inline-flex items-center px-2.5 py-1 rounded-full bg-violet-100 text-violet-800 text-xs font-medium border border-violet-200">
+                <span key={i} className="sw-badge sw-badge-black">
                   {s}
                 </span>
               ))}
               {titleTag && (
-                <span className="text-sm font-semibold text-slate-800">{titleTag}</span>
+                <span className="sw-label" style={{ fontSize: '0.65rem' }}>{titleTag}</span>
               )}
               {restTags.map((text, i) => (
-                <span key={i} className="inline-block px-2.5 py-1 text-xs font-medium text-slate-600 bg-slate-100 rounded-full border border-slate-200/80">
+                <span key={i} className="sw-badge" style={{ background: 'transparent' }}>
                   {text}
                 </span>
               ))}
@@ -129,10 +132,11 @@ const OutfitCard = ({ outfit, onDelete, onPrendaClick, showPuntuacion = true, sh
               <button
                 type="button"
                 onClick={handleDelete}
-                className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                className="sw-btn sw-btn-ghost sw-btn-sm"
                 aria-label="Delete outfit"
+                style={{ width: 44, height: 44, padding: 0, borderRadius: 12 }}
               >
-                <FaTrash className="text-sm" />
+                <FaTrash className="text-[#0D0D0D]" />
               </button>
             )}
           </div>
@@ -152,17 +156,17 @@ const OutfitCard = ({ outfit, onDelete, onPrendaClick, showPuntuacion = true, sh
         </div>
 
         {showPorQueCombina && explicaciones.length > 0 && (
-          <div className="mt-4 border-t border-slate-100 pt-3">
+          <div className="mt-4 border-t border-[#D0CEC8] pt-3">
             <button
               type="button"
               onClick={() => setPorQueOpen(!porQueOpen)}
-              className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-800 w-full"
+              className="flex items-center gap-2 text-sm font-medium text-[#0D0D0D] hover:text-[#FF3B00] w-full transition-colors"
             >
               {porQueOpen ? <FaChevronUp className="text-xs" /> : <FaChevronDown className="text-xs" />}
-              Ver por qué combina
+              See why it matches
             </button>
             {porQueOpen && (
-              <ul className="mt-2 space-y-1 text-xs text-slate-600 pl-5 list-disc">
+              <ul className="mt-2 space-y-1 text-xs text-[#0D0D0D] pl-5 list-disc">
                 {explicaciones.map((text, i) => (
                   <li key={i}>{text}</li>
                 ))}

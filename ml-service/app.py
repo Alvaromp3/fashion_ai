@@ -29,14 +29,16 @@ _ML_DIR = os.path.dirname(os.path.abspath(__file__))
 # CNN (opcional) y ViT. Se pueden fijar con ML_CNN_PATH y ML_VIT_PATH.
 _DEFAULT_CNN = os.path.join(_ML_DIR, "modelo_ropa.h5")
 _DEFAULT_VIT = os.path.join(_ML_DIR, "vision_transformer_fashion_model.keras")
-CNN_MODEL_PATH = os.path.abspath(os.environ.get("ML_CNN_PATH", _DEFAULT_CNN))
-VIT_MODEL_PATH = os.path.abspath(os.environ.get("ML_VIT_PATH", _DEFAULT_VIT))
 
-# Fallbacks: si el env apunta a algo que no existe, usar los defaults del directorio.
+# ViT: forzamos el modelo solicitado por el usuario.
+# Nota: si no existe, el servicio de ML quedará en modo "ViT no disponible" (sin fallback a otros modelos).
+_DEFAULT_USER_VIT = "/Users/alvaromartin-pena/Desktop/vit_fashion_outputs/best_model_17_marzo.keras"
+CNN_MODEL_PATH = os.path.abspath(os.environ.get("ML_CNN_PATH", _DEFAULT_CNN))
+VIT_MODEL_PATH = os.path.abspath(os.environ.get("ML_VIT_PATH", _DEFAULT_USER_VIT))
+
+# Fallbacks solo para CNN (opcional).
 if not os.path.exists(CNN_MODEL_PATH):
     CNN_MODEL_PATH = os.path.abspath(_DEFAULT_CNN)
-if not os.path.exists(VIT_MODEL_PATH):
-    VIT_MODEL_PATH = os.path.abspath(_DEFAULT_VIT)
 
 
 def load_model():

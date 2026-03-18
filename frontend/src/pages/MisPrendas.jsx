@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FaFilter, FaUpload } from 'react-icons/fa'
+import { FaUpload } from 'react-icons/fa'
 import axios from 'axios'
 import PrendaCard from '../components/PrendaCard'
 import UploadModal from '../components/UploadModal'
@@ -30,7 +30,7 @@ const MisPrendas = () => {
       const healthRes = await axios.get('/api/health', { timeout: 4000 }).catch(() => null)
       if (!healthRes || !healthRes.data) {
         setPrendas([])
-        setFetchError('El backend no responde (puerto 4000). Ejecuta ./stop-all.sh y luego ./start-all.sh desde la raíz del proyecto. Si sigue fallando, revisa logs/backend.log.')
+        setFetchError('The backend is not responding (port 4000). Run ./stop-all.sh and then ./start-all.sh from the project root. If it keeps failing, check logs/backend.log.')
         setLoading(false)
         return
       }
@@ -41,8 +41,8 @@ const MisPrendas = () => {
       setPrendas([])
       setFetchError(
         error.code === 'ECONNABORTED'
-          ? 'Timeout. Backend o MongoDB lentos. Comprueba que el backend esté en marcha (./start-all.sh) y que MongoDB Atlas sea accesible. Revisa logs/backend.log.'
-          : 'No se pudieron cargar las prendas. Comprueba que el backend esté corriendo y que backend/.env tenga MONGODB_URI correcto.'
+          ? 'Timeout. Backend or MongoDB is slow. Make sure the backend is running (./start-all.sh) and that MongoDB Atlas is accessible. Check logs/backend.log.'
+          : 'Could not load garments. Make sure the backend is running and backend/.env has the correct MONGODB_URI.'
       )
     } finally {
       setLoading(false)
@@ -72,79 +72,104 @@ const MisPrendas = () => {
     setShowEditModal(true)
   }
 
-  const tipos = ['all', 'superior', 'inferior', 'zapatos', 'abrigo', 'vestido']
+  const FILTERS = [
+    { value: 'all', label: 'All' },
+    { value: 'superior', label: 'Top' },
+    { value: 'inferior', label: 'Bottom' },
+    { value: 'zapatos', label: 'Shoes' },
+    { value: 'abrigo', label: 'Coat' },
+    { value: 'vestido', label: 'Dress' },
+  ]
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-screen" style={{ background: 'var(--content-bg)' }}>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
-        <h1 className="text-3xl font-bold text-slate-100 mb-4 sm:mb-0">
-          My Garments
-        </h1>
-        <button
-          type="button"
-          onClick={() => setShowUploadModal(true)}
-          className="bg-white text-slate-900 px-6 py-3 rounded-xl font-semibold hover:bg-slate-100 transition-colors flex items-center space-x-2 shadow-lg"
-        >
-          <FaUpload />
-          <span>Upload Garment</span>
-        </button>
-      </div>
+    <div className="min-h-screen sw-light" style={{ background: 'var(--sw-white)' }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-      <div className="mb-6 flex flex-wrap gap-2 items-center">
-        <FaFilter className="text-slate-400 mt-0.5" aria-hidden />
-        {tipos.map((tipo) => (
-          <button
-            key={tipo}
-            type="button"
-            onClick={() => setSelectedFilter(tipo)}
-            className={`px-4 py-2.5 rounded-xl font-medium transition-all border-2 ${
-              selectedFilter === tipo
-                ? 'bg-white text-slate-900 border-white shadow-md'
-                : 'bg-slate-600/80 text-slate-200 border-slate-500 hover:bg-slate-500 hover:text-white'
-            }`}
-          >
-            {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
-          </button>
-        ))}
-      </div>
-
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-2 border-slate-500 border-t-slate-200"></div>
-        </div>
-      ) : fetchError ? (
-        <div className="dashboard-card text-center py-12 rounded-xl border border-slate-500 shadow-sm">
-          <p className="text-red-300 mb-2">{fetchError}</p>
-          <button
-            type="button"
-            onClick={fetchPrendas}
-            className="mt-2 px-4 py-2 bg-white text-slate-900 rounded-xl font-semibold hover:bg-slate-100"
-          >
-            Retry
-          </button>
-        </div>
-      ) : filteredPrendas.length === 0 ? (
-        <div className="dashboard-card text-center py-12 rounded-xl border border-slate-500 shadow-sm">
-          <p className="text-slate-400">
-            {selectedFilter === 'all'
-              ? 'No garments yet. Upload your first garment!'
-              : `No garments of type "${selectedFilter}"`}
+        {/* ── PAGE HEADER ── */}
+        <div className="pb-6 mb-10 border-b border-[#0D0D0D]">
+          <p className="sw-label text-[#FF3B00] mb-2">— WARDROBE</p>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+            <h1 className="sw-display" style={{ fontSize: 'clamp(2.3rem, 6vw, 4.4rem)' }}>
+              MY GARMENTS
+            </h1>
+            <button
+              type="button"
+              onClick={() => setShowUploadModal(true)}
+              className="sw-btn sw-btn-primary sw-btn-lg"
+            >
+              <FaUpload />
+              UPLOAD
+            </button>
+          </div>
+          <p className="sw-label text-[#888] mt-3">
+            {filteredPrendas.length} PIECES
           </p>
         </div>
-      ) : (
-        <div className="perspective-3d grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredPrendas.map((prenda) => (
-            <PrendaCard
-              key={prenda._id}
-              prenda={prenda}
-              onDelete={handleDelete}
-              onEdit={handleEdit}
-            />
-          ))}
-        </div>
-      )}
 
-      {showUploadModal && (
+        {/* ── FILTERS ── */}
+        <div className="chip-row mt-0 mb-8">
+          {FILTERS.map((f) => {
+            const active = selectedFilter === f.value
+            return (
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => setSelectedFilter(f.value)}
+                className={`sw-chip ${active ? 'active' : ''}`}
+              >
+                {f.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* ── CONTENT ── */}
+        <div>
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="inline-block w-12 h-12 rounded-full border-2 border-[#D0CEC8] border-t-[#0D0D0D] animate-spin" />
+            </div>
+          ) : fetchError ? (
+            <div className="sw-card text-center py-12 px-6 rounded-2xl border border-[#FF3B00]">
+              <p className="text-[#FF3B00] mb-2 text-sm">{fetchError}</p>
+              <button
+                type="button"
+                onClick={fetchPrendas}
+                className="sw-btn sw-btn-primary sw-btn-sm mt-4"
+              >
+                Retry
+              </button>
+            </div>
+          ) : filteredPrendas.length === 0 ? (
+            <div className="sw-card text-center py-16 px-6 rounded-2xl border border-dashed border-[#D0CEC8]">
+              <p className="sw-heading text-[#D0CEC8]" style={{ fontSize: '3rem' }}>EMPTY</p>
+              <p className="sw-label text-[#888] mt-3">
+                {selectedFilter === 'all'
+                  ? 'NO GARMENTS YET'
+                  : `NO ${(FILTERS.find((f) => f.value === selectedFilter)?.label ?? selectedFilter).toUpperCase()} GARMENTS FOUND`}
+              </p>
+              <button
+                className="sw-btn sw-btn-ghost sw-btn-sm mt-6"
+                onClick={() => setSelectedFilter('all')}
+                type="button"
+              >
+                CLEAR FILTER
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+              {filteredPrendas.map((prenda) => (
+                <PrendaCard
+                  key={prenda._id}
+                  prenda={prenda}
+                  onDelete={handleDelete}
+                  onEdit={handleEdit}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+        {showUploadModal && (
         <UploadModal
           onClose={() => setShowUploadModal(false)}
           onSuccess={() => {
@@ -168,6 +193,7 @@ const MisPrendas = () => {
           }}
         />
       )}
+      </div>
     </div>
   )
 }

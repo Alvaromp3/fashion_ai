@@ -180,7 +180,7 @@ const MisOutfits = () => {
 
         const tryShare = () => {
           if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-            return navigator.share({ files: [file], title: 'Outfit Fashion AI', text: 'Mi outfit recomendado' }).then(() => true).catch(() => false)
+            return navigator.share({ files: [file], title: 'Outfit Fashion AI', text: 'Recommended outfit' }).then(() => true).catch(() => false)
           }
           return Promise.resolve(false)
         }
@@ -241,42 +241,34 @@ const MisOutfits = () => {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--content-bg)' }}>
+    <div className="min-h-screen sw-light" style={{ background: 'var(--sw-white)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="mb-10">
-          <h1 className="text-4xl font-bold text-slate-100 mb-2 tracking-tight">
+          <h1 className="text-4xl font-bold text-[#0D0D0D] mb-2 tracking-tight sw-heading">
             My Outfits
           </h1>
-          <p className="text-slate-400">
+          <p className="text-sm text-[#888]">
             Get outfit ideas from your wardrobe. Use preferences to match occasion and style.
           </p>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 p-1.5 bg-slate-600/80 rounded-xl w-fit mb-8 border border-slate-500">
+        <div className="sw-tabs w-fit mb-8">
           <button
             type="button"
             onClick={() => setActiveTab('recomendaciones')}
-            className={`px-6 py-3 rounded-lg font-medium text-sm transition-all ${
-              activeTab === 'recomendaciones'
-                ? 'bg-white text-slate-900 shadow-md'
-                : 'text-slate-200 hover:text-white hover:bg-slate-500/50'
-            }`}
+            className={`sw-tab ${activeTab === 'recomendaciones' ? 'active' : ''}`}
           >
             Recommendations
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('guardados')}
-            className={`px-6 py-3 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${
-              activeTab === 'guardados'
-                ? 'bg-white text-slate-900 shadow-md'
-                : 'text-slate-200 hover:text-white hover:bg-slate-500/50'
-            }`}
+            className={`sw-tab ${activeTab === 'guardados' ? 'active' : ''}`}
           >
             Saved
             {outfits.length > 0 && (
-              <span className="px-2 py-0.5 text-xs font-semibold bg-slate-500 text-white rounded-full">
+              <span className="sw-badge sw-badge-solid" style={{ marginLeft: 10 }}>
                 {outfits.length}
               </span>
             )}
@@ -289,15 +281,15 @@ const MisOutfits = () => {
               type="button"
               onClick={() => setShowSurpriseChoice(true)}
               disabled={generating}
-              className="flex-1 min-w-[180px] bg-white text-slate-900 px-6 py-4 rounded-xl font-semibold hover:bg-slate-100 transition-all shadow-lg hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 min-w-[180px] sw-btn sw-btn-outline sw-btn-lg"
             >
-              <FaStar className="text-slate-600" />
+              <FaStar />
               <span>Surprise Me</span>
             </button>
             <button
               type="button"
               onClick={() => setShowPreferencias(true)}
-              className="bg-slate-600 text-slate-100 px-6 py-4 rounded-xl font-medium hover:bg-slate-500 border-2 border-slate-500 flex items-center gap-2"
+              className="sw-btn sw-btn-ghost sw-btn-lg"
             >
               <FaCog />
               <span>Preferences</span>
@@ -306,7 +298,7 @@ const MisOutfits = () => {
               type="button"
               onClick={() => handleGenerate(lastPreferences ?? {})}
               disabled={generating}
-              className="bg-slate-500 text-white px-6 py-4 rounded-xl font-medium hover:bg-slate-400 border-2 border-slate-400 disabled:opacity-60 flex items-center gap-2"
+              className="sw-btn sw-btn-primary sw-btn-lg"
             >
               <FaMagic />
               <span>Generate</span>
@@ -389,8 +381,8 @@ const MisOutfits = () => {
 
             {generating ? (
               <div>
-                <p className="text-slate-400 mb-6 flex items-center gap-2">
-                  <span className="inline-block w-2 h-2 rounded-full bg-slate-400 animate-pulse" />
+                <p className="text-[#888] mb-6 flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 rounded-full bg-[#888] animate-pulse" />
                   Combining your pieces…
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -402,17 +394,17 @@ const MisOutfits = () => {
             ) : recommendations.length > 0 ? (
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                  <h2 className="text-xl font-semibold text-white">Your recommendations</h2>
+                  <h2 className="text-xl font-semibold text-[#0D0D0D]">Your recommendations</h2>
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
                       onClick={() => setFilterFavoritos(f => !f)}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${filterFavoritos ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50' : 'bg-slate-600/50 text-slate-300 border border-slate-500 hover:bg-slate-500/50'}`}
+                      className={`sw-btn sw-btn-ghost sw-btn-sm flex items-center gap-2 ${filterFavoritos ? 'sw-btn-accent' : ''}`}
                     >
                       <FaHeart className="text-sm" />
-                      Favoritos
+                      Favorites
                     </button>
-                    <span className="text-sm text-slate-400">{recommendations.length} outfit{recommendations.length !== 1 ? 's' : ''}</span>
+                    <span className="text-sm text-[#888]">{recommendations.length} outfit{recommendations.length !== 1 ? 's' : ''}</span>
                   </div>
                 </div>
 
@@ -425,19 +417,16 @@ const MisOutfits = () => {
                   const isJustSavedFeat = savedId === outfitIdFeatured
                   return (
                     <div className="mb-8 animate-fade-in">
-                      <p className="text-sm font-medium text-slate-400 mb-3 uppercase tracking-wide">Recomendación del día</p>
-                      <div ref={featuredCardRef} data-outfit-card className="dashboard-card rounded-2xl border-2 border-amber-500/40 overflow-hidden shadow-lg bg-gradient-to-b from-slate-700/60 to-slate-800/60">
+                      <p className="text-sm font-medium text-[#888] mb-3 uppercase tracking-wide">Recommendation of the day</p>
+                      <div ref={featuredCardRef} data-outfit-card className="sw-card rounded-2xl border-2 border-[#D0CEC8] overflow-hidden shadow-sm">
                         <OutfitCard outfit={featured} onPrendaClick={(prenda, label) => setSelectedPrenda({ prenda, label })} showPuntuacion showPorQueCombina />
-                        <div className="p-5 border-t border-slate-600/80 bg-slate-800/40 flex flex-wrap gap-2">
+                        <div className="p-5 border-t border-[#D0CEC8] bg-white flex flex-wrap gap-2">
                           <button
                             type="button"
                             onClick={() => handleSaveOutfit(featured)}
-                            className={`flex-1 min-w-[140px] py-3.5 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
-                              isJustSavedFeat ? 'bg-emerald-600 text-white cursor-default' : 'bg-white text-slate-900 hover:bg-slate-100 shadow-sm'
-                            }`}
+                            className={`flex-1 min-w-[140px] sw-btn sw-btn-sm flex items-center justify-center gap-2 ${isJustSavedFeat ? 'sw-btn-outline' : 'sw-btn-primary'}`}
                           >
-                            <FaSave className={isJustSavedFeat ? 'text-emerald-200' : ''} />
-                            {isJustSavedFeat ? 'Guardado' : 'Guardar'}
+                            {isJustSavedFeat ? 'Saved' : 'Save'}
                           </button>
                           <button
                             type="button"
@@ -446,9 +435,9 @@ const MisOutfits = () => {
                               handleShare(featured, featuredIndex, card)
                             }}
                             disabled={shareLoading}
-                            className="px-4 py-3.5 rounded-xl font-medium bg-slate-600 text-slate-200 hover:bg-slate-500 flex items-center gap-2 disabled:opacity-70"
+                            className="sw-btn sw-btn-outline sw-btn-sm flex items-center gap-2 disabled:opacity-70"
                           >
-                            <FaShareAlt /> {shareFeedback === featuredIndex ? '¡Descargado!' : shareLoading ? 'Generando…' : 'Compartir imagen'}
+                            <FaShareAlt /> {shareFeedback === featuredIndex ? 'Downloaded!' : shareLoading ? 'Generating…' : 'Share image'}
                           </button>
                         </div>
                       </div>
@@ -457,7 +446,7 @@ const MisOutfits = () => {
                 })()}
 
                 {filterFavoritos && favorites.filter(id => recommendations.some(o => getOutfitId(o) === id)).length === 0 && (
-                  <p className="text-slate-400 mb-4">Aún no tienes favoritos. Pulsa el corazón en una recomendación.</p>
+                  <p className="text-slate-400 mb-4">You don’t have favorites yet. Tap the heart on a recommendation.</p>
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -474,23 +463,23 @@ const MisOutfits = () => {
                           key={realIndex}
                           ref={(el) => { cardRefs.current[realIndex] = el }}
                           data-outfit-card
-                          className="relative animate-fade-in dashboard-card rounded-2xl border border-slate-600/80 overflow-hidden shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 bg-gradient-to-b from-slate-700/50 to-slate-800/50"
+                          className="relative animate-fade-in sw-card rounded-2xl border-[#D0CEC8] overflow-hidden shadow-sm"
                           style={{ animationDelay: `${index * 100}ms`, animationFillMode: 'backwards' }}
                         >
                           <div className="absolute top-3 right-3 z-10 flex gap-2">
                             <button
                               type="button"
                               onClick={() => toggleCompare(realIndex)}
-                              className={`p-2 rounded-lg transition-colors ${isCompareSelected ? 'bg-amber-500/80 text-white' : 'bg-slate-700/80 text-slate-300 hover:bg-slate-600'}`}
-                              title="Comparar"
+                              className={`w-10 h-10 border rounded-xl flex items-center justify-center transition-colors ${isCompareSelected ? 'border-[#FF3B00] text-[#0D0D0D]' : 'border-[#D0CEC8] bg-white text-[#888]'}`}
+                              title="Compare"
                             >
                               <FaBalanceScale className="text-sm" />
                             </button>
                             <button
                               type="button"
                               onClick={() => toggleFavorite(outfitId)}
-                              className={`p-2 rounded-lg transition-colors ${isFavorite ? 'text-rose-400' : 'text-slate-400 hover:text-rose-400'}`}
-                              title={isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+                              className={`w-10 h-10 border rounded-xl flex items-center justify-center transition-colors ${isFavorite ? 'border-[#FF3B00] text-[#0D0D0D]' : 'border-[#D0CEC8] bg-white text-[#888]'}`}
+                              title={isFavorite ? 'Remove favorite' : 'Add to favorites'}
                             >
                               <FaHeart className={isFavorite ? 'fill-current' : ''} />
                             </button>
@@ -501,8 +490,8 @@ const MisOutfits = () => {
                                 handleShare(outfit, realIndex, card)
                               }}
                               disabled={shareLoading}
-                              className="p-2 rounded-lg text-slate-400 hover:text-white bg-slate-700/80 hover:bg-slate-600 transition-colors disabled:opacity-70"
-                              title="Descargar imagen del outfit"
+                              className="w-10 h-10 border border-[#D0CEC8] rounded-xl flex items-center justify-center text-[#888] hover:text-[#0D0D0D] hover:border-[#0D0D0D] transition-colors disabled:opacity-70 bg-white"
+                              title="Download outfit image"
                             >
                               <FaShareAlt className="text-sm" />
                             </button>
@@ -513,16 +502,13 @@ const MisOutfits = () => {
                             showPuntuacion
                             showPorQueCombina
                           />
-                          <div className="p-5 border-t border-slate-600/80 bg-slate-800/40">
+                          <div className="p-5 border-t border-[#D0CEC8] bg-white">
                             <button
                               type="button"
                               onClick={() => handleSaveOutfit(outfit)}
-                              className={`w-full py-3.5 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2.5 ${
-                                isJustSaved ? 'bg-emerald-600 text-white cursor-default' : 'bg-white text-slate-900 hover:bg-slate-100 shadow-sm hover:shadow'
-                              }`}
+                              className={`w-full sw-btn sw-btn-sm flex items-center justify-center gap-2.5 ${isJustSaved ? 'sw-btn-outline' : 'sw-btn-primary'}`}
                             >
-                              <FaSave className={isJustSaved ? 'text-emerald-200' : ''} />
-                              <span>{isJustSaved ? 'Guardado' : 'Guardar outfit'}</span>
+                              <span>{isJustSaved ? 'Saved' : 'Save outfit'}</span>
                             </button>
                           </div>
                         </div>
@@ -536,28 +522,28 @@ const MisOutfits = () => {
                       type="button"
                       onClick={handleGenerateMore}
                       disabled={generating}
-                      className="px-6 py-3 rounded-xl font-medium bg-slate-600 text-slate-200 hover:bg-slate-500 border border-slate-500 disabled:opacity-60 flex items-center gap-2"
+                      className="sw-btn sw-btn-outline sw-btn-lg disabled:opacity-60 flex items-center gap-2"
                     >
                       <FaMagic />
-                      Ya vi estos; generar 3 más
+                      I’ve seen these; generate 3 more
                     </button>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="dashboard-card text-center py-20 px-6 rounded-2xl border border-slate-500 shadow-sm">
-                <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-slate-600 flex items-center justify-center">
-                  <FaMagic className="text-4xl text-slate-300" />
+              <div className="sw-card text-center py-20 px-6 rounded-2xl border-[#D0CEC8] shadow-sm mx-auto">
+                <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-white border border-[#D0CEC8] flex items-center justify-center">
+                  <FaMagic className="text-4xl text-[#0D0D0D]" />
                 </div>
-                <h3 className="text-xl font-semibold text-slate-100 mb-2">No recommendations yet</h3>
-                <p className="text-slate-400 max-w-md mx-auto mb-8">
+                <h3 className="text-xl font-semibold text-[#0D0D0D] mb-2">No recommendations yet</h3>
+                <p className="text-[#888] max-w-md mx-auto mb-8">
                   Click <strong>Surprise Me</strong> to get three outfit ideas, or set <strong>Preferences</strong> for occasion and style.
                 </p>
                 <button
                   type="button"
                   onClick={() => setShowSurpriseChoice(true)}
                   disabled={generating}
-                  className="bg-white text-slate-900 px-8 py-3 rounded-xl font-semibold hover:bg-slate-100 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+                  className="sw-btn sw-btn-outline sw-btn-lg disabled:opacity-50 inline-flex items-center gap-2"
                 >
                   <FaStar />
                   Surprise Me
@@ -575,36 +561,36 @@ const MisOutfits = () => {
                 <div className="w-10 h-10 border-2 border-slate-500 border-t-slate-200 rounded-full animate-spin" />
               </div>
             ) : outfits.length === 0 ? (
-              <div className="dashboard-card text-center py-20 px-6 rounded-2xl border border-slate-500 shadow-sm">
-                <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-slate-600 flex items-center justify-center">
-                  <FaSave className="text-4xl text-slate-300" />
+              <div className="sw-card text-center py-20 px-6 rounded-2xl border-[#D0CEC8] shadow-sm mx-auto">
+                <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-white border border-[#D0CEC8] flex items-center justify-center">
+                  <FaSave className="text-4xl text-[#0D0D0D]" />
                 </div>
-                <h3 className="text-xl font-semibold text-slate-100 mb-2">No saved outfits</h3>
-                <p className="text-slate-400 max-w-md mx-auto">
+                <h3 className="text-xl font-semibold text-[#0D0D0D] mb-2">No saved outfits</h3>
+                <p className="text-[#888] max-w-md mx-auto">
                   Save outfits you like from the Recommendations tab to find them here.
                 </p>
               </div>
             ) : (
               <div>
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold text-slate-100">Saved outfits</h2>
-                  <span className="text-sm text-slate-400">{outfits.length} outfit{outfits.length !== 1 ? 's' : ''}</span>
+                  <h2 className="text-xl font-semibold text-[#0D0D0D]">Saved outfits</h2>
+                  <span className="text-sm text-[#888]">{outfits.length} outfit{outfits.length !== 1 ? 's' : ''}</span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {outfits.map((outfit) => (
                     <div
                       key={outfit._id}
-                      className="dashboard-card rounded-2xl border border-slate-600/80 overflow-hidden shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 bg-gradient-to-b from-slate-700/50 to-slate-800/50"
+                      className="sw-card rounded-2xl border-[#D0CEC8] overflow-hidden shadow-sm"
                     >
                       <OutfitCard outfit={outfit} onDelete={fetchOutfits} onPrendaClick={(prenda, label) => setSelectedPrenda({ prenda, label })} />
-                      <div className="p-5 border-t border-slate-600/80 bg-slate-800/40">
+                      <div className="p-5 border-t border-[#D0CEC8] bg-white">
                         <button
                           type="button"
                           onClick={() => handleDelete(outfit._id)}
-                          className="w-full py-3.5 rounded-xl font-semibold text-red-200 bg-red-900/40 border border-red-500/50 hover:bg-red-800/50 hover:border-red-400/60 flex items-center justify-center gap-2 transition-all duration-200"
+                          className="w-full sw-btn sw-btn-ghost sw-btn-sm flex items-center justify-center gap-2"
                         >
                           <FaTrash />
-                          Eliminar
+                          Delete
                         </button>
                       </div>
                     </div>

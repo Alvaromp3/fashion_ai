@@ -10,9 +10,9 @@ const ML_UNAVAILABLE_HINT_PROD = 'ML is on a hosted Space (e.g. Hugging Face). T
 const SHOW_CLASSIFY_STEPS = true
 
 const CLASSIFY_STEPS = [
-  'Detectando prenda (YOLO)...',
-  'Recortando y preparando imagen...',
-  'Clasificando con el modelo...'
+  'Detecting garment (YOLO)...',
+  'Cropping and preparing the image...',
+  'Classifying with the model...'
 ]
 
 const UploadModal = ({ onClose, onSuccess }) => {
@@ -30,6 +30,27 @@ const UploadModal = ({ onClose, onSuccess }) => {
   const [mlHosted, setMlHosted] = useState(false) // from backend 503: ML is hosted (e.g. HF Space)
 
   const [vitReady, setVitReady] = useState(false)
+
+  const typeToEnglish = (raw) => {
+    if (raw == null || raw === '') return ''
+    const map = {
+      superior: 'TOP',
+      inferior: 'BOTTOM',
+      zapatos: 'SHOES',
+      abrigo: 'COAT',
+      vestido: 'DRESS',
+      bolso: 'BAG',
+      accesorio: 'ACCESSORY',
+      'joyería': 'JEWELRY',
+      joyeria: 'JEWELRY',
+      sombrero: 'HAT',
+      'cinturón': 'BELT',
+      cinturon: 'BELT',
+      gafas: 'GLASSES',
+    }
+    const s = String(raw).toLowerCase().trim()
+    return map[s] || String(raw).replace(/_/g, ' ').toUpperCase()
+  }
 
   const isLocalhost = typeof window !== 'undefined' && /^localhost$|^127\.0\.0\.1$/.test((window.location?.hostname || '').toLowerCase())
   const mlUnavailableHint = (mlHint != null && mlHint !== '') ? mlHint : ((mlHosted || !isLocalhost) ? ML_UNAVAILABLE_HINT_PROD : ML_UNAVAILABLE_HINT_LOCAL)
@@ -157,7 +178,7 @@ const UploadModal = ({ onClose, onSuccess }) => {
           canvas.toBlob(
             (blob) => {
               if (!blob) {
-                reject(new Error('No se pudo convertir la imagen a JPEG'))
+                reject(new Error('Could not convert the image to JPEG'))
                 return
               }
               const baseName = inputFile.name.replace(/\.[^/.]+$/, '')
@@ -172,7 +193,7 @@ const UploadModal = ({ onClose, onSuccess }) => {
         }
       }
       img.onerror = (e) => {
-        reject(new Error('No se pudo leer la imagen para conversión a JPEG'))
+        reject(new Error('Could not read the image for conversion to JPEG'))
       }
       img.src = URL.createObjectURL(inputFile)
     })
@@ -318,41 +339,50 @@ const UploadModal = ({ onClose, onSuccess }) => {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-large max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-100">
-        <div className="flex justify-between items-center p-6 border-b border-gray-100">
-          <h2 className="text-2xl font-semibold text-gray-900">Upload Garment</h2>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-lg">
-            <FaTimes className="text-lg" />
+    <div className="sw-modal-overlay p-4">
+      <div className="sw-modal max-w-2xl w-full">
+        <div className="p-6 border-b border-[#D0CEC8] flex justify-between items-center">
+          <div>
+            <p className="sw-label text-[#FF3B00] mb-2" style={{ fontSize: '0.6rem', marginBottom: 6 }}>— UPLOAD</p>
+            <h2 className="sw-heading" style={{ fontSize: '1.5rem' }}>Upload Garment</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-10 h-10 rounded-lg border border-[#D0CEC8] hover:border-[#0D0D0D] transition-colors bg-white flex items-center justify-center"
+            aria-label="Close"
+          >
+            <FaTimes className="text-[#0D0D0D]" />
           </button>
         </div>
 
         <div className="p-6 space-y-6">
-          <p className="text-sm text-gray-600 -mt-2">
+          <p className="text-sm text-[#888] -mt-2">
             Upload an image, classify it with AI (ViT), then save the garment to your wardrobe.
           </p>
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Select Image</label>
-            <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-gray-400 transition-colors bg-gray-50">
+            <label className="sw-label-field">Select Image</label>
+            <div className="drop-zone rounded-xl p-8 text-center bg-white">
               <input type="file" accept="image/*,.heic,.heif" onChange={handleFileChange} className="hidden" id="file-upload" />
               <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center space-y-2">
-                <FaUpload className="text-4xl text-gray-400" />
-                <span className="text-gray-600">{file ? file.name : 'Click or drag an image here'}</span>
+                <FaUpload className="text-4xl text-[#888]" />
+                <span className="text-[#0D0D0D]">{file ? file.name : 'Click or drag an image here'}</span>
               </label>
             </div>
           </div>
 
           {preview ? (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Preview</label>
-              <img src={preview} alt="Preview" className="max-w-full h-64 object-contain mx-auto rounded-lg border" />
+              <label className="sw-label-field">Preview</label>
+              <img src={preview} alt="Preview" className="max-w-full h-64 object-contain mx-auto rounded-xl border border-[#D0CEC8] bg-white" />
             </div>
           ) : file && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Selected File</label>
-              <div className="bg-gray-100 p-4 rounded-lg text-center">
-                <p className="text-gray-600">{file.name}</p>
-                <p className="text-sm text-gray-500 mt-2">
+              <label className="sw-label-field">Selected File</label>
+              <div className="border border-[#D0CEC8] bg-white p-4 rounded-xl text-center">
+                <p className="text-[#0D0D0D]">{file.name}</p>
+                <p className="text-sm text-[#888] mt-2">
                   Preview not available
                 </p>
               </div>
@@ -361,44 +391,38 @@ const UploadModal = ({ onClose, onSuccess }) => {
 
           {classification && (
             <>
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
+              <div className="border border-[#D0CEC8] bg-white rounded-xl p-5">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-gray-900">Classification:</h3>
+                  <h3 className="sw-label" style={{ fontSize: '0.65rem', marginBottom: 0 }}>CLASSIFICATION</h3>
                   {usedModel && (
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                      usedModel === 'vit'
-                        ? 'bg-purple-100 text-purple-800'
-                        : 'bg-purple-100 text-purple-800'
-                    }`}>
-                      {usedModel === 'vit' && <><FaBrain className="mr-1" />ViT</>}
+                    <span className="sw-badge sw-badge-green" style={{ padding: '4px 10px' }}>
+                      {usedModel === 'vit' && <><FaBrain className="mr-1" />VIT</>}
                     </span>
                   )}
                 </div>
                 {classification.model_file && (
-                  <p className="text-xs text-gray-500 mb-2">
+                  <p className="text-xs text-[#888] mb-2">
                     Model: {classification.model_file}
                   </p>
                 )}
                 {classification.yolo_detection && (
-                  <div className="mb-3 p-2.5 bg-slate-100 rounded-lg border border-slate-200">
-                    <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-1">YOLO detectó</p>
-                    <p className="text-sm text-slate-800">
+                  <div className="mb-3 p-2.5 bg-[#E8E6E0] rounded-lg border border-[#D0CEC8]">
+                    <p className="text-xs font-semibold text-[#0D0D0D] uppercase tracking-wide mb-1">YOLO detected</p>
+                    <p className="text-sm text-[#0D0D0D]">
                       <span className="font-medium">
-                        {classification.yolo_detection.tipo
-                          ? classification.yolo_detection.tipo.charAt(0).toUpperCase() + classification.yolo_detection.tipo.slice(1)
-                          : classification.yolo_detection.category}
+                        {typeToEnglish(classification.yolo_detection.tipo ?? classification.yolo_detection.category)}
                       </span>
                       {' '}({(classification.yolo_detection.confidence * 100).toFixed(1)}%)
                     </p>
                   </div>
                 )}
                 {classification.pipeline_steps && classification.pipeline_steps.length > 0 && (
-                  <div className="mb-3 p-2.5 bg-blue-50 rounded-lg border border-blue-100">
-                    <p className="text-xs font-semibold text-blue-800 uppercase tracking-wide mb-2">Pasos del pipeline</p>
-                    <ul className="text-xs text-blue-900 space-y-1">
+                  <div className="mb-3 p-2.5 bg-[#E8E6E0] rounded-lg border border-[#D0CEC8]">
+                    <p className="text-xs font-semibold text-[#0D0D0D] uppercase tracking-wide mb-2">Pipeline steps</p>
+                    <ul className="text-xs text-[#0D0D0D] space-y-1">
                       {classification.pipeline_steps.map((step, idx) => (
                         <li key={idx} className="flex items-start gap-1.5">
-                          <span className="text-blue-500 flex-shrink-0">{idx + 1}.</span>
+                          <span className="text-[#FF3B00] flex-shrink-0">{idx + 1}.</span>
                           <span>{step}</span>
                         </li>
                       ))}
@@ -406,18 +430,18 @@ const UploadModal = ({ onClose, onSuccess }) => {
                   </div>
                 )}
                 <div className="space-y-2 text-sm">
-                  <p className="text-gray-700"><span className="font-medium text-gray-900">Garment:</span> {classification.clase_nombre || 'unknown'}</p>
-                  <p className="text-gray-700"><span className="font-medium text-gray-900">Type:</span> {classification.tipo}</p>
-                  <p className="text-gray-700"><span className="font-medium text-gray-900">Color:</span> {classification.color}</p>
-                  <p className="text-gray-700"><span className="font-medium text-gray-900">Confidence:</span> {(classification.confianza * 100).toFixed(1)}%</p>
+                  <p className="text-[#0D0D0D]"><span className="font-medium text-[#0D0D0D]">Garment:</span> {classification.clase_nombre || 'unknown'}</p>
+                  <p className="text-[#0D0D0D]"><span className="font-medium text-[#0D0D0D]">Type:</span> {typeToEnglish(classification.tipo)}</p>
+                  <p className="text-[#0D0D0D]"><span className="font-medium text-[#0D0D0D]">Color:</span> {classification.color}</p>
+                  <p className="text-[#0D0D0D]"><span className="font-medium text-[#0D0D0D]">Confidence:</span> {(classification.confianza * 100).toFixed(1)}%</p>
                   
                   {classification.top3?.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <p className="font-medium text-gray-900 mb-2 text-xs">Top 3 Predictions:</p>
-                      <div className="space-y-1 text-xs text-gray-600">
+                    <div className="mt-4 pt-4 border-t border-[#D0CEC8]">
+                      <p className="font-medium text-[#0D0D0D] mb-2 text-xs">Top 3 Predictions:</p>
+                      <div className="space-y-1 text-xs text-[#888]">
                         {classification.top3.map((pred, idx) => (
-                          <p key={idx} className={idx === 0 ? 'font-semibold text-gray-900' : ''}>
-                            {idx + 1}. {pred.clase_nombre} ({pred.tipo}) - {(pred.confianza * 100).toFixed(1)}%
+                          <p key={idx} className={idx === 0 ? 'font-semibold text-[#0D0D0D]' : ''}>
+                            {idx + 1}. {pred.clase_nombre} ({typeToEnglish(pred.tipo)}) - {(pred.confianza * 100).toFixed(1)}%
                           </p>
                         ))}
                       </div>
@@ -428,12 +452,12 @@ const UploadModal = ({ onClose, onSuccess }) => {
 
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <FaCalendar className="text-gray-500 w-4 h-4" />
-                  <label className="text-sm font-semibold text-gray-800 uppercase tracking-wide">Occasions (optional)</label>
+                  <FaCalendar className="text-[#888] w-4 h-4" />
+                  <label className="sw-label" style={{ fontSize: '0.65rem', letterSpacing: '0.12em' }}>OCCASIONS (OPTIONAL)</label>
                 </div>
-                <p className="text-sm text-gray-500 mb-3">
+                <p className="text-sm text-[#888] mb-3">
                   Select the occasions this garment is suitable for.
-                  {selectedOccasions.length > 0 && <span className="ml-1 font-medium text-gray-600">({selectedOccasions.length} selected)</span>}
+                  {selectedOccasions.length > 0 && <span className="ml-1 font-medium text-[#0D0D0D]">({selectedOccasions.length} selected)</span>}
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {occasions.map(oc => {
@@ -443,12 +467,14 @@ const UploadModal = ({ onClose, onSuccess }) => {
                         key={oc.value}
                         type="button"
                         onClick={() => setSelectedOccasions(prev => isSelected ? prev.filter(o => o !== oc.value) : [...prev, oc.value])}
-                        className={`py-3 px-4 rounded-lg border-2 text-left transition-all ${
-                          isSelected ? 'border-gray-800 bg-gray-800 text-white' : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300 hover:bg-gray-100'
+                        className={`py-3 px-4 rounded-xl border-2 text-left transition-all ${
+                          isSelected
+                            ? 'border-[#0D0D0D] bg-[#0D0D0D] text-white'
+                            : 'border-[#D0CEC8] bg-white text-[#0D0D0D] hover:border-[#0D0D0D]'
                         }`}
                       >
                         <span className="font-medium text-sm block">{oc.label}</span>
-                        <span className={`text-xs mt-0.5 block ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>{oc.desc}</span>
+                        <span className={`text-xs mt-0.5 block ${isSelected ? 'text-white/80' : 'text-[#888]'}`}>{oc.desc}</span>
                       </button>
                     )
                   })}
@@ -459,32 +485,32 @@ const UploadModal = ({ onClose, onSuccess }) => {
 
           {/* ML service status */}
           {mlStatus === 'checking' && (
-            <div className="bg-gray-100 border border-gray-200 rounded-xl px-4 py-2 text-gray-600 text-sm flex items-center gap-2">
+            <div className="border border-[#D0CEC8] rounded-xl px-4 py-2 bg-white text-[#888] text-sm flex items-center gap-2">
               <FaSpinner className="animate-spin flex-shrink-0" />
               <span>Checking ML service…</span>
             </div>
           )}
           {mlStatus === 'unavailable' && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-amber-800 text-sm">
+            <div className="border border-[#FF3B00] rounded-xl p-4 bg-white text-[#0D0D0D] text-sm">
               <p className="font-medium">ML service not available</p>
               <p className="mt-1">{mlUnavailableHint}</p>
               {showTerminalTip && (
-                <p className="mt-2 text-xs text-amber-700">To see errors in the terminal: <code className="bg-amber-100 px-1 rounded">./ml-service/run_ml.sh</code></p>
+                <p className="mt-2 text-xs text-[#888]">To see errors in the terminal: <code className="bg-[#E8E6E0] px-1 rounded border border-[#D0CEC8]">./ml-service/run_ml.sh</code></p>
               )}
-              <p className="mt-2 text-xs text-amber-700">If the Space was sleeping, wait ~30s after opening its URL, then click below.</p>
+              <p className="mt-2 text-xs text-[#888]">If the Space was sleeping, wait ~30s after opening its URL, then click below.</p>
               <button
                 type="button"
                 onClick={checkMlHealth}
                 disabled={mlStatus === 'checking'}
-                className="mt-3 px-4 py-2 bg-amber-200 hover:bg-amber-300 text-amber-900 rounded-lg text-sm font-medium disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
+                className="mt-3 sw-btn sw-btn-accent sw-btn-sm disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {mlStatus === 'checking' ? <><FaSpinner className="animate-spin" /> Checking…</> : 'Check again'}
               </button>
             </div>
           )}
           {mlStatus === 'available' && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2 text-emerald-800 text-sm flex flex-wrap items-center gap-2">
-              <FaBrain className="flex-shrink-0" />
+            <div className="border border-[#D0CEC8] rounded-xl px-4 py-2 text-[#0D0D0D] text-sm flex flex-wrap items-center gap-2 bg-white">
+              <FaBrain className="flex-shrink-0 text-[#00A550]" />
               <span>
                 {vitReady
                   ? 'ML service ready — ViT available.'
@@ -495,7 +521,7 @@ const UploadModal = ({ onClose, onSuccess }) => {
                   type="button"
                   onClick={checkMlHealth}
                   disabled={mlStatus === 'checking'}
-                  className="ml-auto px-3 py-1.5 bg-emerald-200 hover:bg-emerald-300 text-emerald-900 rounded-lg text-xs font-medium disabled:opacity-70"
+                  className="ml-auto sw-btn sw-btn-outline sw-btn-sm disabled:opacity-70"
                 >
                   {mlStatus === 'checking' ? 'Comprobando…' : 'Comprobar ViT de nuevo'}
                 </button>
@@ -503,11 +529,11 @@ const UploadModal = ({ onClose, onSuccess }) => {
             </div>
           )}
 
-          {error && <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-800 text-sm">{error}</div>}
+          {error && <div className="border border-[#FF3B00] rounded-xl p-4 bg-white text-[#0D0D0D] text-sm">{error}</div>}
 
           <div className="space-y-3">
             {SHOW_CLASSIFY_STEPS && classifyingVit && classifyStep && (
-              <p className="text-sm text-gray-600 bg-gray-100 rounded-lg px-3 py-2 flex items-center gap-2">
+              <p className="text-sm text-[#888] bg-[#E8E6E0] rounded-lg px-3 py-2 flex items-center gap-2 border border-[#D0CEC8]">
                 <FaSpinner className="animate-spin flex-shrink-0" />
                 <span>{classifyStep}</span>
               </p>
@@ -516,7 +542,7 @@ const UploadModal = ({ onClose, onSuccess }) => {
               <button
                 onClick={handleClassify}
                 disabled={!file || classifyingVit || !vitReady}
-                className="flex-1 bg-purple-600 text-white px-4 py-3 rounded-xl font-medium hover:bg-purple-700 transition-all shadow-soft disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                className="flex-1 sw-btn sw-btn-outline sw-btn-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
               >
                 {classifyingVit ? <><FaSpinner className="animate-spin" /><span>Classifying...</span></> : <><FaBrain /><span>Classify (ViT)</span></>}
               </button>
@@ -524,7 +550,7 @@ const UploadModal = ({ onClose, onSuccess }) => {
             <button
               onClick={handleSave}
               disabled={!classification || loading}
-              className="w-full bg-gray-900 text-white px-6 py-3 rounded-xl font-medium hover:bg-gray-800 transition-all shadow-soft disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              className="w-full sw-btn sw-btn-primary sw-btn-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
             >
               {loading ? <><FaSpinner className="animate-spin" /><span>Saving...</span></> : <span>Save Garment</span>}
             </button>

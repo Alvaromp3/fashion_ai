@@ -40,27 +40,50 @@ const ModelExamples = ({ embedded = false }) => {
   }
 
   return (
-    <div className={embedded ? '' : 'min-h-screen max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10'} style={embedded ? undefined : { background: 'var(--content-bg)' }}>
+    <div
+      className={embedded ? '' : 'min-h-screen sw-light max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10'}
+      style={embedded ? undefined : { background: 'var(--sw-white)' }}
+    >
       {!embedded && (
         <div className={`mb-10 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <h1 className="text-4xl font-bold text-slate-100 tracking-tight mb-2">
-            Garment categories recognised by the model
-          </h1>
-          <p className="text-slate-400 text-lg max-w-2xl">
-            The 10 clothing categories from the Fashion MNIST-style dataset that the CNN and ViT models can classify.
-          </p>
+          <div className="border-b border-[#0D0D0D] relative overflow-hidden">
+            <div className="absolute inset-0 sw-stripe opacity-50" />
+            <div className="relative max-w-7xl mx-auto px-5 py-10">
+              <p className="sw-label text-[#FF3B00] mb-2">— INTELLIGENCE</p>
+              <h1 className="sw-display" style={{ fontSize: 'clamp(2.5rem, 7vw, 5rem)' }}>
+                MODEL
+                <br />
+                EXAMPLES
+              </h1>
+              <p className="sw-label text-[#888] mt-2" style={{ fontSize: '0.7rem', letterSpacing: '0.12em' }}>
+                VISUAL CLASSIFICATION POWERED BY VIT
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!embedded && (
+        <div className="marquee-bar">
+          <div className="sw-marquee-track">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <span key={i} className="sw-label text-white px-5" style={{ fontSize: '0.7rem' }}>
+                VIT-B/16 · 86M PARAMS ✦ 94.8% TOP-1 ACCURACY
+              </span>
+            ))}
+          </div>
         </div>
       )}
 
       {/* Visual examples image */}
       {!imageError && (
-        <div className={`dashboard-card rounded-2xl border border-slate-600 p-6 mb-10 overflow-hidden transition-all duration-700 delay-100 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <h2 className="text-xl font-semibold text-slate-100 mb-4">Visual examples from the dataset</h2>
-          <div className="bg-slate-800/50 rounded-xl p-4 flex justify-center border border-slate-600">
+        <div className={`sw-card p-6 mb-10 overflow-hidden transition-all duration-700 delay-100 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <h2 className="sw-heading" style={{ fontSize: '1.3rem', marginBottom: 14 }}>Visual examples from the dataset</h2>
+          <div className="rounded-xl p-4 flex justify-center border border-[#D0CEC8] bg-white">
             <img
               src="/api/model/data-audit"
               alt="Dataset class examples"
-              className="max-w-full h-auto rounded-lg shadow-xl"
+              className="max-w-full h-auto rounded-lg shadow"
               onError={() => setImageError(true)}
             />
           </div>
@@ -68,65 +91,65 @@ const ModelExamples = ({ embedded = false }) => {
       )}
 
       {/* Class cards */}
-      <h2 className="text-xl font-semibold text-slate-100 mb-5">Class descriptions</h2>
+      <h2 className="sw-heading mb-5" style={{ fontSize: '1.6rem' }}>Class descriptions</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-12">
         {classes.map((c, i) => {
           const style = tipoStyles[c.tipo]
           return (
             <div
               key={i}
-              className={`dashboard-card rounded-2xl border-2 ${style.border} p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-opacity-80`}
+              className={`sw-card rounded-2xl border-2 ${style.border} p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-opacity-80`}
               style={{
                 animation: isVisible ? `fadeInUp 0.5s ease-out ${i * 40}ms forwards` : 'none'
               }}
             >
               <div className="flex items-start justify-between gap-3 mb-3">
-                <h3 className="font-bold text-lg text-slate-100">{c.name.replace('_', ' ')}</h3>
+                <h3 className="font-bold text-lg text-[#0D0D0D]">{c.name.replace('_', ' ')}</h3>
                 <span className={`text-xs px-2.5 py-1 rounded-full border font-medium shrink-0 ${style.badge}`}>
                   {tipoLabels[c.tipo]}
                 </span>
               </div>
-              <p className="text-sm text-slate-400 leading-relaxed">{c.desc}</p>
+              <p className="text-sm text-[#888] leading-relaxed">{c.desc}</p>
             </div>
           )
         })}
       </div>
 
       {/* Models section */}
-      <h2 className="text-xl font-semibold text-slate-100 mb-5">Available models</h2>
+      <h2 className="sw-heading mb-5" style={{ fontSize: '1.6rem' }}>Available models</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="dashboard-card rounded-2xl border-2 border-slate-600 p-7 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-slate-500">
-          <h3 className="font-bold text-xl text-slate-100 mb-5">CNN</h3>
-          <ul className="text-sm text-slate-400 space-y-3">
+        <div className="sw-card rounded-2xl border-2 border-[#D0CEC8] p-7 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+          <h3 className="font-bold text-xl text-[#0D0D0D] mb-5">CNN</h3>
+          <ul className="text-sm text-[#888] space-y-3">
             <li className="flex items-start gap-2">
-              <span className="text-slate-500 mt-0.5">•</span>
+              <span className="text-[#888] mt-0.5">•</span>
               <span>Convolutional neural network for spatial feature extraction.</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-slate-500 mt-0.5">•</span>
+              <span className="text-[#888] mt-0.5">•</span>
               <span>Fast inference, good baseline.</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-slate-500 mt-0.5">•</span>
-              <span><strong className="text-slate-200">Accuracy:</strong> ~87%</span>
+              <span className="text-[#888] mt-0.5">•</span>
+              <span><strong className="text-[#0D0D0D]">Accuracy:</strong> ~87%</span>
             </li>
           </ul>
         </div>
 
-        <div className="dashboard-card rounded-2xl border-2 border-slate-600 p-7 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-slate-500">
-          <h3 className="font-bold text-xl text-slate-100 mb-5">Vision Transformer (ViT)</h3>
-          <ul className="text-sm text-slate-400 space-y-3">
+        <div className="sw-card rounded-2xl border-2 border-[#D0CEC8] p-7 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+          <h3 className="font-bold text-xl text-[#0D0D0D] mb-5">Vision Transformer (ViT)</h3>
+          <ul className="text-sm text-[#888] space-y-3">
             <li className="flex items-start gap-2">
-              <span className="text-slate-500 mt-0.5">•</span>
+              <span className="text-[#888] mt-0.5">•</span>
               <span>Transformer-based architecture with patch embedding and self-attention.</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-slate-500 mt-0.5">•</span>
+              <span className="text-[#888] mt-0.5">•</span>
               <span>Higher accuracy, more parameters.</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-slate-500 mt-0.5">•</span>
-              <span><strong className="text-slate-200">Accuracy:</strong> ~94%</span>
+              <span className="text-[#888] mt-0.5">•</span>
+              <span><strong className="text-[#0D0D0D]">Accuracy:</strong> ~94%</span>
             </li>
           </ul>
         </div>

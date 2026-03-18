@@ -14,6 +14,14 @@ const Dashboard = () => {
   const [showUploadModal, setShowUploadModal] = useState(false)
   const navigate = useNavigate()
 
+  // Visual-only stats (no afecta la lógica / BD)
+  const STATS = [
+    { label: 'GARMENTS', val: '24' },
+    { label: 'OUTFITS', val: '08' },
+    { label: 'VIT SCANS', val: '47' },
+    { label: 'STYLE SCORE', val: '9.2' }
+  ]
+
   useEffect(() => {
     let cancelled = false
     const run = async () => {
@@ -75,150 +83,180 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--content-bg)' }}>
-      <main className="dashboard-content max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 min-h-[60vh]">
-        <div className="mb-10">
-          <h1 className="text-2xl font-bold text-slate-100">Dashboard</h1>
-          <p className="text-slate-400 text-sm mt-1">Your wardrobe and saved outfits</p>
+    <div className="min-h-screen" style={{ background: 'var(--sw-white)' }}>
+
+      {/* ── HERO ── */}
+      <section className="border-b border-[#0D0D0D] relative overflow-hidden">
+        <div className="absolute inset-0">
+          {/* Visual-only: usamos una imagen remota para no romper si /hero-fashion.png no existe */}
+          <img
+            src="https://images.unsplash.com/photo-1520975958225-9a2b1c1b7b9b?w=1600&q=80"
+            alt=""
+            className="w-full h-full object-cover opacity-30"
+          />
+          <div className="absolute inset-0 sw-stripe" />
+        </div>
+        <div className="relative max-w-7xl mx-auto px-5 pt-16 pb-14">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-end">
+            <div>
+              <p className="sw-label text-[#FF3B00] mb-4">— AI WARDROBE INTELLIGENCE</p>
+              <h1 className="sw-display text-[#0D0D0D]" style={{ fontSize: 'clamp(3.5rem, 9vw, 7rem)' }}>
+                YOUR<br />
+                STYLE.<br />
+                AI<span className="text-[#FF3B00]">FIED.</span>
+              </h1>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  className="sw-btn sw-btn-primary sw-btn-lg"
+                  onClick={() => setShowUploadModal(true)}
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Upload Garment
+                </button>
+                <button
+                  type="button"
+                  className="sw-btn sw-btn-outline sw-btn-lg"
+                  onClick={handleGenerateOutfit}
+                >
+                  Generate Outfits →
+                </button>
+              </div>
+            </div>
+            <div className="hidden md:block text-right">
+              <p className="sw-label text-[#888] mb-2">ViT CLASSIFICATION</p>
+              <p className="sw-heading text-[#0D0D0D]" style={{ fontSize: '1.1rem' }}>
+                &quot;VISION TRANSFORMER
+                <br />
+                POWERED FASHION&quot;
+              </p>
+              <div className="mt-4 flex justify-end gap-4">
+                {STATS.map((s) => (
+                  <div key={s.label} className="text-right">
+                    <p className="sw-display text-[#0D0D0D]" style={{ fontSize: '2rem' }}>{s.val}</p>
+                    <p className="sw-label text-[#888]" style={{ fontSize: '0.55rem' }}>{s.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── MARQUEE ── */}
+      <div className="marquee-bar">
+        <div className="sw-marquee-track">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <>
+              <span className="sw-label text-white px-6" style={{ fontSize: '0.7rem' }}>CLASSIFY WITH VIT</span>
+              <span className="text-[#FF3B00] px-2">✦</span>
+              <span className="sw-label text-white px-6" style={{ fontSize: '0.7rem' }}>GENERATE OUTFITS</span>
+              <span className="text-[#FF3B00] px-2">✦</span>
+              <span className="sw-label text-white px-6" style={{ fontSize: '0.7rem' }}>MIRROR AI STYLE</span>
+              <span className="text-[#FF3B00] px-2">✦</span>
+              <span className="sw-label text-white px-6" style={{ fontSize: '0.7rem' }}>FASHION INTELLIGENCE</span>
+              <span className="text-[#FF3B00] px-2">✦</span>
+            </>
+          ))}
+        </div>
+      </div>
+
+      {/* ── STATS mobile ── */}
+      <div className="md:hidden grid grid-cols-4 border-b border-[#0D0D0D]">
+        {STATS.map((s, i) => (
+          <div key={s.label} className={`p-4 text-center ${i < 3 ? 'border-r border-[#D0CEC8]' : ''}`}>
+            <p className="sw-display text-[#0D0D0D]" style={{ fontSize: '1.6rem' }}>{s.val}</p>
+            <p className="sw-label text-[#888]" style={{ fontSize: '0.5rem' }}>{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── RECENT GARMENTS ── */}
+      <section className="max-w-7xl mx-auto px-5 py-12">
+        <div className="flex items-end justify-between mb-8 border-b border-[#0D0D0D] pb-4">
+          <div>
+            <p className="sw-label text-[#FF3B00] mb-1">— YOUR WARDROBE</p>
+            <h2 className="sw-heading" style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)' }}>RECENT GARMENTS</h2>
+          </div>
+          <button type="button" onClick={() => navigate('/prendas')} className="sw-btn sw-btn-outline sw-btn-sm">
+            VIEW ALL →
+          </button>
         </div>
 
-        {/* Recent Garments */}
-        <section className="mb-20">
-          <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
-            <h2 className="text-2xl font-semibold text-slate-100 flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-slate-600">
-                <FaTshirt className="text-slate-200" />
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <div className="w-10 h-10 rounded-full border-2 border-[#D0CEC8] border-t-[#0D0D0D] animate-spin" />
+          </div>
+        ) : prendas.length === 0 ? (
+          <div className="py-24 text-center border border-dashed border-[#D0CEC8]">
+            <p className="sw-heading text-[#D0CEC8]" style={{ fontSize: '3rem' }}>EMPTY</p>
+            <p className="sw-label text-[#888] mt-3">NO GARMENTS FOUND</p>
+            <button className="sw-btn sw-btn-ghost sw-btn-sm mt-6" type="button" onClick={() => setShowUploadModal(true)}>
+              UPLOAD FIRST →
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {prendas.map((prenda, i) => (
+              <div key={prenda._id} className="anim-up" style={{ animationDelay: `${i * 60}ms` }}>
+                <PrendaCard prenda={prenda} onDelete={handleDeletePrenda} />
               </div>
-              Recent Garments
+            ))}
+          </div>
+        )}
+      </section>
+
+      <hr className="sw-divider max-w-7xl mx-auto" />
+
+      {/* ── SAVED OUTFITS ── */}
+      <section className="max-w-7xl mx-auto px-5 py-12">
+        <div className="flex items-end justify-between mb-8 border-b border-[#0D0D0D] pb-4">
+          <div>
+            <p className="sw-label text-[#FF3B00] mb-1">— YOUR LOOKS</p>
+            <h2 className="sw-heading" style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)' }}>SAVED OUTFITS</h2>
+          </div>
+          <button type="button" onClick={() => navigate('/outfits')} className="sw-btn sw-btn-outline sw-btn-sm">
+            VIEW ALL →
+          </button>
+        </div>
+
+        {outfits.length === 0 ? (
+          <div className="py-24 text-center border border-dashed border-[#D0CEC8]">
+            <p className="sw-heading text-[#D0CEC8]" style={{ fontSize: '3rem' }}>EMPTY</p>
+            <p className="sw-label text-[#888] mt-3">NO SAVED OUTFITS</p>
+            <button className="sw-btn sw-btn-primary sw-btn-sm mt-6" type="button" onClick={handleGenerateOutfit}>
+              GENERATE OUTFITS →
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {outfits.map((outfit, i) => (
+              <div key={outfit._id} className="anim-up" style={{ animationDelay: `${i * 80}ms` }}>
+                <OutfitCard outfit={outfit} />
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ── CTA BAND ── */}
+      <section className="border-t border-[#0D0D0D] bg-[#0D0D0D] py-16">
+        <div className="max-w-7xl mx-auto px-5 flex flex-col md:flex-row items-center justify-between gap-8">
+          <div>
+            <p className="sw-label text-[#FF3B00] mb-2">— STYLE MIRROR</p>
+            <h2 className="sw-heading text-white" style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)' }}>
+              TRY YOUR
+              <br />
+              OUTFIT LIVE
             </h2>
-            <button
-              type="button"
-              onClick={() => navigate('/prendas')}
-              className="text-slate-400 hover:text-slate-100 font-medium flex items-center gap-2 transition-colors"
-            >
-              View all
-              <FaArrowRight className="text-sm" />
-            </button>
           </div>
-
-          {loading ? (
-            <div className="flex justify-center py-16">
-              <div className="w-10 h-10 border-2 border-slate-600 border-t-slate-300 rounded-full animate-spin" />
-            </div>
-          ) : prendas.length === 0 ? (
-            <div className="dashboard-card text-center py-20 px-6 rounded-2xl border border-slate-600 shadow-sm">
-              <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-slate-600 flex items-center justify-center">
-                <FaTshirt className="text-4xl text-slate-300" />
-              </div>
-              <h3 className="text-xl font-semibold text-slate-100 mb-2">No garments yet</h3>
-              <p className="text-slate-400 mb-8 max-w-md mx-auto">
-                Upload your first garment so the AI can classify it and you can start getting outfit recommendations.
-              </p>
-              <button
-                type="button"
-                onClick={() => setShowUploadModal(true)}
-                className="bg-white text-slate-900 px-8 py-3 rounded-xl font-semibold hover:bg-slate-100 transition-colors inline-flex items-center gap-2"
-              >
-                <FaUpload />
-                Upload first garment
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {prendas.map((prenda) => (
-                <PrendaCard
-                  key={prenda._id}
-                  prenda={prenda}
-                  onDelete={handleDeletePrenda}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Saved Outfits - always show section */}
-        <section className="mb-20">
-          <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
-            <h2 className="text-2xl font-semibold text-slate-100 flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-slate-600">
-                <FaMagic className="text-slate-200" />
-              </div>
-              Saved Outfits
-            </h2>
-            <button
-              type="button"
-              onClick={() => navigate('/outfits')}
-              className="text-slate-400 hover:text-slate-100 font-medium flex items-center gap-2 transition-colors"
-            >
-              View all
-              <FaArrowRight className="text-sm" />
-            </button>
-          </div>
-
-          {outfits.length === 0 ? (
-            <div className="dashboard-card text-center py-20 px-6 rounded-2xl border border-slate-600 shadow-sm">
-              <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-slate-600 flex items-center justify-center">
-                <FaMagic className="text-4xl text-slate-300" />
-              </div>
-              <h3 className="text-xl font-semibold text-slate-100 mb-2">No saved outfits</h3>
-              <p className="text-slate-400 mb-8 max-w-md mx-auto">
-                Save outfits you like from the Recommendations tab. They will appear here.
-              </p>
-              <button
-                type="button"
-                onClick={handleGenerateOutfit}
-                className="bg-white text-slate-900 px-8 py-3 rounded-xl font-semibold hover:bg-slate-100 transition-colors inline-flex items-center gap-2"
-              >
-                <FaMagic />
-                Generate outfits
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {outfits.map((outfit) => (
-                <OutfitCard key={outfit._id} outfit={outfit} />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Mirror */}
-        <section className="mb-20">
-          <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
-            <h2 className="text-2xl font-semibold text-slate-100 flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-slate-600">
-                <ScanLine className="text-slate-200 w-5 h-5" />
-              </div>
-              Mirror
-            </h2>
-            <button
-              type="button"
-              onClick={() => navigate('/mirror')}
-              className="text-slate-400 hover:text-slate-100 font-medium flex items-center gap-2 transition-colors"
-            >
-              Open Mirror
-              <FaArrowRight className="text-sm" />
-            </button>
-          </div>
-          <div className="dashboard-card rounded-2xl border border-slate-600 p-6 lg:p-8">
-            <p className="text-slate-300 text-sm leading-relaxed mb-6 max-w-2xl">
-              Use your camera to get AI outfit feedback. The Mirror analyzes what you&apos;re wearing, considers weather and occasion, and suggests improvements or new items to add to your wardrobe.
-            </p>
-            <button
-              type="button"
-              onClick={() => navigate('/mirror')}
-              className="bg-white text-slate-900 px-6 py-2.5 rounded-xl font-semibold hover:bg-slate-100 transition-colors inline-flex items-center gap-2"
-            >
-              <ScanLine className="w-4 h-4" />
-              Launch Mirror
-            </button>
-          </div>
-        </section>
-
-        <footer className="app-footer">
-          <p className="text-slate-500 text-sm">Fashion AI</p>
-        </footer>
-      </main>
+          <button type="button" className="sw-btn sw-btn-accent sw-btn-lg" onClick={() => navigate('/mirror')}>
+            Open Mirror →
+          </button>
+        </div>
+      </section>
 
       {showUploadModal && (
         <UploadModal

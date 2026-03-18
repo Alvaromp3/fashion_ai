@@ -9,12 +9,12 @@ const CompareOutfitsModal = ({ outfitA, outfitB, onClose }) => {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-4 border-b border-slate-600 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-white">Comparar outfits</h3>
+          <h3 className="text-lg font-semibold text-white">Compare outfits</h3>
           <button
             type="button"
             onClick={onClose}
             className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-600 transition-colors"
-            aria-label="Cerrar"
+            aria-label="Close"
           >
             ×
           </button>

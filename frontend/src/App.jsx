@@ -37,7 +37,7 @@ function App() {
         <AuthTokenSetup />
         <div
           className="min-h-screen app-shell"
-          style={{ background: 'var(--content-bg)' }}
+          style={{ background: 'var(--sw-white, #F5F4F0)' }}
         >
         <TubelightNavbar
           isAuthenticated={isAuthenticated}
