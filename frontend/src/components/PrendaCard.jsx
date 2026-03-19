@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import { FaTrash } from 'react-icons/fa'
 
 const PrendaCard = ({ prenda, onDelete, onEdit }) => {
@@ -120,4 +120,4 @@ const PrendaCard = ({ prenda, onDelete, onEdit }) => {
   )
 }
 
-export default PrendaCard
+export default memo(PrendaCard)

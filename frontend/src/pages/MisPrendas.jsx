@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
 import { FaUpload } from 'react-icons/fa'
 import axios from 'axios'
 import PrendaCard from '../components/PrendaCard'
-import UploadModal from '../components/UploadModal'
 import EditOcasionModal from '../components/EditOcasionModal'
+
+const UploadModal = lazy(() => import('../components/UploadModal'))
 
 const MisPrendas = () => {
   const [prendas, setPrendas] = useState([])
-  const [filteredPrendas, setFilteredPrendas] = useState([])
   const [selectedFilter, setSelectedFilter] = useState('all')
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -18,10 +18,6 @@ const MisPrendas = () => {
   useEffect(() => {
     fetchPrendas()
   }, [])
-
-  useEffect(() => {
-    filterPrendas()
-  }, [prendas, selectedFilter])
 
   const fetchPrendas = async () => {
     setFetchError(null)
@@ -49,15 +45,12 @@ const MisPrendas = () => {
     }
   }
 
-  const filterPrendas = () => {
-    if (selectedFilter === 'all') {
-      setFilteredPrendas(prendas)
-    } else {
-      setFilteredPrendas(prendas.filter(p => p.tipo === selectedFilter))
-    }
-  }
+  const filteredPrendas = useMemo(() => {
+    if (selectedFilter === 'all') return prendas
+    return prendas.filter(p => p.tipo === selectedFilter)
+  }, [prendas, selectedFilter])
 
-  const handleDelete = async (id) => {
+  const handleDelete = useCallback(async (id) => {
     try {
       await axios.delete(`/api/prendas/${id}`)
       fetchPrendas()
@@ -65,12 +58,12 @@ const MisPrendas = () => {
       console.error('Error deleting garment:', error)
       alert('Error deleting the garment')
     }
-  }
+  }, [])
 
-  const handleEdit = (prenda) => {
+  const handleEdit = useCallback((prenda) => {
     setSelectedPrenda(prenda)
     setShowEditModal(true)
-  }
+  }, [])
 
   const FILTERS = [
     { value: 'all', label: 'All' },
@@ -170,13 +163,15 @@ const MisPrendas = () => {
           )}
         </div>
         {showUploadModal && (
-        <UploadModal
-          onClose={() => setShowUploadModal(false)}
-          onSuccess={() => {
-            fetchPrendas()
-            setShowUploadModal(false)
-          }}
-        />
+        <Suspense fallback={null}>
+          <UploadModal
+            onClose={() => setShowUploadModal(false)}
+            onSuccess={() => {
+              fetchPrendas()
+              setShowUploadModal(false)
+            }}
+          />
+        </Suspense>
       )}
 
       {showEditModal && selectedPrenda && (

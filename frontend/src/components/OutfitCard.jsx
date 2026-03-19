@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { FaTrash, FaChevronDown, FaChevronUp } from 'react-icons/fa'
 import axios from 'axios'
 import PrendaModal from './PrendaModal'
@@ -179,4 +179,4 @@ const OutfitCard = ({ outfit, onDelete, onPrendaClick, showPuntuacion = true, sh
   )
 }
 
-export default OutfitCard
+export default memo(OutfitCard)

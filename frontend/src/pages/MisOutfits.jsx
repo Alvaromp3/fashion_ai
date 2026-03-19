@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { FaMagic, FaSave, FaTrash, FaCog, FaStar, FaHeart, FaShareAlt, FaBalanceScale } from 'react-icons/fa'
 import html2canvas from 'html2canvas'
@@ -67,13 +67,13 @@ const MisOutfits = () => {
     })
   }, [])
 
-  const toggleCompare = (index) => {
+  const toggleCompare = useCallback((index) => {
     setCompareSelection(prev => {
       if (prev.includes(index)) return prev.filter(i => i !== index)
       if (prev.length >= 2) return [prev[1], index]
       return [...prev, index]
     })
-  }
+  }, [])
 
   useEffect(() => {
     fetchOutfits()
@@ -148,6 +148,26 @@ const MisOutfits = () => {
     const keys = recommendations.map(getComboKey).filter(Boolean)
     handleGenerate(lastPreferences ?? {}, true, keys)
   }
+
+  const visibleRecs = useMemo(() => {
+    const tuples = recommendations.map((o, i) => ({ outfit: o, index: i }))
+    if (!filterFavoritos) return tuples
+    return tuples.filter(({ outfit }) => favorites.includes(getOutfitId(outfit)))
+  }, [recommendations, filterFavoritos, favorites])
+
+  const featured = useMemo(() => {
+    if (filterFavoritos || recommendations.length === 0) return null
+    let bestIdx = 0
+    let bestScore = -Infinity
+    for (let i = 0; i < recommendations.length; i++) {
+      const score = recommendations[i]?.puntuacion ?? -Infinity
+      if (score > bestScore) {
+        bestScore = score
+        bestIdx = i
+      }
+    }
+    return { outfit: recommendations[bestIdx], index: bestIdx }
+  }, [recommendations, filterFavoritos])
 
   const handleShare = async (outfit, index, elementFromClick) => {
     const el = elementFromClick ?? cardRefs.current[index]
@@ -409,21 +429,18 @@ const MisOutfits = () => {
                 </div>
 
                 {/* Look del día: outfit con mayor puntuación destacado */}
-                {!filterFavoritos && recommendations.length > 0 && (() => {
-                  const sorted = [...recommendations].sort((a, b) => (b.puntuacion ?? 0) - (a.puntuacion ?? 0))
-                  const featured = sorted[0]
-                  const featuredIndex = recommendations.indexOf(featured)
-                  const outfitIdFeatured = getOutfitId(featured)
+                {!filterFavoritos && featured?.outfit && (() => {
+                  const outfitIdFeatured = getOutfitId(featured.outfit)
                   const isJustSavedFeat = savedId === outfitIdFeatured
                   return (
                     <div className="mb-8 animate-fade-in">
                       <p className="text-sm font-medium text-[#888] mb-3 uppercase tracking-wide">Recommendation of the day</p>
                       <div ref={featuredCardRef} data-outfit-card className="sw-card rounded-2xl border-2 border-[#D0CEC8] overflow-hidden shadow-sm">
-                        <OutfitCard outfit={featured} onPrendaClick={(prenda, label) => setSelectedPrenda({ prenda, label })} showPuntuacion showPorQueCombina />
+                        <OutfitCard outfit={featured.outfit} onPrendaClick={(prenda, label) => setSelectedPrenda({ prenda, label })} showPuntuacion showPorQueCombina />
                         <div className="p-5 border-t border-[#D0CEC8] bg-white flex flex-wrap gap-2">
                           <button
                             type="button"
-                            onClick={() => handleSaveOutfit(featured)}
+                            onClick={() => handleSaveOutfit(featured.outfit)}
                             className={`flex-1 min-w-[140px] sw-btn sw-btn-sm flex items-center justify-center gap-2 ${isJustSavedFeat ? 'sw-btn-outline' : 'sw-btn-primary'}`}
                           >
                             {isJustSavedFeat ? 'Saved' : 'Save'}
@@ -432,12 +449,12 @@ const MisOutfits = () => {
                             type="button"
                             onClick={(e) => {
                               const card = e.currentTarget.closest('[data-outfit-card]')
-                              handleShare(featured, featuredIndex, card)
+                              handleShare(featured.outfit, featured.index, card)
                             }}
                             disabled={shareLoading}
                             className="sw-btn sw-btn-outline sw-btn-sm flex items-center gap-2 disabled:opacity-70"
                           >
-                            <FaShareAlt /> {shareFeedback === featuredIndex ? 'Downloaded!' : shareLoading ? 'Generating…' : 'Share image'}
+                            <FaShareAlt /> {shareFeedback === featured.index ? 'Downloaded!' : shareLoading ? 'Generating…' : 'Share image'}
                           </button>
                         </div>
                       </div>
@@ -450,14 +467,11 @@ const MisOutfits = () => {
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {recommendations
-                    .filter(o => !filterFavoritos || favorites.includes(getOutfitId(o)))
-                    .map((outfit, index) => {
+                  {visibleRecs.map(({ outfit, index: realIndex }, index) => {
                       const outfitId = getOutfitId(outfit)
                       const isJustSaved = savedId === outfitId
                       const isFavorite = favorites.includes(outfitId)
-                      const isCompareSelected = compareSelection.includes(recommendations.indexOf(outfit))
-                      const realIndex = recommendations.indexOf(outfit)
+                      const isCompareSelected = compareSelection.includes(realIndex)
                       return (
                         <div
                           key={realIndex}

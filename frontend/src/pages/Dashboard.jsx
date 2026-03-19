@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FaMagic, FaTshirt, FaArrowRight, FaUpload } from 'react-icons/fa'
 import { ScanLine } from 'lucide-react'
 import axios from 'axios'
 import PrendaCard from '../components/PrendaCard'
 import OutfitCard from '../components/OutfitCard'
-import UploadModal from '../components/UploadModal'
+
+const UploadModal = lazy(() => import('../components/UploadModal'))
 
 const Dashboard = () => {
   const [prendas, setPrendas] = useState([])
@@ -259,13 +260,15 @@ const Dashboard = () => {
       </section>
 
       {showUploadModal && (
-        <UploadModal
-          onClose={() => setShowUploadModal(false)}
-          onSuccess={() => {
-            fetchPrendas()
-            setShowUploadModal(false)
-          }}
-        />
+        <Suspense fallback={null}>
+          <UploadModal
+            onClose={() => setShowUploadModal(false)}
+            onSuccess={() => {
+              fetchPrendas()
+              setShowUploadModal(false)
+            }}
+          />
+        </Suspense>
       )}
     </div>
   )
