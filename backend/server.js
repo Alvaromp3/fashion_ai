@@ -103,6 +103,17 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   global.__mongoose = mongoose;
   app.use('/api/prendas', requireAuth, require('./routes/prendas'));
   app.use('/api/outfits', requireAuth, require('./routes/outfits'));
+  app.use(
+    '/api/me',
+    requireAuth,
+    (req, res, next) => {
+      const sub = req.auth?.payload?.sub || 'anonymous';
+      req.user = { sub };
+      next();
+    },
+    require('./routes/me')
+  );
+  app.use('/api/chat', requireAuth, require('./routes/chat'));
   app.use('/api/classify', require('./routes/classify'));
   app.use('/api/model', require('./routes/model'));
   app.use('/api/mirror', require('./routes/mirror'));

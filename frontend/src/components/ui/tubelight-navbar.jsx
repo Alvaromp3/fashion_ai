@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Shirt, Sparkles, BarChart3, Image, ScanLine, LogOut, LogIn } from 'lucide-react'
+import { Home, Shirt, Sparkles, ScanLine, LogOut, LogIn, MessageCircle } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
 const defaultNavItems = [
   { name: 'Dashboard', url: '/', icon: Home },
   { name: 'Garments', url: '/prendas', icon: Shirt },
   { name: 'Outfits', url: '/outfits', icon: Sparkles },
+  { name: 'Chat', url: '/chat', icon: MessageCircle },
   { name: 'Mirror', url: '/mirror', icon: ScanLine },
 ]
 

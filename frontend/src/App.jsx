@@ -13,6 +13,7 @@ const MisPrendas = lazy(() => import('./pages/MisPrendas'))
 const MisOutfits = lazy(() => import('./pages/MisOutfits'))
 const ModelExamples = lazy(() => import('./pages/ModelExamples'))
 const Mirror = lazy(() => import('./pages/Mirror'))
+const WardrobeChat = lazy(() => import('./pages/WardrobeChat'))
 
 function App() {
   const { isAuthenticated, logout, loginWithRedirect, getAccessTokenSilently } = useAuth0()
@@ -61,6 +62,7 @@ function App() {
               <Route path="/outfits" element={<MisOutfits />} />
               <Route path="/modelo/ejemplos" element={<ModelExamples />} />
               <Route path="/mirror" element={<Mirror />} />
+              <Route path="/chat" element={<WardrobeChat />} />
             </Routes>
           </Suspense>
         </div>
