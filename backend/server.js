@@ -80,6 +80,33 @@ app.get('/api/ml-health', async (req, res) => {
   });
 });
 
+const mongoose = require('mongoose');
+global.__mongoose = mongoose;
+
+app.use('/api/prendas', requireAuth, require('./routes/prendas'));
+app.use('/api/outfits', requireAuth, require('./routes/outfits'));
+app.use(
+  '/api/me',
+  requireAuth,
+  (req, res, next) => {
+    const sub = req.auth?.payload?.sub || 'anonymous';
+    req.user = { sub };
+    next();
+  },
+  require('./routes/me')
+);
+app.use('/api/chat', requireAuth, require('./routes/chat'));
+app.use('/api/classify', require('./routes/classify'));
+app.use('/api/model', require('./routes/model'));
+app.use('/api/mirror', require('./routes/mirror'));
+
+mongoose
+  .connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/fashion_ai', {
+    serverSelectionTimeoutMS: 8000
+  })
+  .then(() => console.log('Connected to MongoDB'))
+  .catch((err) => console.error('Error connecting to MongoDB:', err));
+
 const PORT = process.env.PORT || 4000;
 
 const server = app.listen(PORT, '0.0.0.0', () => {
@@ -99,31 +126,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   } else {
     console.log('Cloudinary: not set — uploads saved to backend/uploads/');
   }
-  const mongoose = require('mongoose');
-  global.__mongoose = mongoose;
-  app.use('/api/prendas', requireAuth, require('./routes/prendas'));
-  app.use('/api/outfits', requireAuth, require('./routes/outfits'));
-  app.use(
-    '/api/me',
-    requireAuth,
-    (req, res, next) => {
-      const sub = req.auth?.payload?.sub || 'anonymous';
-      req.user = { sub };
-      next();
-    },
-    require('./routes/me')
-  );
-  app.use('/api/chat', requireAuth, require('./routes/chat'));
-  app.use('/api/classify', require('./routes/classify'));
-  app.use('/api/model', require('./routes/model'));
-  app.use('/api/mirror', require('./routes/mirror'));
-  mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/fashion_ai', {
-    serverSelectionTimeoutMS: 8000
-  })
-    .then(() => console.log('Connected to MongoDB'))
-    .catch((err) => console.error('Error connecting to MongoDB:', err));
 
-  // Startup test: verify backend can reach the AI/ML server
   (async () => {
     const mlUrl = process.env.ML_SERVICE_URL || 'http://localhost:6001';
     console.log(`Checking AI/ML server reachability at ${mlUrl}...`);
@@ -131,7 +134,9 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     if (result.ok) {
       console.log('AI/ML server: reachable', result.data?.model_loaded ? '(model loaded)' : '');
     } else {
-      console.warn(`AI/ML server: not reachable — ${result.message}. Endpoints that need ML (e.g. /api/classify) may fail until the service is running.`);
+      console.warn(
+        `AI/ML server: not reachable — ${result.message}. Endpoints that need ML (e.g. /api/classify) may fail until the service is running.`
+      );
     }
   })();
 });

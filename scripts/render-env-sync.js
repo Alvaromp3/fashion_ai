@@ -13,9 +13,11 @@
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
+const { resolveUnder } = require('./lib/resolve-under.cjs');
 
 const API_BASE = 'https://api.render.com/v1';
-const ENV_FILE = path.join(__dirname, '..', 'backend', '.env');
+const ROOT = path.resolve(__dirname, '..');
+const ENV_FILE = resolveUnder(ROOT, 'backend', '.env');
 const SERVICE_NAME = 'fashion-ai-backend';
 
 // Keys we never send to Render (script-only, local-only, or set by Render)
@@ -24,10 +26,7 @@ const RENDER_SYSTEM_PREFIX = 'RENDER_';
 
 /** Load RENDER_API_KEY and RENDER_SERVICE_ID from backend/.env (and root .env) when run from repo root. */
 function loadRenderCredsFromEnv() {
-  const envFiles = [
-    path.join(__dirname, '..', 'backend', '.env'),
-    path.join(__dirname, '..', '.env'),
-  ];
+  const envFiles = [resolveUnder(ROOT, 'backend', '.env'), resolveUnder(ROOT, '.env')];
   for (const filePath of envFiles) {
     if (!fs.existsSync(filePath)) continue;
     const raw = fs.readFileSync(filePath, 'utf8');

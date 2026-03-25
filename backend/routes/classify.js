@@ -6,6 +6,8 @@ const path = require('path');
 const fs = require('fs');
 const sharp = require('sharp');
 const heicConvert = require('heic-convert');
+const { buildMlClassifyUrl } = require('../utils/safeOutboundUrl');
+const { validateMirrorImageUrl } = require('../utils/safeMirrorImageUrl');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -75,7 +77,13 @@ async function processAndClassify(req, res, endpoint) {
     formData.append('imagen', fs.createReadStream(filePath), { filename: path.basename(filePath), contentType: 'image/jpeg' });
 
     try {
-      const requestUrl = `${mlServiceUrl}${endpoint}`;
+      let requestUrl;
+      try {
+        requestUrl = buildMlClassifyUrl(mlServiceUrl, endpoint);
+      } catch (e) {
+        [req.file.path, convertedFilePath].forEach((p) => p && fs.existsSync(p) && fs.unlinkSync(p));
+        return res.status(500).json({ error: e.message || 'Invalid ML service configuration' });
+      }
       const response = await axios.post(requestUrl, formData, {
         headers: formData.getHeaders(),
         timeout: 30000
@@ -126,8 +134,15 @@ router.post('/vit', upload.single('imagen'), (req, res) => processAndClassify(re
 /** POST /api/classify/vit-base64 — Mirror: classify from data URL (no multipart) */
 router.post('/vit-base64', async (req, res) => {
   const imageDataUrl = req.body?.imageDataUrl ?? req.body?.image_data_url ?? '';
-  if (!imageDataUrl || typeof imageDataUrl !== 'string' || !imageDataUrl.startsWith('data:image/')) {
+  if (!imageDataUrl || typeof imageDataUrl !== 'string') {
     return res.status(400).json({ error: 'imageDataUrl (data:image/...) required' });
+  }
+  const urlCheck = validateMirrorImageUrl(imageDataUrl);
+  if (!urlCheck.ok) {
+    return res.status(400).json({ error: urlCheck.reason });
+  }
+  if (!imageDataUrl.startsWith('data:image/')) {
+    return res.status(400).json({ error: 'imageDataUrl must be a data:image URL' });
   }
   const tempDir = path.join(__dirname, '../temp');
   if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });

@@ -7,22 +7,28 @@
  * Run from repo root: npm run cloudflare:pages-env
  * Requires: npx wrangler login (or CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID)
  */
-const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const {
+  resolveUnder,
+  existsUnder,
+  readOptionalUtf8,
+  writeUtf8,
+  unlinkIfExists
+} = require('./lib/resolve-under.cjs');
 
-const ROOT = path.join(__dirname, '..');
-const FRONTEND_DIR = path.join(ROOT, 'frontend');
+const ROOT = path.resolve(__dirname, '..');
+const FRONTEND_DIR = resolveUnder(ROOT, 'frontend');
 const PROJECT_NAME = process.env.CLOUDFLARE_PAGES_PROJECT_NAME || 'fashion-ai';
 
-const ENV_FILES = [
-  path.join(FRONTEND_DIR, '.env.production'),
-  path.join(FRONTEND_DIR, '.env'),
-];
+const ENV_FILE_NAMES = ['.env.production', '.env'];
 
-function parseEnvFile(filePath) {
-  if (!fs.existsSync(filePath)) return {};
-  const raw = fs.readFileSync(filePath, 'utf8');
+function parseEnvFile(fileName) {
+  if (!ENV_FILE_NAMES.includes(fileName)) {
+    throw new Error(`Invalid env file name: ${fileName}`);
+  }
+  const raw = readOptionalUtf8(FRONTEND_DIR, fileName).trim();
+  if (!raw) return {};
   const out = {};
   for (const line of raw.split(/\r?\n/)) {
     const trimmed = line.trim();
@@ -41,9 +47,9 @@ function parseEnvFile(filePath) {
 
 function main() {
   let vars = {};
-  for (const p of ENV_FILES) {
-    if (fs.existsSync(p)) {
-      const parsed = parseEnvFile(p);
+  for (const name of ENV_FILE_NAMES) {
+    if (existsUnder(FRONTEND_DIR, name)) {
+      const parsed = parseEnvFile(name);
       vars = { ...vars, ...parsed };
     }
   }
@@ -57,9 +63,9 @@ function main() {
     console.error('  VITE_AUTH0_CALLBACK_URL=https://your-pages-url.pages.dev');
     process.exit(1);
   }
-  const tempPath = path.join(ROOT, '.pages-env-bulk.json');
+  const tempPath = resolveUnder(ROOT, '.pages-env-bulk.json');
   try {
-    fs.writeFileSync(tempPath, JSON.stringify(vars, null, 0), 'utf8');
+    writeUtf8(ROOT, '.pages-env-bulk.json', JSON.stringify(vars, null, 0));
     console.log('Updating Cloudflare Pages env for project:', PROJECT_NAME);
     console.log('Keys:', Object.keys(vars).join(', '));
     execSync(
@@ -68,7 +74,7 @@ function main() {
     );
     console.log('Done. Redeploy the frontend (e.g. npm run cloudflare:pages-deploy or push to Git) for vars to take effect.');
   } finally {
-    if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+    unlinkIfExists(ROOT, '.pages-env-bulk.json');
   }
 }
 

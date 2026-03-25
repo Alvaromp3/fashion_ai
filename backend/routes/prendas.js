@@ -7,6 +7,9 @@ const sharp = require('sharp');
 const Prenda = require('../models/Prenda');
 const { uploadImage, deleteImage } = require('../utils/cloudinary');
 const { getUserId } = require('../middleware/auth');
+const { resolveUploadsPublicPath } = require('../utils/safePath');
+
+const UPLOADS_ROOT = path.resolve(__dirname, '../uploads');
 
 /** Query filter by user: only their prendas, or legacy docs without userId when anonymous. */
 function userFilter(userId) {
@@ -247,6 +250,24 @@ router.get('/filter', async (req, res) => {
   }
 });
 
+router.get('/:id', async (req, res) => {
+  const mongoose = require('mongoose');
+  const userId = getUserId(req);
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ error: 'Invalid garment id' });
+  }
+  try {
+    const prenda = await Prenda.findOne({ _id: req.params.id, ...userFilter(userId) }).lean();
+    if (!prenda) {
+      return res.status(404).json({ error: 'Garment not found' });
+    }
+    res.json(prenda);
+  } catch (error) {
+    console.error('Error obteniendo prenda:', error);
+    res.status(500).json({ error: 'Error getting garment' });
+  }
+});
+
 router.put('/:id/ocasion', async (req, res) => {
   const userId = getUserId(req);
   try {
@@ -282,8 +303,8 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Garment not found' });
     }
     if (prenda.imagen_url.startsWith('/uploads/')) {
-      const filePath = path.join(__dirname, '..', prenda.imagen_url);
-      if (fs.existsSync(filePath)) {
+      const filePath = resolveUploadsPublicPath(prenda.imagen_url, UPLOADS_ROOT);
+      if (filePath && fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
     } else if (prenda.imagen_url.includes('cloudinary')) {

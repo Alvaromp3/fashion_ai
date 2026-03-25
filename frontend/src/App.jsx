@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { Suspense, lazy, useEffect } from 'react'
 import { useAuth0 } from '@auth0/auth0-react'
 import axios from 'axios'
@@ -9,14 +9,20 @@ import { getRedirectOrigin } from './utils/auth0Redirect'
 const routerFuture = { v7_startTransition: true, v7_relativeSplatPath: true }
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
-const MisPrendas = lazy(() => import('./pages/MisPrendas'))
+const Wardrobe = lazy(() => import('./pages/Wardrobe'))
+const WardrobeOutfits = lazy(() => import('./pages/WardrobeOutfits'))
+const PrendaDetail = lazy(() => import('./pages/PrendaDetail'))
+const OutfitDetail = lazy(() => import('./pages/OutfitDetail'))
 const MisOutfits = lazy(() => import('./pages/MisOutfits'))
+const GenerateOutfitDetail = lazy(() => import('./pages/GenerateOutfitDetail'))
 const ModelExamples = lazy(() => import('./pages/ModelExamples'))
 const Mirror = lazy(() => import('./pages/Mirror'))
+const MirrorContext = lazy(() => import('./pages/MirrorContext'))
 const WardrobeChat = lazy(() => import('./pages/WardrobeChat'))
+const Settings = lazy(() => import('./pages/Settings'))
 
 function App() {
-  const { isAuthenticated, logout, loginWithRedirect, getAccessTokenSilently } = useAuth0()
+  const { isAuthenticated, loginWithRedirect, getAccessTokenSilently } = useAuth0()
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -38,15 +44,14 @@ function App() {
 <Router future={routerFuture}>
         <AuthTokenSetup />
         <div
-          className="min-h-screen app-shell"
+          className="min-h-dvh overflow-x-hidden app-shell"
           style={{ background: 'var(--sw-white, #F5F4F0)' }}
         >
         <TubelightNavbar
           isAuthenticated={isAuthenticated}
           onLogin={() => loginWithRedirect({ authorizationParams: { redirect_uri: getRedirectOrigin() } })}
-          onLogout={() => logout({ logoutParams: { returnTo: getRedirectOrigin() } })}
         />
-        <div className="pb-24 sm:pb-0 sm:pt-20">
+        <div className="pb-[max(5.75rem,calc(4.75rem+env(safe-area-inset-bottom,0px)))]">
           <Suspense
             fallback={
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -58,11 +63,19 @@ function App() {
           >
             <Routes>
               <Route path="/" element={<Dashboard />} />
-              <Route path="/prendas" element={<MisPrendas />} />
-              <Route path="/outfits" element={<MisOutfits />} />
+              <Route path="/wardrobe" element={<Wardrobe />} />
+              <Route path="/wardrobe/outfits" element={<WardrobeOutfits />} />
+              <Route path="/wardrobe/prenda/:id" element={<PrendaDetail />} />
+              <Route path="/wardrobe/outfit/:id" element={<OutfitDetail />} />
+              <Route path="/prendas" element={<Navigate to="/wardrobe" replace />} />
+              <Route path="/generate" element={<MisOutfits />} />
+              <Route path="/generate/outfit" element={<GenerateOutfitDetail />} />
+              <Route path="/outfits" element={<Navigate to="/generate" replace />} />
               <Route path="/modelo/ejemplos" element={<ModelExamples />} />
               <Route path="/mirror" element={<Mirror />} />
+              <Route path="/mirror/context" element={<MirrorContext />} />
               <Route path="/chat" element={<WardrobeChat />} />
+              <Route path="/settings" element={<Settings />} />
             </Routes>
           </Suspense>
         </div>

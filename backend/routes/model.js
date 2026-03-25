@@ -3,8 +3,20 @@ const router = express.Router();
 const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
+const { resolveUnder } = require('../utils/safePath');
+const { buildMlProxyGetUrl } = require('../utils/safeOutboundUrl');
 
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || '';
+
+const ALLOWED_ML_ARTIFACT_RELPATH = new Set([
+  'data_audit.png',
+  'confusion_matrix.png',
+  'model_metrics.json',
+  'confusion_matrix_vit.png',
+  'vit_real_pictures/confusion_matrix_vit_real_picture.png',
+  'training_curves_vit.png',
+  'model_metrics_vit.json'
+]);
 const ML_SERVICE_DIR = (() => {
   const fromRoutes = path.resolve(__dirname, '../../ml-service');
   if (fs.existsSync(fromRoutes)) return fromRoutes;
@@ -20,10 +32,16 @@ function isImageProxy(subPath) {
 }
 
 async function proxyToMl(subPath, res) {
-  const base = ML_SERVICE_URL.replace(/\/$/, '');
-  if (!base) return false;
+  if (!ML_SERVICE_URL.trim()) return false;
+  let requestUrl;
   try {
-    const { data, status, headers } = await axios.get(`${base}${subPath}`, {
+    requestUrl = buildMlProxyGetUrl(ML_SERVICE_URL, subPath);
+  } catch {
+    res.status(400).json({ error: 'Invalid proxy path' });
+    return true;
+  }
+  try {
+    const { data, status, headers } = await axios.get(requestUrl, {
       responseType: isImageProxy(subPath) ? 'arraybuffer' : 'json',
       timeout: 15000,
       validateStatus: () => true
@@ -44,18 +62,27 @@ async function proxyToMl(subPath, res) {
   }
 }
 
-function sendFileOr404(fileName, res, errorLabel) {
-  const filePath = path.join(ML_SERVICE_DIR, fileName);
-  if (fs.existsSync(filePath)) {
+function resolveMlArtifactPath(relPath) {
+  const norm = relPath.replace(/\\/g, '/');
+  if (!ALLOWED_ML_ARTIFACT_RELPATH.has(norm)) {
+    return null;
+  }
+  const segments = norm.split('/').filter(Boolean);
+  return resolveUnder(ML_SERVICE_DIR, ...segments);
+}
+
+function sendFileOr404(relPath, res, errorLabel) {
+  const filePath = resolveMlArtifactPath(relPath);
+  if (filePath && fs.existsSync(filePath)) {
     res.sendFile(filePath);
   } else {
     res.status(404).json({ error: errorLabel || 'Not found' });
   }
 }
 
-function sendJsonOr404(fileName, res, errorLabel) {
-  const filePath = path.join(ML_SERVICE_DIR, fileName);
-  if (fs.existsSync(filePath)) {
+function sendJsonOr404(relPath, res, errorLabel) {
+  const filePath = resolveMlArtifactPath(relPath);
+  if (filePath && fs.existsSync(filePath)) {
     try {
       const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
       res.json(data);
@@ -89,7 +116,11 @@ router.get('/confusion-matrix-vit', async (req, res) => {
 
 router.get('/confusion-matrix-vit-real', async (req, res) => {
   if (await proxyToMl('/confusion-matrix-vit-real', res)) return;
-  sendFileOr404('vit_real_pictures/confusion_matrix_vit_real_picture.png', res, 'ViT (real pictures) confusion matrix not found');
+  sendFileOr404(
+    'vit_real_pictures/confusion_matrix_vit_real_picture.png',
+    res,
+    'ViT (real pictures) confusion matrix not found'
+  );
 });
 
 router.get('/training-curves-vit', async (req, res) => {

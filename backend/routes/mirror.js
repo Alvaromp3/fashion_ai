@@ -1,6 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const router = express.Router();
+const { validateMirrorImageUrl } = require('../utils/safeMirrorImageUrl');
 
 /**
  * Mirror system prompt for OpenRouter: defines stylist role and JSON output format.
@@ -197,7 +198,7 @@ router.post('/analyze-frame', async (req, res) => {
             role: 'user',
             content: [
               { type: 'text', text: userText },
-              { type: 'image_url', image_url: { url: imageDataUrl } }
+              { type: 'image_url', image_url: { url: safeImageUrl } }
             ]
           }
         ],

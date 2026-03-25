@@ -50,11 +50,11 @@ const PrendaModal = ({ prenda, label, onClose }) => {
           {color && <p className="text-slate-600 mt-1 capitalize">Color: {color}</p>}
           <p className="text-slate-500 text-sm mt-1">Category: {label || '—'}</p>
           <Link
-            to="/prendas"
+            to="/wardrobe"
             className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 transition-colors"
             onClick={onClose}
           >
-            View in My Garments →
+            View in wardrobe →
           </Link>
         </div>
       </div>

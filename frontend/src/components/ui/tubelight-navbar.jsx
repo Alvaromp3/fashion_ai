@@ -1,101 +1,84 @@
-import React, { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
+import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Shirt, Sparkles, ScanLine, LogOut, LogIn, MessageCircle } from 'lucide-react'
+import { Home, Shirt, Sparkles, ScanLine, LogIn, Settings } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
 const defaultNavItems = [
   { name: 'Dashboard', url: '/', icon: Home },
-  { name: 'Garments', url: '/prendas', icon: Shirt },
-  { name: 'Outfits', url: '/outfits', icon: Sparkles },
-  { name: 'Chat', url: '/chat', icon: MessageCircle },
+  { name: 'Wardrobe', url: '/wardrobe', icon: Shirt },
+  { name: 'Generate', url: '/generate', icon: Sparkles },
   { name: 'Mirror', url: '/mirror', icon: ScanLine },
+  { name: 'Settings', url: '/settings', icon: Settings },
 ]
 
-export function TubelightNavbar({ items = defaultNavItems, isAuthenticated, onLogin, onLogout, className }) {
-  const location = useLocation()
-  const [isMobile, setIsMobile] = useState(false)
+const linkBase =
+  'relative z-0 shrink-0 font-semibold text-sm transition-colors text-[#0D0D0D] hover:text-[#FF3B00] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FF3B00]'
 
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768)
-    handleResize()
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
+/** Barra principal siempre abajo (mismo patrón que antes solo en móvil). */
+export function TubelightNavbar({ items = defaultNavItems, isAuthenticated, onLogin, className }) {
+  const location = useLocation()
 
   return (
-    <div
-      className={cn(
-        'fixed bottom-0 sm:top-0 left-1/2 -translate-x-1/2 z-50 mb-6 sm:pt-6 w-full max-w-7xl px-4 sm:px-6 pointer-events-none',
-        className
-      )}
-    >
-      <div
-        className="flex items-center justify-center gap-1 sm:gap-3 backdrop-blur-lg py-1.5 px-1.5 sm:py-1 sm:px-1 rounded-full shadow-xl mx-auto w-fit border border-[#D0CEC8] bg-white pointer-events-auto"
-      >
-        {items.map((item) => {
-          const Icon = item.icon
-          const isActive =
-            item.url === '/'
-              ? location.pathname === '/'
-              : location.pathname.startsWith(item.url)
+    <div className="fixed z-50 inset-x-0 bottom-0 pointer-events-none">
+      <div className={cn('mx-auto w-full max-w-none px-0 pointer-events-none flex justify-center', className)}>
+        <div
+          className={cn(
+            'pointer-events-auto flex w-full max-w-full items-stretch',
+            'rounded-t-2xl border-x-0 border-t border-[#D0CEC8] bg-white/95 backdrop-blur-xl shadow-[0_-6px_28px_rgba(0,0,0,0.07)]',
+            'px-1 pt-1 pb-[max(0.35rem,env(safe-area-inset-bottom,0px))]'
+          )}
+        >
+          <nav
+            className="scrollbar-touch flex flex-1 min-h-[3.25rem] items-center justify-around gap-0 overflow-x-auto overflow-y-hidden"
+            aria-label="Main"
+          >
+            {items.map((item) => {
+              const Icon = item.icon
+              const isActive =
+                item.url === '/' ? location.pathname === '/' : location.pathname.startsWith(item.url)
 
-          return (
-            <Link
-              key={item.name}
-              to={item.url}
-              className={cn(
-                'relative cursor-pointer text-sm font-semibold px-4 sm:px-6 py-2 rounded-full transition-colors',
-                'text-[#0D0D0D] hover:text-[#FF3B00]',
-                isActive && 'text-white bg-[#0D0D0D] border border-[#0D0D0D]'
-              )}
-            >
-              <span className="hidden md:inline">{item.name}</span>
-              <span className="md:hidden inline-flex items-center justify-center w-8 h-8">
-                {Icon ? <Icon size={18} strokeWidth={2.5} /> : item.name.slice(0, 1)}
-              </span>
-              {isActive && (
-                <motion.div
-                  layoutId="tubelight-lamp"
-                  className="absolute inset-0 w-full rounded-full -z-10 bg-white/10"
-                  initial={false}
-                  transition={{
-                    type: 'spring',
-                    stiffness: 300,
-                    damping: 30,
-                  }}
+              return (
+                <Link
+                  key={item.name}
+                  to={item.url}
+                  className={cn(
+                    linkBase,
+                    'relative flex min-h-[3.25rem] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 py-1.5',
+                    isActive && 'text-[#FF3B00]'
+                  )}
                 >
-                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-8 h-1 rounded-t-full bg-[#FF3B00] shadow-[0_0_14px_rgba(255,59,0,0.55)]">
-                    <div className="absolute w-12 h-6 rounded-full blur-md -top-2 -left-2 opacity-25 bg-[#FF3B00]" />
-                    <div className="absolute w-8 h-6 rounded-full blur-md -top-1 opacity-15 bg-[#0D0D0D]" />
-                  </div>
-                </motion.div>
-              )}
-            </Link>
-          )
-        })}
-        {onLogin && !isAuthenticated && (
-          <button
-            type="button"
-            onClick={onLogin}
-            className="relative cursor-pointer text-sm font-semibold px-3 sm:px-4 py-2 rounded-full bg-[#0D0D0D] text-white hover:bg-[#FF3B00] flex items-center gap-1"
-            title="Log in"
-          >
-            <LogIn size={18} strokeWidth={2.5} />
-            <span className="hidden md:inline">Log in</span>
-          </button>
-        )}
-        {onLogout && isAuthenticated && (
-          <button
-            type="button"
-            onClick={onLogout}
-            className="relative cursor-pointer text-sm font-semibold px-3 sm:px-4 py-2 rounded-full text-[#0D0D0D] hover:text-[#FF3B00] flex items-center gap-1"
-            title="Log out"
-          >
-            <LogOut size={18} strokeWidth={2.5} />
-            <span className="hidden md:inline">Log out</span>
-          </button>
-        )}
+                  {isActive && (
+                    <span
+                      className="absolute left-1/2 top-0 h-0.5 w-7 -translate-x-1/2 rounded-full bg-[#FF3B00] shadow-[0_0_10px_rgba(255,59,0,0.5)]"
+                      aria-hidden
+                    />
+                  )}
+                  {Icon ? (
+                    <Icon
+                      size={22}
+                      strokeWidth={2.25}
+                      className={cn('shrink-0 opacity-90', isActive && 'opacity-100')}
+                      aria-hidden
+                    />
+                  ) : null}
+                  <span className="max-w-[4.75rem] truncate text-center text-[10px] font-semibold leading-tight sm:text-[11px]">
+                    {item.name}
+                  </span>
+                </Link>
+              )
+            })}
+          </nav>
+          {onLogin && !isAuthenticated && (
+            <button
+              type="button"
+              onClick={onLogin}
+              className="mx-1 my-auto inline-flex min-h-[2.75rem] min-w-[2.75rem] shrink-0 items-center justify-center gap-1 self-center rounded-xl bg-[#0D0D0D] text-white hover:bg-[#FF3B00]"
+              title="Log in"
+            >
+              <LogIn size={20} strokeWidth={2.25} />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
-import { FaTimes, FaUpload, FaSpinner, FaCalendar, FaBrain } from 'react-icons/fa'
+import { useState, useEffect, useRef } from 'react'
+import { FaTimes, FaUpload, FaSpinner, FaCalendar, FaBrain, FaCamera } from 'react-icons/fa'
 import axios from 'axios'
 import heic2any from 'heic2any'
+import { typeToEnglish, colorToEnglish, garmentClassLabel } from '../lib/classificationDisplay'
 
 const ML_UNAVAILABLE_HINT_LOCAL = 'Run ./start-all.sh from the project root and wait ~1–2 min for models to load. If it still fails, check logs/ml-service.log.'
 const ML_UNAVAILABLE_HINT_PROD = 'ML is on a hosted Space (e.g. Hugging Face). The Space may be sleeping—open the Space URL in a browser to wake it, or ask the admin to check ML_SERVICE_URL.'
@@ -31,26 +32,18 @@ const UploadModal = ({ onClose, onSuccess }) => {
 
   const [vitReady, setVitReady] = useState(false)
 
-  const typeToEnglish = (raw) => {
-    if (raw == null || raw === '') return ''
-    const map = {
-      superior: 'TOP',
-      inferior: 'BOTTOM',
-      zapatos: 'SHOES',
-      abrigo: 'COAT',
-      vestido: 'DRESS',
-      bolso: 'BAG',
-      accesorio: 'ACCESSORY',
-      'joyería': 'JEWELRY',
-      joyeria: 'JEWELRY',
-      sombrero: 'HAT',
-      'cinturón': 'BELT',
-      cinturon: 'BELT',
-      gafas: 'GLASSES',
+  const previewRef = useRef(null)
+  useEffect(() => {
+    previewRef.current = preview
+  }, [preview])
+  useEffect(() => {
+    return () => {
+      if (previewRef.current) {
+        URL.revokeObjectURL(previewRef.current)
+        previewRef.current = null
+      }
     }
-    const s = String(raw).toLowerCase().trim()
-    return map[s] || String(raw).replace(/_/g, ' ').toUpperCase()
-  }
+  }, [])
 
   const isLocalhost = typeof window !== 'undefined' && /^localhost$|^127\.0\.0\.1$/.test((window.location?.hostname || '').toLowerCase())
   const mlUnavailableHint = (mlHint != null && mlHint !== '') ? mlHint : ((mlHosted || !isLocalhost) ? ML_UNAVAILABLE_HINT_PROD : ML_UNAVAILABLE_HINT_LOCAL)
@@ -200,19 +193,27 @@ const UploadModal = ({ onClose, onSuccess }) => {
   }
 
   const handleFileChange = async (e) => {
-    const selectedFile = e.target.files[0]
-    if (selectedFile) {
-      setFile(selectedFile)
-      setError(null)
-      setClassification(null)
-      try {
-        const jpegForPreview = await ensureJpegFile(selectedFile)
-        const previewFile = jpegForPreview || selectedFile
-        setPreview(URL.createObjectURL(previewFile))
-      } catch {
-        // Si falla la conversión (HEIC muy raro), al menos intentamos previsualizar el original
-        setPreview(URL.createObjectURL(selectedFile))
-      }
+    const input = e.target
+    const selectedFile = input.files?.[0]
+    if (!selectedFile) return
+
+    setFile(selectedFile)
+    setError(null)
+    setClassification(null)
+    try {
+      const jpegForPreview = await ensureJpegFile(selectedFile)
+      const previewFile = jpegForPreview || selectedFile
+      setPreview((prev) => {
+        if (prev) URL.revokeObjectURL(prev)
+        return URL.createObjectURL(previewFile)
+      })
+    } catch {
+      setPreview((prev) => {
+        if (prev) URL.revokeObjectURL(prev)
+        return URL.createObjectURL(selectedFile)
+      })
+    } finally {
+      input.value = ''
     }
   }
 
@@ -317,7 +318,10 @@ const UploadModal = ({ onClose, onSuccess }) => {
       })
 
       setFile(null)
-      setPreview(null)
+      setPreview((prev) => {
+        if (prev) URL.revokeObjectURL(prev)
+        return null
+      })
       setClassification(null)
       setSelectedOccasions([])
       setError(null)
@@ -363,12 +367,52 @@ const UploadModal = ({ onClose, onSuccess }) => {
 
           <div>
             <label className="sw-label-field">Select Image</label>
-            <div className="drop-zone rounded-xl p-8 text-center bg-white">
-              <input type="file" accept="image/*,.heic,.heif" onChange={handleFileChange} className="hidden" id="file-upload" />
-              <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center space-y-2">
-                <FaUpload className="text-4xl text-[#888]" />
-                <span className="text-[#0D0D0D]">{file ? file.name : 'Click or drag an image here'}</span>
-              </label>
+            <div className="drop-zone rounded-xl p-8 text-center bg-white border border-[#D0CEC8]">
+              <input
+                type="file"
+                accept="image/*,.heic,.heif"
+                onChange={handleFileChange}
+                className="hidden"
+                id="file-upload"
+              />
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileChange}
+                className="hidden"
+                id="camera-capture"
+                aria-label="Hacer foto con la cámara"
+              />
+              <div className="flex flex-col items-center gap-4">
+                <FaUpload className="text-4xl text-[#888]" aria-hidden />
+                <p className="text-[#0D0D0D] text-sm sm:text-base px-2">
+                  {file ? (
+                    <span className="font-medium break-all">{file.name}</span>
+                  ) : (
+                    <>Elige un archivo o usa la cámara; la vista previa aparece abajo.</>
+                  )}
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-3 w-full">
+                  <label
+                    htmlFor="file-upload"
+                    className="cursor-pointer sw-btn sw-btn-outline sw-btn-sm inline-flex items-center gap-2 justify-center"
+                  >
+                    <FaUpload className="opacity-80" aria-hidden />
+                    Elegir imagen
+                  </label>
+                  <label
+                    htmlFor="camera-capture"
+                    className="cursor-pointer sw-btn sw-btn-outline sw-btn-sm inline-flex items-center gap-2 justify-center"
+                  >
+                    <FaCamera className="opacity-80" aria-hidden />
+                    Usar cámara
+                  </label>
+                </div>
+                <p className="text-xs text-[#888] max-w-md">
+                  En el móvil, «Usar cámara» abre la cámara (cámara trasera si el dispositivo lo permite). En escritorio depende del navegador: a veces verás el explorador de archivos o la opción de webcam.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -430,9 +474,9 @@ const UploadModal = ({ onClose, onSuccess }) => {
                   </div>
                 )}
                 <div className="space-y-2 text-sm">
-                  <p className="text-[#0D0D0D]"><span className="font-medium text-[#0D0D0D]">Garment:</span> {classification.clase_nombre || 'unknown'}</p>
+                  <p className="text-[#0D0D0D]"><span className="font-medium text-[#0D0D0D]">Garment:</span> {garmentClassLabel(classification.clase_nombre)}</p>
                   <p className="text-[#0D0D0D]"><span className="font-medium text-[#0D0D0D]">Type:</span> {typeToEnglish(classification.tipo)}</p>
-                  <p className="text-[#0D0D0D]"><span className="font-medium text-[#0D0D0D]">Color:</span> {classification.color}</p>
+                  <p className="text-[#0D0D0D]"><span className="font-medium text-[#0D0D0D]">Color:</span> {colorToEnglish(classification.color)}</p>
                   <p className="text-[#0D0D0D]"><span className="font-medium text-[#0D0D0D]">Confidence:</span> {(classification.confianza * 100).toFixed(1)}%</p>
                   
                   {classification.top3?.length > 0 && (
@@ -441,7 +485,7 @@ const UploadModal = ({ onClose, onSuccess }) => {
                       <div className="space-y-1 text-xs text-[#888]">
                         {classification.top3.map((pred, idx) => (
                           <p key={idx} className={idx === 0 ? 'font-semibold text-[#0D0D0D]' : ''}>
-                            {idx + 1}. {pred.clase_nombre} ({typeToEnglish(pred.tipo)}) - {(pred.confianza * 100).toFixed(1)}%
+                            {idx + 1}. {garmentClassLabel(pred.clase_nombre)} ({typeToEnglish(pred.tipo)}) - {(pred.confianza * 100).toFixed(1)}%
                           </p>
                         ))}
                       </div>

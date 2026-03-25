@@ -1,10 +1,10 @@
-import { Suspense, lazy, useEffect, useState } from 'react'
+import { Fragment, Suspense, lazy, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FaMagic, FaTshirt, FaArrowRight, FaUpload } from 'react-icons/fa'
 import { ScanLine } from 'lucide-react'
 import axios from 'axios'
 import PrendaCard from '../components/PrendaCard'
-import OutfitCard from '../components/OutfitCard'
+import SavedOutfitGridCard from '../components/SavedOutfitGridCard'
 
 const UploadModal = lazy(() => import('../components/UploadModal'))
 
@@ -14,14 +14,6 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const navigate = useNavigate()
-
-  // Visual-only stats (no afecta la lógica / BD)
-  const STATS = [
-    { label: 'GARMENTS', val: '24' },
-    { label: 'OUTFITS', val: '08' },
-    { label: 'VIT SCANS', val: '47' },
-    { label: 'STYLE SCORE', val: '9.2' }
-  ]
 
   useEffect(() => {
     let cancelled = false
@@ -39,7 +31,7 @@ const Dashboard = () => {
         ])
         if (cancelled) return
         setPrendas(Array.isArray(prendasRes?.data) ? prendasRes.data.slice(0, 6) : [])
-        setOutfits(Array.isArray(outfitsRes?.data) ? outfitsRes.data.slice(0, 3) : [])
+        setOutfits(Array.isArray(outfitsRes?.data) ? outfitsRes.data.slice(0, 6) : [])
       } catch (e) {
         if (!cancelled) console.error('Dashboard fetch error:', e)
       } finally {
@@ -63,7 +55,7 @@ const Dashboard = () => {
   const fetchOutfits = async () => {
     try {
       const response = await axios.get('/api/outfits', { timeout: 15000 })
-      setOutfits(Array.isArray(response.data) ? response.data.slice(0, 3) : [])
+      setOutfits(Array.isArray(response.data) ? response.data.slice(0, 6) : [])
     } catch (error) {
       console.error('Error fetching outfits:', error)
       setOutfits([])
@@ -71,7 +63,7 @@ const Dashboard = () => {
   }
 
   const handleGenerateOutfit = () => {
-    navigate('/outfits')
+    navigate('/generate')
   }
 
   const handleDeletePrenda = async (id) => {
@@ -83,33 +75,45 @@ const Dashboard = () => {
     }
   }
 
+  const handleDeleteOutfit = async (id) => {
+    if (!window.confirm('Delete this saved outfit?')) return
+    try {
+      await axios.delete(`/api/outfits/${id}`)
+      fetchOutfits()
+    } catch (error) {
+      console.error('Error deleting outfit:', error)
+      window.alert('Could not delete the outfit.')
+    }
+  }
+
   return (
-    <div className="min-h-screen" style={{ background: 'var(--sw-white)' }}>
+    <div className="min-h-dvh" style={{ background: 'var(--sw-white)' }}>
 
       {/* ── HERO ── */}
-      <section className="border-b border-[#0D0D0D] relative overflow-hidden">
+      <section className="border-b border-[#0D0D0D] relative overflow-hidden min-h-[min(50vh,360px)] lg:min-h-[min(56vh,520px)]">
         <div className="absolute inset-0">
-          {/* Visual-only: usamos una imagen remota para no romper si /hero-fashion.png no existe */}
           <img
-            src="https://images.unsplash.com/photo-1520975958225-9a2b1c1b7b9b?w=1600&q=80"
+            src="/hero_background.png"
             alt=""
-            className="w-full h-full object-cover opacity-30"
+            className="absolute inset-0 w-full h-full object-cover object-[52%_center] lg:object-[center_28%]"
           />
-          <div className="absolute inset-0 sw-stripe" />
+          {/* Legibilidad del titular */}
+          <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/70 to-white/15 lg:from-white/92 lg:via-white/50 lg:to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/[0.04] via-transparent to-white/20" />
         </div>
-        <div className="relative max-w-7xl mx-auto px-5 pt-16 pb-14">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-end">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-5 lg:px-8 pt-12 pb-10 lg:pt-16 lg:pb-14">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 items-end">
             <div>
               <p className="sw-label text-[#FF3B00] mb-4">— AI WARDROBE INTELLIGENCE</p>
-              <h1 className="sw-display text-[#0D0D0D]" style={{ fontSize: 'clamp(3.5rem, 9vw, 7rem)' }}>
+              <h1 className="sw-display text-[#0D0D0D]" style={{ fontSize: 'clamp(2.35rem, 10vw, 7rem)' }}>
                 YOUR<br />
                 STYLE.<br />
                 AI<span className="text-[#FF3B00]">FIED.</span>
               </h1>
-              <div className="mt-8 flex flex-wrap gap-3">
+              <div className="mt-6 sm:mt-8 flex flex-col w-full sm:flex-row sm:flex-wrap gap-3">
                 <button
                   type="button"
-                  className="sw-btn sw-btn-primary sw-btn-lg"
+                  className="sw-btn sw-btn-primary sw-btn-lg w-full sm:w-auto justify-center"
                   onClick={() => setShowUploadModal(true)}
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -119,28 +123,20 @@ const Dashboard = () => {
                 </button>
                 <button
                   type="button"
-                  className="sw-btn sw-btn-outline sw-btn-lg"
+                  className="sw-btn sw-btn-outline sw-btn-lg w-full sm:w-auto justify-center"
                   onClick={handleGenerateOutfit}
                 >
                   Generate Outfits →
                 </button>
               </div>
             </div>
-            <div className="hidden md:block text-right">
+            <div className="hidden lg:block text-right">
               <p className="sw-label text-[#888] mb-2">ViT CLASSIFICATION</p>
               <p className="sw-heading text-[#0D0D0D]" style={{ fontSize: '1.1rem' }}>
                 &quot;VISION TRANSFORMER
                 <br />
                 POWERED FASHION&quot;
               </p>
-              <div className="mt-4 flex justify-end gap-4">
-                {STATS.map((s) => (
-                  <div key={s.label} className="text-right">
-                    <p className="sw-display text-[#0D0D0D]" style={{ fontSize: '2rem' }}>{s.val}</p>
-                    <p className="sw-label text-[#888]" style={{ fontSize: '0.55rem' }}>{s.label}</p>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </div>
@@ -150,7 +146,7 @@ const Dashboard = () => {
       <div className="marquee-bar">
         <div className="sw-marquee-track">
           {Array.from({ length: 6 }).map((_, i) => (
-            <>
+            <Fragment key={i}>
               <span className="sw-label text-white px-6" style={{ fontSize: '0.7rem' }}>CLASSIFY WITH VIT</span>
               <span className="text-[#FF3B00] px-2">✦</span>
               <span className="sw-label text-white px-6" style={{ fontSize: '0.7rem' }}>GENERATE OUTFITS</span>
@@ -159,29 +155,19 @@ const Dashboard = () => {
               <span className="text-[#FF3B00] px-2">✦</span>
               <span className="sw-label text-white px-6" style={{ fontSize: '0.7rem' }}>FASHION INTELLIGENCE</span>
               <span className="text-[#FF3B00] px-2">✦</span>
-            </>
+            </Fragment>
           ))}
         </div>
       </div>
 
-      {/* ── STATS mobile ── */}
-      <div className="md:hidden grid grid-cols-4 border-b border-[#0D0D0D]">
-        {STATS.map((s, i) => (
-          <div key={s.label} className={`p-4 text-center ${i < 3 ? 'border-r border-[#D0CEC8]' : ''}`}>
-            <p className="sw-display text-[#0D0D0D]" style={{ fontSize: '1.6rem' }}>{s.val}</p>
-            <p className="sw-label text-[#888]" style={{ fontSize: '0.5rem' }}>{s.label}</p>
-          </div>
-        ))}
-      </div>
-
       {/* ── RECENT GARMENTS ── */}
-      <section className="max-w-7xl mx-auto px-5 py-12">
-        <div className="flex items-end justify-between mb-8 border-b border-[#0D0D0D] pb-4">
+      <section className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-8 py-10 lg:py-12">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-8 border-b border-[#0D0D0D] pb-4">
           <div>
             <p className="sw-label text-[#FF3B00] mb-1">— YOUR WARDROBE</p>
             <h2 className="sw-heading" style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)' }}>RECENT GARMENTS</h2>
           </div>
-          <button type="button" onClick={() => navigate('/prendas')} className="sw-btn sw-btn-outline sw-btn-sm">
+          <button type="button" onClick={() => navigate('/wardrobe')} className="sw-btn sw-btn-outline sw-btn-sm w-full sm:w-auto shrink-0 justify-center">
             VIEW ALL →
           </button>
         </div>
@@ -199,7 +185,7 @@ const Dashboard = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {prendas.map((prenda, i) => (
               <div key={prenda._id} className="anim-up" style={{ animationDelay: `${i * 60}ms` }}>
                 <PrendaCard prenda={prenda} onDelete={handleDeletePrenda} />
@@ -212,13 +198,13 @@ const Dashboard = () => {
       <hr className="sw-divider max-w-7xl mx-auto" />
 
       {/* ── SAVED OUTFITS ── */}
-      <section className="max-w-7xl mx-auto px-5 py-12">
-        <div className="flex items-end justify-between mb-8 border-b border-[#0D0D0D] pb-4">
+      <section className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-8 py-10 lg:py-12">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-8 border-b border-[#0D0D0D] pb-4">
           <div>
             <p className="sw-label text-[#FF3B00] mb-1">— YOUR LOOKS</p>
             <h2 className="sw-heading" style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)' }}>SAVED OUTFITS</h2>
           </div>
-          <button type="button" onClick={() => navigate('/outfits')} className="sw-btn sw-btn-outline sw-btn-sm">
+          <button type="button" onClick={() => navigate('/wardrobe/outfits')} className="sw-btn sw-btn-outline sw-btn-sm w-full sm:w-auto shrink-0 justify-center">
             VIEW ALL →
           </button>
         </div>
@@ -232,10 +218,14 @@ const Dashboard = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {outfits.map((outfit, i) => (
               <div key={outfit._id} className="anim-up" style={{ animationDelay: `${i * 80}ms` }}>
-                <OutfitCard outfit={outfit} />
+                <SavedOutfitGridCard
+                  outfit={outfit}
+                  onOpen={() => navigate(`/wardrobe/outfit/${outfit._id}`)}
+                  onDelete={() => handleDeleteOutfit(outfit._id)}
+                />
               </div>
             ))}
           </div>
@@ -243,8 +233,8 @@ const Dashboard = () => {
       </section>
 
       {/* ── CTA BAND ── */}
-      <section className="border-t border-[#0D0D0D] bg-[#0D0D0D] py-16">
-        <div className="max-w-7xl mx-auto px-5 flex flex-col md:flex-row items-center justify-between gap-8">
+      <section className="border-t border-[#0D0D0D] bg-[#0D0D0D] py-12 lg:py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-8 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-8 text-center lg:text-left">
           <div>
             <p className="sw-label text-[#FF3B00] mb-2">— STYLE MIRROR</p>
             <h2 className="sw-heading text-white" style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)' }}>
@@ -253,7 +243,7 @@ const Dashboard = () => {
               OUTFIT LIVE
             </h2>
           </div>
-          <button type="button" className="sw-btn sw-btn-accent sw-btn-lg" onClick={() => navigate('/mirror')}>
+          <button type="button" className="sw-btn sw-btn-accent sw-btn-lg w-full lg:w-auto justify-center shrink-0" onClick={() => navigate('/mirror')}>
             Open Mirror →
           </button>
         </div>

@@ -3,16 +3,10 @@
  * Combine backend/.env + frontend/.env + frontend/.env.local → root .env
  * (for dotenv-vault push). Run from repo root.
  */
-const fs = require('fs');
 const path = require('path');
+const { readOptionalUtf8, writeUtf8 } = require('./lib/resolve-under.cjs');
 
-const ROOT = path.join(__dirname, '..');
-const FILES = {
-  out: path.join(ROOT, '.env'),
-  backend: path.join(ROOT, 'backend', '.env'),
-  frontend: path.join(ROOT, 'frontend', '.env'),
-  frontendLocal: path.join(ROOT, 'frontend', '.env.local'),
-};
+const ROOT = path.resolve(__dirname, '..');
 
 const H = {
   backend: '# --- BACKEND ---',
@@ -20,11 +14,7 @@ const H = {
   frontendLocal: '# --- FRONTEND_LOCAL ---',
 };
 
-function read(p) {
-  return fs.existsSync(p) ? fs.readFileSync(p, 'utf8').trim() : '';
-}
-
-const backend = read(FILES.backend);
+const backend = readOptionalUtf8(ROOT, 'backend', '.env').trim();
 if (!backend) {
   console.error('backend/.env missing or empty. Run env:vault-pull first.');
   process.exit(1);
@@ -40,11 +30,11 @@ const body = [
   backend,
   '',
   H.frontend,
-  read(FILES.frontend) || '# (empty)',
+  readOptionalUtf8(ROOT, 'frontend', '.env').trim() || '# (empty)',
   '',
   H.frontendLocal,
-  read(FILES.frontendLocal) || '# (empty)',
+  readOptionalUtf8(ROOT, 'frontend', '.env.local').trim() || '# (empty)',
 ].join('\n');
 
-fs.writeFileSync(FILES.out, body + '\n', 'utf8');
+writeUtf8(ROOT, '.env', body + '\n');
 console.log('Combined → .env (' + env + ')');

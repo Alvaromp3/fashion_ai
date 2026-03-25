@@ -97,6 +97,15 @@
 }
 
 @layer utilities {
+  /* Mobile nav: hide horizontal scrollbar but keep swipe/scroll */
+  .scrollbar-touch {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-touch::-webkit-scrollbar {
+    display: none;
+  }
+
   .text-balance {
     text-wrap: balance;
   }
@@ -458,6 +467,7 @@
 .sw-card {
   background: white;
   border: 1.5px solid var(--sw-border);
+  max-width: 100%;
   transition: transform 180ms ease, box-shadow 180ms ease,
     border-color 180ms ease;
 }
@@ -473,6 +483,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
+  min-height: 44px;
   font-family: 'Arial Black', 'Helvetica Neue', sans-serif;
   font-weight: 900;
   font-size: 0.65rem;
@@ -484,6 +495,12 @@
   outline: none;
   white-space: nowrap;
   user-select: none;
+}
+
+@media (min-width: 1024px) {
+  .sw-btn {
+    min-height: 0;
+  }
 }
 
 .sw-btn:disabled {

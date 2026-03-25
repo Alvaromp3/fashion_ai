@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth0 } from '@auth0/auth0-react'
 import axios from 'axios'
 import {
   Camera,
@@ -7,98 +9,23 @@ import {
   ChevronRight,
   Loader2,
   MapPin,
+  MessageCircle,
   PlusCircle,
   RefreshCw,
-  ScanLine,
+  SlidersHorizontal,
   Sparkles,
   Zap
 } from 'lucide-react'
-
-/** Open-Meteo weather code → English label */
-const WEATHER_CODES = {
-  0: 'clear',
-  1: 'mainly clear',
-  2: 'partly cloudy',
-  3: 'overcast',
-  45: 'foggy',
-  48: 'frost',
-  51: 'drizzle',
-  53: 'drizzle',
-  55: 'dense drizzle',
-  61: 'light rain',
-  63: 'rain',
-  65: 'heavy rain',
-  71: 'light snow',
-  73: 'snow',
-  75: 'heavy snow',
-  80: 'showers',
-  81: 'showers',
-  82: 'heavy showers',
-  95: 'thunderstorm',
-  96: 'thunderstorm with hail',
-  99: 'severe thunderstorm'
-}
-
-const DEFAULT_ADVANCED_PROMPT = `Detected garments (YOLO):
-- Navy blazer (0.94), grey trousers (0.91), white sneakers (0.96)
-Pose: upright, balanced. Profile: minimal smart casual.
-Context: business casual meeting, 16°C, afternoon.
-Evaluate outfit and detect new items.`
-
-/** Occasion / style options for outfit feedback. User picks one; AI tailors tips to it. */
-const OCCASION_OPTIONS = [
-  { id: 'business-casual', label: 'Business casual' },
-  { id: 'streetwear', label: 'Streetwear' },
-  { id: 'casual', label: 'Casual' },
-  { id: 'gym', label: 'Gym / Sport' },
-  { id: 'smart-casual', label: 'Smart casual' },
-  { id: 'formal', label: 'Formal' },
-  { id: 'date-night', label: 'Date night' },
-  { id: 'beach', label: 'Beach / Vacation' },
-  { id: 'work-from-home', label: 'Work from home' }
-]
+import { OCCASION_OPTIONS } from '../lib/mirrorConstants'
+import { loadMirrorContext, saveMirrorContext } from '../lib/mirrorContextStorage'
+import { buildMirrorWeatherPartialFromCoords, GEO_OPTIONS_DEFAULT } from '../lib/mirrorWeather'
+import { getRedirectOrigin } from '../utils/auth0Redirect'
+import { typeToEnglish, colorToEnglish, garmentClassLabel } from '../lib/classificationDisplay'
 
 export default function Mirror() {
-  const typeToEnglish = (raw) => {
-    if (raw == null || raw === '') return ''
-    const map = {
-      superior: 'TOP',
-      inferior: 'BOTTOM',
-      zapatos: 'SHOES',
-      abrigo: 'COAT',
-      vestido: 'DRESS',
-      bolso: 'BAG',
-      accesorio: 'ACCESSORY',
-      'joyería': 'JEWELRY',
-      joyeria: 'JEWELRY',
-      sombrero: 'HAT',
-      'cinturón': 'BELT',
-      cinturon: 'BELT',
-      gafas: 'GLASSES',
-    }
-    const s = String(raw).toLowerCase().trim()
-    return map[s] || String(raw).replace(/_/g, ' ').toUpperCase()
-  }
-
-  const colorToEnglish = (raw) => {
-    if (raw == null || raw === '') return ''
-    const map = {
-      desconocido: 'Unknown',
-      negro: 'Black',
-      blanco: 'White',
-      gris: 'Gray',
-      rojo: 'Red',
-      azul: 'Blue',
-      verde: 'Green',
-      amarillo: 'Yellow',
-      naranja: 'Orange',
-      rosa: 'Pink',
-      beige: 'Beige',
-      marrón: 'Brown',
-    }
-    const s = String(raw).toLowerCase().trim()
-    return map[s] || String(raw)
-  }
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { isAuthenticated, loginWithRedirect } = useAuth0()
 
   const videoRef = useRef(null)
   const streamRef = useRef(null)
@@ -109,98 +36,78 @@ export default function Mirror() {
   const [cameraStarting, setCameraStarting] = useState(false)
   const [liveMode, setLiveMode] = useState(false)
 
-  const [locationStatus, setLocationStatus] = useState('idle') // idle | asking | granted | denied | error
-  const [locationLabel, setLocationLabel] = useState('')
-  const [occasionId, setOccasionId] = useState('business-casual') // user choice for feedback context
-  const event = useMemo(() => {
-    const opt = OCCASION_OPTIONS.find((o) => o.id === occasionId)
-    return opt ? opt.label : occasionId
-  }, [occasionId])
-  const [weather, setWeather] = useState('16°C')
-  const [timeOfDay, setTimeOfDay] = useState('afternoon')
-  const [stylePref, setStylePref] = useState('minimal smart casual')
-  const [userNotes, setUserNotes] = useState('')
+  const [mirrorPrefs, setMirrorPrefs] = useState(() => loadMirrorContext())
+  /** Live Open-Meteo + geolocation pipeline status */
+  const [weatherHookStatus, setWeatherHookStatus] = useState('locating')
 
-  const [userPrompt, setUserPrompt] = useState(DEFAULT_ADVANCED_PROMPT)
+  useEffect(() => {
+    setMirrorPrefs(loadMirrorContext())
+  }, [location.pathname])
+
+  const prefs = mirrorPrefs
+  const event = useMemo(() => {
+    const opt = OCCASION_OPTIONS.find((o) => o.id === prefs.occasionId)
+    return opt ? opt.label : prefs.occasionId
+  }, [prefs.occasionId])
+
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
   const [showRawJson, setShowRawJson] = useState(false)
-  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const [vitLoading, setVitLoading] = useState(false)
   const [vitResult, setVitResult] = useState(null)
   const [addToWardrobeLoading, setAddToWardrobeLoading] = useState(false)
+  const [stylistAdvice, setStylistAdvice] = useState(null)
+  const [classifyChatLoading, setClassifyChatLoading] = useState(false)
 
   const context = useMemo(() => {
     const ctx = {
       event,
-      weather,
-      time: timeOfDay,
-      user_profile: { style_preference: stylePref }
+      weather: prefs.weather,
+      time: prefs.timeOfDay,
+      user_profile: { style_preference: prefs.stylePref }
     }
-    if (locationLabel) ctx.location = locationLabel
+    if (prefs.locationLabel) ctx.location = prefs.locationLabel
     return ctx
-  }, [event, weather, timeOfDay, stylePref, locationLabel])
+  }, [event, prefs.weather, prefs.timeOfDay, prefs.stylePref, prefs.locationLabel])
 
-  /**
-   * Set time-of-day label from hour/minute (0–23, 0–59).
-   * @param {number} hour - 0–23
-   * @param {number} [minute=0] - 0–59
-   */
-  const setTimeFromHour = (hour, minute = 0) => {
-    const h = Number.isNaN(hour) ? 12 : Math.max(0, Math.min(23, hour))
-    const m = Number.isNaN(minute) ? 0 : Math.max(0, Math.min(59, minute))
-    const period = h < 6 ? 'night' : h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening'
-    const timeLabel = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-    setTimeOfDay(`${period}, ${timeLabel}`)
-  }
-
-  /** Request geolocation and fill weather/time via Open-Meteo. */
-  const requestLocation = async () => {
+  /** On load: browser location prompt (if needed) → Open-Meteo + place name → saved context. */
+  const refreshLocationWeather = useCallback(() => {
     if (!navigator.geolocation) {
-      setError('Your browser does not support geolocation.')
-      setLocationStatus('error')
+      setWeatherHookStatus('unsupported')
       return
     }
-    setLocationStatus('asking')
-    setError(null)
+    setWeatherHookStatus('locating')
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const { latitude, longitude } = pos.coords
-        setLocationStatus('granted')
-        setLocationLabel(`${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°`)
+        setWeatherHookStatus('fetching')
         try {
-          const res = await fetch(
-            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code,time`
-          )
-          if (!res.ok) throw new Error('API error')
-          const data = await res.json()
-          const current = data?.current ?? {}
-          const temp = current.temperature_2m
-          const code = current.weather_code ?? 0
-          const weatherText = WEATHER_CODES[code] || 'clear'
-          if (temp != null) setWeather(`${Math.round(temp)}°C, ${weatherText}`)
-          else setWeather(weatherText)
-          const timeStr = current.time
-          if (timeStr && typeof timeStr === 'string') {
-            const timePart = timeStr.split('T')[1] || ''
-            const [h, min] = timePart.split(':').map((n) => parseInt(n, 10) || 0)
-            setTimeFromHour(h, min)
-          }
-        } catch (_) {
-          setWeather(`— (check connection)`)
-          const now = new Date()
-          setTimeFromHour(now.getHours(), now.getMinutes())
+          const { latitude, longitude } = pos.coords
+          const partial = await buildMirrorWeatherPartialFromCoords(latitude, longitude)
+          saveMirrorContext(partial)
+          setMirrorPrefs(loadMirrorContext())
+          setWeatherHookStatus('ok')
+        } catch (e) {
+          console.error('Mirror weather fetch failed:', e)
+          setWeatherHookStatus('error')
         }
       },
-      () => {
-        setLocationStatus('denied')
-        setError('Location denied. Enter weather and time manually.')
+      (geoErr) => {
+        const denied = geoErr?.code === 1
+        setWeatherHookStatus(denied ? 'denied' : 'error')
       },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+      GEO_OPTIONS_DEFAULT
     )
-  }
+  }, [])
+
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setWeatherHookStatus('unsupported')
+      return
+    }
+    refreshLocationWeather()
+  }, [refreshLocationWeather])
 
   /** Stop stream, clear live timer, release camera. */
   const stopCamera = () => {
@@ -280,6 +187,7 @@ export default function Mirror() {
     setError(null)
     setResult(null)
     setVitResult(null)
+    setStylistAdvice(null)
     setLoading(true)
     try {
       const imageDataUrl = captureFrameDataUrl()
@@ -289,7 +197,7 @@ export default function Mirror() {
       lastFrameRef.current = imageDataUrl
       const { data } = await axios.post(
         '/api/mirror/analyze-frame',
-        { imageDataUrl, context, userNotes: userNotes.trim() },
+        { imageDataUrl, context, userNotes: prefs.userNotes.trim() },
         { timeout: 65000 }
       )
       setResult(data)
@@ -304,6 +212,7 @@ export default function Mirror() {
   const handleClassifyVit = async () => {
     setError(null)
     setVitResult(null)
+    setStylistAdvice(null)
     setVitLoading(true)
     try {
       const imageDataUrl = captureFrameDataUrl()
@@ -316,12 +225,94 @@ export default function Mirror() {
         tipo: data.tipo || 'top',
         color: data.color || 'unknown',
         clase_nombre: data.clase_nombre || 'unknown',
-        confianza: typeof data.confianza === 'number' ? data.confianza : 0.5
+        confianza: typeof data.confianza === 'number' ? data.confianza : 0.5,
+        top3: Array.isArray(data.top3) ? data.top3 : []
       })
     } catch (err) {
       setError(err.response?.data?.error || err.response?.data?.detail || err.message)
     } finally {
       setVitLoading(false)
+    }
+  }
+
+  /**
+   * Classify the current frame (ViT), then ask the wardrobe chat for opinion and improvements.
+   * Chat uses wardrobe context; the model only receives text (classification summary), not the image.
+   */
+  const handleClassifyAndAskStylist = async () => {
+    if (!isAuthenticated) {
+      loginWithRedirect({ authorizationParams: { redirect_uri: getRedirectOrigin() } })
+      return
+    }
+    setError(null)
+    setStylistAdvice(null)
+    setClassifyChatLoading(true)
+    try {
+      const imageDataUrl = captureFrameDataUrl()
+      if (!imageDataUrl) {
+        throw new Error('Camera not ready. Turn it on and wait a moment.')
+      }
+      lastFrameRef.current = imageDataUrl
+
+      const { data: classifyData } = await axios.post('/api/classify/vit-base64', { imageDataUrl }, { timeout: 35000 })
+      const summary = {
+        tipo: classifyData.tipo || 'top',
+        color: classifyData.color || 'unknown',
+        clase_nombre: classifyData.clase_nombre || 'unknown',
+        confianza: typeof classifyData.confianza === 'number' ? classifyData.confianza : 0.5,
+        top3: Array.isArray(classifyData.top3) ? classifyData.top3 : []
+      }
+      setVitResult(summary)
+
+      const topLines =
+        summary.top3.length > 0
+          ? summary.top3
+              .slice(0, 3)
+              .map((t, i) => {
+                const name = t.clase_nombre != null && String(t.clase_nombre).trim() !== '' ? garmentClassLabel(t.clase_nombre) : '?'
+                const pct = typeof t.confianza === 'number' ? (t.confianza * 100).toFixed(0) : '?'
+                return `  ${i + 1}. ${name} (${pct}% confidence, garment type: ${typeToEnglish(t.tipo)})`
+              })
+              .join('\n')
+          : '  (no alternative predictions)'
+
+      const userMessage = [
+        'I just captured a photo from the Mirror. Our outfit classifier analyzed the image. Here is what it detected:',
+        `Main prediction: ${garmentClassLabel(summary.clase_nombre)} — garment type: ${typeToEnglish(summary.tipo)}, color signal: ${colorToEnglish(summary.color)}, model confidence ${(summary.confianza * 100).toFixed(0)}%.`,
+        'Top predictions:',
+        topLines,
+        '',
+        'Mirror context for what I am dressing for:',
+        `- Occasion: ${event}`,
+        `- Weather: ${context.weather ?? '—'}`,
+        `- Time of day: ${context.time ?? '—'}`,
+        context.location ? `- Location: ${context.location}` : '',
+        `- Style preference: ${context.user_profile?.style_preference ?? '—'}`,
+        prefs.userNotes.trim() ? `- My notes: ${prefs.userNotes.trim()}` : '',
+        '',
+        'You do not have the photo—only this machine classification. Tell me how you like this outfit direction, what already works, and specific changes I could make to improve the look for this occasion. If it helps, suggest swaps using pieces from my wardrobe.'
+      ]
+        .filter(Boolean)
+        .join('\n')
+
+      const { data: chatData } = await axios.post(
+        '/api/chat',
+        { messages: [{ role: 'user', content: userMessage }] },
+        { timeout: 90000 }
+      )
+      const reply = chatData?.reply || chatData?.message?.content
+      if (!reply) {
+        throw new Error('Empty response from stylist chat.')
+      }
+      setStylistAdvice(reply)
+    } catch (err) {
+      const msg =
+        err.response?.status === 401
+          ? 'Please sign in to use the wardrobe stylist chat.'
+          : err.response?.data?.error || err.response?.data?.detail || err.message
+      setError(msg)
+    } finally {
+      setClassifyChatLoading(false)
     }
   }
 
@@ -353,21 +344,6 @@ export default function Mirror() {
     }
   }
 
-  /** Run text-only analysis with userPrompt via /api/mirror/analyze. */
-  const handleAnalyzeAdvancedText = async () => {
-    setError(null)
-    setResult(null)
-    setLoading(true)
-    try {
-      const { data } = await axios.post('/api/mirror/analyze', { userPrompt: userPrompt.trim() }, { timeout: 65000 })
-      setResult(data)
-    } catch (err) {
-      setError(err.response?.data?.detail || err.response?.data?.error || err.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
     if (!liveMode) {
       if (liveTimerRef.current) {
@@ -378,7 +354,7 @@ export default function Mirror() {
     }
     // evaluación “en directo”: 1 request cada 4s, evitando solapamientos
     liveTimerRef.current = setInterval(() => {
-      if (!cameraOn || loading) return
+      if (!cameraOn || loading || classifyChatLoading) return
       handleAnalyzeFrame()
     }, 4000)
     return () => {
@@ -388,7 +364,7 @@ export default function Mirror() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liveMode, cameraOn, loading])
+  }, [liveMode, cameraOn, loading, classifyChatLoading])
 
   useEffect(() => {
     return () => {
@@ -397,34 +373,126 @@ export default function Mirror() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  useEffect(() => {
+    const payload = location.state?.mirrorResult
+    if (payload) {
+      setResult(payload)
+      navigate('/mirror', { replace: true, state: {} })
+    }
+  }, [location.state, navigate])
+
   const analysis = result?.analysis
   const newItems = result?.new_detected_items ?? []
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--sw-white)' }}>
-      <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8">
+    <div className="min-h-dvh" style={{ background: 'var(--sw-white)' }}>
+      <div className="max-w-4xl mx-auto px-4 sm:px-5 lg:px-8 py-5 sm:py-8 pb-[max(1.5rem,calc(1rem+env(safe-area-inset-bottom,0px)))]">
         <header className="mb-6">
           <h1 className="sw-heading text-[#0D0D0D] text-2xl font-semibold tracking-tight">Mirror</h1>
           <p className="text-sm text-[#888] mt-0.5">Get AI feedback on your outfit in real time</p>
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Camera / Mirror block */}
+        <div className="max-w-3xl mx-auto space-y-4">
+          <div className="rounded-2xl border border-[#D0CEC8] bg-[#fafaf9] px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-start gap-2.5 min-w-0">
+              <MapPin className="h-4 w-4 text-[#FF3B00] shrink-0 mt-0.5" aria-hidden />
+              <div className="min-w-0 text-sm">
+                {(weatherHookStatus === 'locating' || weatherHookStatus === 'fetching') && (
+                  <p className="text-[#0D0D0D] font-medium flex items-center gap-2">
+                    {weatherHookStatus === 'locating' && (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                        Requesting location…
+                      </>
+                    )}
+                    {weatherHookStatus === 'fetching' && (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                        Fetching live weather…
+                      </>
+                    )}
+                  </p>
+                )}
+                {weatherHookStatus === 'ok' && (
+                  <>
+                    <p className="text-[#0D0D0D] font-medium">Weather connected</p>
+                    <p className="text-[#888] text-xs mt-0.5 truncate" title={prefs.locationLabel ? `${prefs.locationLabel} · ${prefs.weather}` : prefs.weather}>
+                      {prefs.locationLabel ? <span className="font-medium text-[#555]">{prefs.locationLabel}</span> : null}
+                      {prefs.locationLabel ? <span className="text-[#D0CEC8] mx-1">·</span> : null}
+                      <span>{prefs.weather}</span>
+                      <span className="text-[#D0CEC8] mx-1">·</span>
+                      <span>{prefs.timeOfDay}</span>
+                    </p>
+                  </>
+                )}
+                {weatherHookStatus === 'denied' && (
+                  <p className="text-[#0D0D0D]">
+                    <span className="font-medium">Location off</span>
+                    <span className="text-[#888]"> — using saved context. Allow location in the browser bar, or set weather on the context page.</span>
+                  </p>
+                )}
+                {(weatherHookStatus === 'error' || weatherHookStatus === 'unsupported') && (
+                  <p className="text-[#0D0D0D]">
+                    <span className="font-medium">{weatherHookStatus === 'unsupported' ? 'Geolocation not available' : 'Could not update weather'}</span>
+                    <span className="text-[#888]"> — edit manually on the context page if needed.</span>
+                  </p>
+                )}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={refreshLocationWeather}
+              disabled={weatherHookStatus === 'locating' || weatherHookStatus === 'fetching' || weatherHookStatus === 'unsupported'}
+              className="sw-btn sw-btn-outline sw-btn-sm shrink-0 justify-center disabled:opacity-50"
+            >
+              Refresh weather
+            </button>
+          </div>
+
           <section className="sw-card overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#D0CEC8] flex items-center justify-between">
+            <div className="px-4 py-3 border-b border-[#D0CEC8] flex items-center justify-between gap-2">
               <span className="text-sm font-medium text-[#888]">Camera</span>
-              {!cameraOn ? (
-                <button onClick={startCamera} disabled={cameraStarting} className="sw-btn sw-btn-accent sw-btn-sm disabled:opacity-50 flex items-center gap-2 transition-colors">
-                  {cameraStarting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-                  Start camera
-                </button>
-              ) : (
-                <button onClick={stopCamera} className="sw-btn sw-btn-outline sw-btn-sm flex items-center gap-2 transition-colors">
-                  <CameraOff className="h-4 w-4" /> Stop
-                </button>
-              )}
+              <div className="flex items-center gap-2 shrink-0">
+                <Link
+                  to="/mirror/context"
+                  className="sw-btn sw-btn-outline sw-btn-sm flex items-center gap-1.5 min-h-[40px]"
+                >
+                  <SlidersHorizontal className="h-4 w-4 shrink-0" />
+                  <span className="hidden sm:inline">Context</span>
+                </Link>
+                {!cameraOn ? (
+                  <button onClick={startCamera} disabled={cameraStarting} className="sw-btn sw-btn-accent sw-btn-sm disabled:opacity-50 flex items-center gap-2 transition-colors">
+                    {cameraStarting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                    Start
+                  </button>
+                ) : (
+                  <button onClick={stopCamera} className="sw-btn sw-btn-outline sw-btn-sm flex items-center gap-2 transition-colors">
+                    <CameraOff className="h-4 w-4" /> Stop
+                  </button>
+                )}
+              </div>
             </div>
             <div className="p-4">
+              <p className="text-xs text-[#888] mb-3 leading-relaxed">
+                <span className="font-medium text-[#0D0D0D]">AI context:</span>{' '}
+                <span className="text-[#555]">{event}</span>
+                <span className="text-[#D0CEC8] mx-1">·</span>
+                <span className="text-[#555]">{prefs.weather}</span>
+                <span className="text-[#D0CEC8] mx-1">·</span>
+                <span className="text-[#555]">{prefs.timeOfDay}</span>
+                {prefs.locationLabel ? (
+                  <>
+                    <span className="text-[#D0CEC8] mx-1">·</span>
+                    <span className="text-[#555]" title={prefs.locationLabel}>
+                      {prefs.locationLabel}
+                    </span>
+                  </>
+                ) : null}
+                <span className="text-[#D0CEC8] mx-1">·</span>
+                <Link to="/mirror/context" className="text-[#FF3B00] font-semibold underline underline-offset-2">
+                  Edit on context page
+                </Link>
+              </p>
               <div className="aspect-video rounded-xl overflow-hidden border border-[#D0CEC8] bg-white flex items-center justify-center relative">
                 {!cameraOn ? (
                   <div className="text-center py-8 px-4">
@@ -436,102 +504,76 @@ export default function Mirror() {
                 ) : (
                   <video ref={videoRef} className="w-full h-full object-cover scale-x-[-1]" autoPlay playsInline muted />
                 )}
+
+                <Link
+                  to="/mirror/context"
+                  className="absolute bottom-3 right-3 z-10 flex items-center gap-2 rounded-full border border-[#D0CEC8] bg-white/95 px-3 py-2 text-xs font-semibold text-[#0D0D0D] shadow-md backdrop-blur-sm hover:bg-white hover:border-[#0D0D0D] transition-colors min-h-[44px]"
+                >
+                  <SlidersHorizontal className="h-4 w-4 shrink-0" />
+                  Context
+                  <span className="max-w-[90px] truncate text-[#888] font-normal hidden sm:inline" title={event}>
+                    · {event}
+                  </span>
+                </Link>
               </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button onClick={handleAnalyzeFrame} disabled={!cameraOn || loading} className="sw-btn sw-btn-primary sw-btn-sm disabled:cursor-not-allowed flex items-center gap-2 transition-colors">
+              <div className="mt-4 flex flex-col sm:flex-row flex-wrap gap-2">
+                <button onClick={handleAnalyzeFrame} disabled={!cameraOn || loading || classifyChatLoading} className="sw-btn sw-btn-primary sw-btn-sm w-full sm:w-auto min-h-[44px] sm:min-h-0 justify-center disabled:cursor-not-allowed flex items-center gap-2 transition-colors">
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                   Evaluate outfit
                 </button>
-                <button onClick={handleClassifyVit} disabled={!cameraOn || vitLoading} className="sw-btn sw-btn-outline sw-btn-sm disabled:opacity-40 flex items-center gap-2 transition-colors">
+                <button onClick={handleClassifyVit} disabled={!cameraOn || vitLoading || classifyChatLoading} className="sw-btn sw-btn-outline sw-btn-sm w-full sm:w-auto min-h-[44px] sm:min-h-0 justify-center disabled:opacity-40 flex items-center gap-2 transition-colors">
                   {vitLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                   Classify ViT
                 </button>
-                <button onClick={() => setLiveMode((v) => !v)} disabled={!cameraOn} className={`sw-btn sw-btn-sm flex items-center gap-2 transition-colors ${liveMode ? 'sw-btn-accent' : 'sw-btn-ghost'}`}>
+                <button
+                  onClick={handleClassifyAndAskStylist}
+                  disabled={!cameraOn || classifyChatLoading}
+                  className="sw-btn sw-btn-outline sw-btn-sm w-full sm:w-auto min-h-[44px] sm:min-h-0 justify-center disabled:opacity-40 flex items-center gap-2 transition-colors border-[#0D0D0D] text-[#0D0D0D]"
+                >
+                  {classifyChatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+                  Classify + stylist chat
+                </button>
+                <button onClick={() => setLiveMode((v) => !v)} disabled={!cameraOn || classifyChatLoading} className={`sw-btn sw-btn-sm w-full sm:w-auto min-h-[44px] sm:min-h-0 justify-center flex items-center gap-2 transition-colors ${liveMode ? 'sw-btn-accent' : 'sw-btn-ghost'}`}>
                   <Zap className="h-4 w-4" /> Live {liveMode ? 'ON' : 'OFF'}
                 </button>
               </div>
               {vitResult && (
                 <div className="mt-4 p-4 sw-card rounded-xl">
                   <p className="text-xs text-[#888] mb-1">Detected (ViT)</p>
-                  <p className="text-base font-medium text-[#0D0D0D]">{vitResult.clase_nombre}</p>
+                  <p className="text-base font-medium text-[#0D0D0D]">{garmentClassLabel(vitResult.clase_nombre)}</p>
                   <p className="text-sm text-[#888]">
                     {typeToEnglish(vitResult.tipo)} · {colorToEnglish(vitResult.color)} · {(vitResult.confianza * 100).toFixed(0)}%
                   </p>
+                  {Array.isArray(vitResult.top3) && vitResult.top3.length > 1 && (
+                    <ul className="mt-2 text-xs text-[#888] space-y-1 list-disc list-inside">
+                      {vitResult.top3.slice(0, 3).map((t, i) => (
+                        <li key={i}>
+                          {t.clase_nombre != null && String(t.clase_nombre).trim() !== '' ? garmentClassLabel(t.clase_nombre) : '?'} ({typeToEnglish(t.tipo)}) · {(typeof t.confianza === 'number' ? t.confianza * 100 : 0).toFixed(0)}%
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   <button onClick={handleAddToWardrobe} disabled={addToWardrobeLoading} className="mt-3 sw-btn sw-btn-accent sw-btn-sm flex items-center gap-2 disabled:opacity-50 transition-colors">
                     {addToWardrobeLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-4 w-4" />}
                     Add to wardrobe
                   </button>
                 </div>
               )}
-              <p className="mt-3 text-xs text-[#888]">Analysis uses OpenRouter + ViT. Items are only saved when you click Add to wardrobe.</p>
-            </div>
-          </section>
-
-          {/* Context panel */}
-          <section className="sw-card overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#D0CEC8]">
-              <span className="text-sm font-medium text-[#888]">Context</span>
-            </div>
-            <div className="p-4 space-y-4">
-              <div>
-                <label className="block text-xs text-[#888] mb-1">Get feedback for</label>
-                <p className="text-xs text-[#888] mb-2">Choose the look you want feedback on</p>
-                <div className="flex flex-wrap gap-2">
-                  {OCCASION_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => setOccasionId(opt.id)}
-                      className={`sw-chip ${occasionId === opt.id ? 'active' : ''}`}
-                      style={{ fontSize: '0.55rem', padding: '7px 12px' }}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-[#888] mb-1">Location</label>
-                <div className="flex gap-2 flex-wrap items-center">
-                  <button type="button" onClick={requestLocation} disabled={locationStatus === 'asking'} className="sw-btn sw-btn-outline sw-btn-sm disabled:opacity-50 flex items-center gap-2 transition-colors">
-                    {locationStatus === 'asking' ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
-                    Weather & time
-                  </button>
-                  {locationLabel && <span className="text-sm text-[#888] truncate max-w-[140px]">{locationLabel}</span>}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-[#888] mb-1">Weather</label>
-                  <input value={weather} onChange={(e) => setWeather(e.target.value)} className="sw-input" placeholder="e.g. 18°C" />
-                </div>
-                <div>
-                  <label className="block text-xs text-[#888] mb-1">Time</label>
-                  <input value={timeOfDay} onChange={(e) => setTimeOfDay(e.target.value)} className="sw-input" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-[#888] mb-1">Style</label>
-                <input value={stylePref} onChange={(e) => setStylePref(e.target.value)} className="sw-input" />
-              </div>
-              <div>
-                <label className="block text-xs text-[#888] mb-1">Notes</label>
-                <textarea value={userNotes} onChange={(e) => setUserNotes(e.target.value)} placeholder="Optional" className="sw-input resize-none h-20" />
-              </div>
-              <button onClick={() => setShowAdvanced((v) => !v)} className="sw-btn sw-btn-ghost sw-btn-sm flex items-center gap-1">
-                {showAdvanced ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                Advanced mode
-              </button>
-              {showAdvanced && (
-                <div className="pt-2 border-t border-[#D0CEC8] space-y-2">
-                  <label className="block text-xs text-[#888]">Text input</label>
-                  <textarea value={userPrompt} onChange={(e) => setUserPrompt(e.target.value)} className="sw-input resize-none h-32 text-xs" spellCheck={false} />
-                  <button onClick={handleAnalyzeAdvancedText} disabled={loading} className="sw-btn sw-btn-primary sw-btn-sm disabled:opacity-50 flex items-center gap-2">
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
-                    Evaluate text
-                  </button>
+              {stylistAdvice && (
+                <div className="mt-4 p-4 sw-card rounded-xl border border-[#D0CEC8]">
+                  <p className="text-xs font-medium text-[#888] uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    Wardrobe stylist (from your classification)
+                  </p>
+                  <p className="text-sm text-[#0D0D0D] leading-relaxed whitespace-pre-wrap">{stylistAdvice}</p>
+                  <Link to="/chat" className="inline-block mt-3 text-xs font-semibold text-[#FF3B00] underline underline-offset-2">
+                    Continue in Chat
+                  </Link>
                 </div>
               )}
+              <p className="mt-3 text-xs text-[#888]">
+                Evaluate outfit uses vision (OpenRouter). Classify + stylist chat runs ViT on the frame, then sends that summary to your wardrobe chat (sign in required). Items are only saved when you click Add to wardrobe.
+              </p>
             </div>
           </section>
         </div>

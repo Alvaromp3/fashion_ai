@@ -1,9 +1,7 @@
 import { memo, useState } from 'react'
 import { FaTrash, FaChevronDown, FaChevronUp } from 'react-icons/fa'
 import axios from 'axios'
-import PrendaModal from './PrendaModal'
-
-const OutfitCard = ({ outfit, onDelete, onPrendaClick, showPuntuacion = true, showPorQueCombina = true }) => {
+const OutfitCard = ({ outfit, onDelete, onPrendaClick, onOpenDetail, showPuntuacion = true, showPorQueCombina = true, compact = false }) => {
   const [porQueOpen, setPorQueOpen] = useState(false)
   const getImageUrl = (url) => {
     if (!url) {
@@ -15,7 +13,8 @@ const OutfitCard = ({ outfit, onDelete, onPrendaClick, showPuntuacion = true, sh
     return url
   }
 
-  const handleDelete = async () => {
+  const handleDelete = async (e) => {
+    e?.stopPropagation?.()
     if (window.confirm('Are you sure you want to delete this outfit?')) {
       try {
         await axios.delete(`/api/outfits/${outfit._id}`)
@@ -46,6 +45,12 @@ const OutfitCard = ({ outfit, onDelete, onPrendaClick, showPuntuacion = true, sh
   const ItemBlock = ({ item, label, onClick }) => {
     if (!item?.imagen_url) return null
     const Wrapper = onClick ? 'button' : 'div'
+    const pieceClick = onClick
+      ? (ev) => {
+          ev.stopPropagation()
+          onClick()
+        }
+      : undefined
     const accentByLabel = {
       Top: 'var(--sw-accent2)',
       Pullover: '#7C3AED',
@@ -54,15 +59,18 @@ const OutfitCard = ({ outfit, onDelete, onPrendaClick, showPuntuacion = true, sh
       Coat: 'var(--sw-black)',
     }
     const accent = accentByLabel[label] || 'var(--sw-border)'
+    const imgMax = compact ? 'max-w-[56px]' : 'max-w-[100px]'
+    const pad = compact ? 'p-1.5' : 'p-3'
+    const borderL = compact ? '3px' : '4px'
     return (
       <Wrapper
         type={onClick ? 'button' : undefined}
-        onClick={onClick}
-        className={`group flex flex-col rounded-xl border border-[#D0CEC8] bg-white p-3 transition-all duration-300 hover:shadow-md text-left ${onClick ? 'cursor-pointer' : ''}`}
-        style={{ borderLeft: `4px solid ${accent}` }}
+        onClick={pieceClick}
+        className={`group flex flex-col rounded-lg border border-[#D0CEC8] bg-white ${pad} transition-all duration-300 hover:shadow-md text-left ${onClick ? 'cursor-pointer' : ''}`}
+        style={{ borderLeft: `${borderL} solid ${accent}` }}
       >
         <div
-          className="relative w-full aspect-square max-w-[100px] mx-auto rounded-lg overflow-hidden bg-white border transition-all"
+          className={`relative w-full aspect-square ${imgMax} mx-auto rounded-md overflow-hidden bg-white border transition-all`}
           style={{ borderColor: accent }}
         >
           <img
@@ -75,10 +83,10 @@ const OutfitCard = ({ outfit, onDelete, onPrendaClick, showPuntuacion = true, sh
             }}
           />
         </div>
-        <p className="sw-label mt-2" style={{ fontSize: '0.6rem', color: accent }}>{label}</p>
-        <p className="text-xs font-medium text-[#0D0D0D] truncate capitalize" title={item.clase_nombre}>{item.clase_nombre || '—'}</p>
+        <p className={`sw-label mt-1 ${compact ? 'text-[0.55rem]' : ''}`} style={{ fontSize: compact ? undefined : '0.6rem', color: accent }}>{label}</p>
+        <p className={`${compact ? 'text-[10px]' : 'text-xs'} font-medium text-[#0D0D0D] truncate capitalize`} title={item.clase_nombre}>{item.clase_nombre || '—'}</p>
         {item.color && item.color !== 'desconocido' && (
-          <p className="text-xs text-[#888] capitalize">{item.color}</p>
+          <p className={`${compact ? 'text-[10px]' : 'text-xs'} text-[#888] capitalize`}>{item.color}</p>
         )}
       </Wrapper>
     )
@@ -98,32 +106,51 @@ const OutfitCard = ({ outfit, onDelete, onPrendaClick, showPuntuacion = true, sh
   const stylePhrases = ['Minimalist and elegant style', 'Colorful and vibrant look', 'Elegant and sophisticated combination', 'Modern and current look']
   const restTags = explicaciones.filter(t => t !== titleTag && !t.startsWith('Perfect for ') && !stylePhrases.includes(t)).slice(0, 3)
 
+  const outerRound = compact ? 'rounded-xl' : 'rounded-2xl'
+  const headerPad = compact ? 'px-3 pt-2 pb-2' : 'px-5 pt-4 pb-3'
+  const bodyPad = compact ? 'p-3' : 'p-5'
+  const pieceGap = compact ? 'gap-1.5' : 'gap-3'
+
   return (
-    <div className="sw-card rounded-2xl overflow-hidden border-[#D0CEC8]">
+    <div
+      className={`sw-card ${outerRound} overflow-hidden border-[#D0CEC8] ${onOpenDetail ? 'cursor-pointer' : ''}`}
+      onClick={onOpenDetail}
+      onKeyDown={
+        onOpenDetail
+          ? (ev) => {
+              if (ev.key === 'Enter' || ev.key === ' ') {
+                ev.preventDefault()
+                onOpenDetail()
+              }
+            }
+          : undefined
+      }
+      tabIndex={onOpenDetail ? 0 : undefined}
+    >
       {showHeader && (
-        <div className="px-5 pt-4 pb-3 border-b border-[#D0CEC8] space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
+        <div className={`${headerPad} border-b border-[#D0CEC8] space-y-1.5`}>
+          <div className="flex flex-wrap items-center justify-between gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5 min-w-0">
               {puntuacion != null && showPuntuacion && (
-                <span className="sw-badge sw-badge-green">
+                <span className={`sw-badge sw-badge-green ${compact ? 'text-[10px] px-1.5 py-0.5' : ''}`}>
                   Match {Math.round(puntuacion)}%
                 </span>
               )}
               {ocasionChip && (
-                <span className="sw-badge sw-badge-red">
+                <span className={`sw-badge sw-badge-red ${compact ? 'text-[10px] px-1.5 py-0.5 max-w-[7rem] truncate' : ''}`}>
                   {ocasionChip}
                 </span>
               )}
               {estiloChips.map((s, i) => (
-                <span key={i} className="sw-badge sw-badge-black">
+                <span key={i} className={`sw-badge sw-badge-black ${compact ? 'text-[10px] px-1.5 py-0.5' : ''}`}>
                   {s}
                 </span>
               ))}
               {titleTag && (
-                <span className="sw-label" style={{ fontSize: '0.65rem' }}>{titleTag}</span>
+                <span className="sw-label" style={{ fontSize: compact ? '0.55rem' : '0.65rem' }}>{titleTag}</span>
               )}
               {restTags.map((text, i) => (
-                <span key={i} className="sw-badge" style={{ background: 'transparent' }}>
+                <span key={i} className="sw-badge" style={{ background: 'transparent', fontSize: compact ? '10px' : undefined }}>
                   {text}
                 </span>
               ))}
@@ -131,42 +158,45 @@ const OutfitCard = ({ outfit, onDelete, onPrendaClick, showPuntuacion = true, sh
             {onDelete && (
               <button
                 type="button"
-                onClick={handleDelete}
-                className="sw-btn sw-btn-ghost sw-btn-sm"
+                onClick={(e) => handleDelete(e)}
+                className="sw-btn sw-btn-ghost sw-btn-sm shrink-0"
                 aria-label="Delete outfit"
-                style={{ width: 44, height: 44, padding: 0, borderRadius: 12 }}
+                style={{ width: compact ? 32 : 44, height: compact ? 32 : 44, padding: 0, borderRadius: compact ? 8 : 12 }}
               >
-                <FaTrash className="text-[#0D0D0D]" />
+                <FaTrash className={`text-[#0D0D0D] ${compact ? 'text-xs' : ''}`} />
               </button>
             )}
           </div>
         </div>
       )}
 
-      <div className="p-5">
-        <div className={`grid gap-3 ${pieces.length <= 3 ? 'grid-cols-3' : pieces.length === 4 ? 'grid-cols-4' : 'grid-cols-5'}`}>
+      <div className={bodyPad}>
+        <div className={`grid ${pieceGap} ${pieces.length <= 3 ? 'grid-cols-3' : pieces.length === 4 ? 'grid-cols-4' : 'grid-cols-5'}`}>
           {pieces.map(({ item, label }) => (
             <ItemBlock
               key={label}
               item={item}
               label={label}
-              onClick={() => onPrendaClick?.(item, label)}
+              onClick={onPrendaClick ? () => onPrendaClick(item, label) : undefined}
             />
           ))}
         </div>
 
         {showPorQueCombina && explicaciones.length > 0 && (
-          <div className="mt-4 border-t border-[#D0CEC8] pt-3">
+          <div className={`${compact ? 'mt-2 pt-2' : 'mt-4 pt-3'} border-t border-[#D0CEC8]`}>
             <button
               type="button"
-              onClick={() => setPorQueOpen(!porQueOpen)}
-              className="flex items-center gap-2 text-sm font-medium text-[#0D0D0D] hover:text-[#FF3B00] w-full transition-colors"
+              onClick={(e) => {
+                e.stopPropagation()
+                setPorQueOpen(!porQueOpen)
+              }}
+              className={`flex items-center gap-2 font-medium text-[#0D0D0D] hover:text-[#FF3B00] w-full transition-colors ${compact ? 'text-xs' : 'text-sm'}`}
             >
-              {porQueOpen ? <FaChevronUp className="text-xs" /> : <FaChevronDown className="text-xs" />}
+              {porQueOpen ? <FaChevronUp className="text-[10px]" /> : <FaChevronDown className="text-[10px]" />}
               See why it matches
             </button>
             {porQueOpen && (
-              <ul className="mt-2 space-y-1 text-xs text-[#0D0D0D] pl-5 list-disc">
+              <ul className={`mt-1.5 space-y-0.5 text-[#0D0D0D] pl-4 list-disc ${compact ? 'text-[10px]' : 'text-xs'}`}>
                 {explicaciones.map((text, i) => (
                   <li key={i}>{text}</li>
                 ))}

@@ -327,6 +327,29 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/:id', async (req, res) => {
+  const mongoose = require('mongoose');
+  const userId = getUserId(req);
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ error: 'Invalid outfit id' });
+  }
+  try {
+    const outfit = await Outfit.findOne({ _id: req.params.id, ...userFilter(userId) })
+      .populate('superior_id')
+      .populate('inferior_id')
+      .populate('zapatos_id')
+      .populate('superior_secundario_id')
+      .populate('abrigo_id');
+    if (!outfit) {
+      return res.status(404).json({ error: 'Outfit not found' });
+    }
+    res.json(outfit);
+  } catch (error) {
+    console.error('Error obteniendo outfit:', error);
+    res.status(500).json({ error: 'Error getting outfit' });
+  }
+});
+
 router.delete('/:id', async (req, res) => {
   const userId = getUserId(req);
   try {

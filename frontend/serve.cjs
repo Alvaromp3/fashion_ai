@@ -4,14 +4,14 @@
  */
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
-const path = require('path');
-const fs = require('fs');
+const { resolveUnder, existsUnder } = require('../scripts/lib/resolve-under.cjs');
 
 const PORT = 3000;
 const BACKEND = process.env.BACKEND_URL || 'http://localhost:4000';
-const DIST = path.join(__dirname, 'dist');
+const DIST = resolveUnder(__dirname, 'dist');
+const INDEX_HTML = resolveUnder(DIST, 'index.html');
 
-if (!fs.existsSync(DIST)) {
+if (!existsUnder(__dirname, 'dist')) {
   console.error('Carpeta dist no existe. Ejecuta: npm run build');
   process.exit(1);
 }
@@ -23,7 +23,7 @@ app.use('/uploads', createProxyMiddleware({ target: BACKEND, changeOrigin: true 
 
 app.use(express.static(DIST));
 app.get('*', (req, res) => {
-  res.sendFile(path.join(DIST, 'index.html'));
+  res.sendFile(INDEX_HTML);
 });
 
 app.listen(PORT, '0.0.0.0', () => {

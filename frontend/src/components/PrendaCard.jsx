@@ -1,7 +1,7 @@
 import { memo, useMemo } from 'react'
 import { FaTrash } from 'react-icons/fa'
 
-const PrendaCard = ({ prenda, onDelete, onEdit }) => {
+const PrendaCard = ({ prenda, onDelete, onEdit, onNavigateToDetail }) => {
   const getImageUrl = () => {
     if (prenda.imagen_url.startsWith('http')) {
       return prenda.imagen_url
@@ -51,11 +51,16 @@ const PrendaCard = ({ prenda, onDelete, onEdit }) => {
     return '—'
   }, [prenda?.ocasion])
 
+  const handleCardClick = () => {
+    if (onNavigateToDetail) onNavigateToDetail(prenda)
+    else if (onEdit) onEdit(prenda)
+  }
+
   return (
     <div
       className="sw-card group cursor-pointer overflow-hidden"
-      onClick={() => onEdit && onEdit(prenda)}
-      title="Click to edit the occasion"
+      onClick={handleCardClick}
+      title={onNavigateToDetail ? 'View garment' : 'Click to edit the occasion'}
     >
       <div className="relative overflow-hidden" style={{ aspectRatio: '4/5' }}>
         <img
