@@ -213,7 +213,7 @@ fashion_ai/
 └── stop-all.sh
 ```
 
-Model files (`.h5`, `.keras`) stay **out of git**; use a GitHub Release or Hugging Face file URL at Docker build time (see `docs/DEPLOY_CLOUDFLARE.md`).
+The file **`best_model_17_marzo.keras`** stays **out of git**; publish it via GitHub Release or a public URL at Docker build time (`HF_VIT_URL`; see `docs/DEPLOY_CLOUDFLARE.md`).
 
 ## API overview
 

@@ -27,12 +27,16 @@ ALLOWED_EXTENSIONS = frozenset(
 )
 
 
-def resolve_vit_path() -> Path:
-    """ViT weights: ML_VIT_PATH, then ml-service/models/best_model_17_marzo.keras."""
+def resolve_classification_model_path() -> Path:
+    """Single classifier weights: **best_model_17_marzo.keras** only.
+
+    Resolution order: ``ML_VIT_PATH`` if set, else ``<ML_SERVICE_ROOT>/models/best_model_17_marzo.keras``.
+    """
     env = os.environ.get("ML_VIT_PATH")
     if env:
         return Path(env).resolve()
     return ML_SERVICE_ROOT / "models" / DEFAULT_VIT_FILENAME
 
 
-VIT_MODEL_PATH = resolve_vit_path()
+# Kept name for imports across Flask/FastAPI/space_app; always points to best_model_17_marzo.keras.
+VIT_MODEL_PATH = resolve_classification_model_path()

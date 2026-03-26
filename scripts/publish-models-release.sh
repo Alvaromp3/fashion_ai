@@ -56,7 +56,7 @@ Used by the ml-service and HF Space Dockerfiles. Download URL:
 https://github.com/${OWNER_REPO}/releases/download/${RELEASE_TAG}/best_model_17_marzo.keras
 \`\`\`
 
-Optional zip name for legacy scripts: **vit_model_v1.zip** (must contain a \`.keras\` file).
+Optional bundle: **vit_model_v1.zip** containing a single \`.keras\` file (same weights, unpacked to \`best_model_17_marzo.keras\` in Docker).
 "
 
 echo "Done. Release: $(gh release view "$RELEASE_TAG" --json url -q .url)"
