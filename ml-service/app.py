@@ -51,7 +51,7 @@ def _load_models_background():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 6001))
     print("Fashion AI ML Service", flush=True)
-    print(f"   ViT: {VIT_MODEL_PATH}", flush=True)
+    print(f"Loading ViT model from {VIT_MODEL_PATH}", flush=True)
     print(f"Binding to http://0.0.0.0:{port} (models loading in background)...", flush=True)
     t = threading.Thread(target=_load_models_background, daemon=True)
     t.start()

@@ -158,7 +158,7 @@ class MLModels:
 
     def load_classification_model(self, vit_path: Path) -> None:
         configure_tensorflow_runtime()
-        print(f"   Loading ViT: {vit_path}", flush=True)
+        print(f"Loading ViT model from {vit_path}", flush=True)
         self.load_vit(vit_path)
 
     def predict_vit(self, image: Image.Image) -> tuple[np.ndarray, np.ndarray]:

@@ -31,6 +31,9 @@ ml-service/temp/
 *.keras
 yolo_garment.pt
 
+# Allow only the production ViT weights to be tracked (prefer Git LFS)
+!ml-service/models/best_model_17_marzo.keras
+
 # IDE
 .vscode/
 .idea/
