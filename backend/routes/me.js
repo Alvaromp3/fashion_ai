@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const UserProfile = require('../models/UserProfile');
+const { parseAuthSubject, filterEqString } = require('../utils/mongoSafe');
 
 function emptyAssistantContext() {
   return {
@@ -86,7 +87,12 @@ router.get('/', (req, res) => {
  */
 router.get('/preferences', async (req, res) => {
   try {
-    const profile = await UserProfile.findOne({ user_id: req.user.sub }).lean();
+    const uid = parseAuthSubject(req.user?.sub);
+    if (!uid) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const filter = filterEqString('user_id', uid);
+    const profile = await UserProfile.findOne(filter).lean();
     res.json(preferencesPayloadFromDoc(profile));
   } catch (error) {
     console.error('Error fetching preferences:', error);
@@ -99,6 +105,10 @@ router.get('/preferences', async (req, res) => {
  */
 router.put('/preferences', async (req, res) => {
   try {
+    const uid = parseAuthSubject(req.user?.sub);
+    if (!uid) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     const {
       colores,
       ocasion,
@@ -115,7 +125,7 @@ router.put('/preferences', async (req, res) => {
     } = req.body;
 
     const set = {
-      user_id: req.user.sub,
+      user_id: uid,
       updated_at: new Date()
     };
     const unset = {};
@@ -174,7 +184,7 @@ router.put('/preferences', async (req, res) => {
       : { $set: set };
 
     const profile = await UserProfile.findOneAndUpdate(
-      { user_id: req.user.sub },
+      filterEqString('user_id', uid),
       update,
       { new: true, upsert: true, runValidators: true }
     );

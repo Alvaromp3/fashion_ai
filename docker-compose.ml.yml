@@ -12,8 +12,9 @@ services:
       ML_VIT_PATH: /app/models/best_model_17_marzo.keras
       # CNN ya no se usa (se deja vacío / inexistente).
       ML_CNN_PATH: /app/models/modelo_ropa.h5
-    volumes:
-      - /Users/alvaromartin-pena/Desktop/vit_fashion_outputs/best_model_17_marzo.keras:/app/models/best_model_17_marzo.keras:ro
+    # Optional: mount local weights (uncomment and place best_model_17_marzo.keras under ml-service/models/)
+    # volumes:
+    #   - ./ml-service/models/best_model_17_marzo.keras:/app/models/best_model_17_marzo.keras:ro
     ports:
       - "6001:6001"
     container_name: fashion-ml

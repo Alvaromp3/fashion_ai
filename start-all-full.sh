@@ -49,11 +49,14 @@ if [ ! -x "$ML_DIR/venv/bin/python" ]; then
   fi
 fi
 export ML_CNN_PATH="${ML_CNN_PATH:-$SCRIPT_DIR/ml-service/modelo_ropa.h5}"
-DEFAULT_USER_VIT="/Users/alvaromartin-pena/Desktop/vit_fashion_outputs/best_model_17_marzo.keras"
-if [ -z "${ML_VIT_PATH:-}" ] && [ -f "$DEFAULT_USER_VIT" ]; then
-  export ML_VIT_PATH="$DEFAULT_USER_VIT"
-else
-  export ML_VIT_PATH="${ML_VIT_PATH:-$SCRIPT_DIR/ml-service/vision_transformer_fashion_model.keras}"
+if [ -z "${ML_VIT_PATH:-}" ]; then
+  if [ -f "$SCRIPT_DIR/ml-service/models/best_model_17_marzo.keras" ]; then
+    export ML_VIT_PATH="$SCRIPT_DIR/ml-service/models/best_model_17_marzo.keras"
+  elif [ -f "/Users/alvaromartin-pena/Desktop/vit_fashion_outputs/best_model_17_marzo.keras" ]; then
+    export ML_VIT_PATH="/Users/alvaromartin-pena/Desktop/vit_fashion_outputs/best_model_17_marzo.keras"
+  else
+    export ML_VIT_PATH="$SCRIPT_DIR/ml-service/vision_transformer_fashion_model.keras"
+  fi
 fi
 export ML_VIT_REAL_PATH="${ML_VIT_REAL_PATH:-$SCRIPT_DIR/ml-service/vit_real_pictures/best_model_real_pictures.keras}"
 if [ -x venv/bin/python ]; then

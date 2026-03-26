@@ -16,7 +16,7 @@ Fashion AI lets users build a digital wardrobe by uploading garment photos. The 
 ## Prerequisites
 
 - Node.js v18 or higher
-- Python 3.8 or higher
+- Python 3.10+ (3.11 recommended for `ml-service` / TensorFlow)
 - MongoDB (local or MongoDB Atlas)
 - npm or yarn
 
@@ -26,7 +26,7 @@ Fashion AI lets users build a digital wardrobe by uploading garment photos. The 
 
 ```bash
 git clone <repository-url>
-cd fashion_ai_clean
+cd fashion_ai
 ```
 
 ### 2. Backend
@@ -62,7 +62,7 @@ AUTH0_CLIENT_SECRET=your-client-secret
 AUTH0_AUDIENCE=https://your-api-identifier
 ```
 
-See `backend/README-AUTH.md` and `frontend/AUTH0-CHECKLIST.md` for setup. If Auth0 is not set, the app uses an anonymous user.
+See `backend/README-AUTH.md` and `frontend/AUTH0-CHECKLIST.md` for SPA/API setup and `VITE_*` variables in `frontend/.env`. If Auth0 is not set, the app uses an anonymous user.
 
 **Cloudinary (optional; cloud image storage):**
 
@@ -76,13 +76,6 @@ If Cloudinary is not set, images are stored under `backend/uploads/`.
 
 **Team — Env Vault (push/pull all keys):** We use [Env Vault](docs/ENV_VAULT_QUICK.md) instead of emailing passwords. From repo root: **`npm run env:vault-pull`** to get the latest keys; **`npm run env:vault-push`** to save your keys to the vault. See [docs/DOTENV_VAULT.md](docs/DOTENV_VAULT.md) for setup.
 
-**Authentication (Auth0):** The app uses Auth0 for login and per-user data. Add these to `backend/.env` and to the project root or `frontend/.env` (frontend uses `VITE_` prefix so they are available in the browser):
-
-- **Backend:** `AUTH0_DOMAIN=your-tenant.auth0.com`, `AUTH0_AUDIENCE=https://fashion-ai-api` (or your Auth0 API identifier).
-- **Frontend:** `VITE_AUTH0_DOMAIN`, `VITE_AUTH0_CLIENT_ID`, `VITE_AUTH0_AUDIENCE`, `VITE_AUTH0_CALLBACK_URL=http://localhost:3000`.
-
-In the Auth0 Dashboard: create a **Single Page Application** and an **API**. Set the API identifier (audience) to match `AUTH0_AUDIENCE`. For the SPA, set Allowed Callback URLs, Allowed Logout URLs, and Allowed Web Origins to `http://localhost:3000` (and your production URL when deploying).
-
 **Admin dashboard:** The Metrics and Examples views are in the Admin area (`/admin`), restricted to users with an `admin` role. Add a custom claim to your access token (e.g. `https://fashion-ai-api/roles` or set `AUTH0_ROLES_CLAIM` in backend `.env`) containing a `roles` array with `"admin"` for users who should see the Admin link and access model metrics/examples. Configure this in Auth0 via Actions or Rules that add `app_metadata.roles` to the token.
 
 ### 3. ML service
@@ -94,7 +87,7 @@ source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Place your trained CNN model file in `ml-service/` (e.g. `modelo_ropa.h5`) and ensure `ml-service/app.py` uses the correct class names and paths. If you use ViT, configure it as described in the ML service documentation.
+Place CNN weights (e.g. `modelo_ropa.h5`) and ViT weights under `ml-service/` or `ml-service/models/`, or set `ML_CNN_PATH` / `ML_VIT_PATH` (see `ml-service/.env.example`). Class labels are defined in `ml-service/src/fashion_ml/labels.py`.
 
 ### 4. Frontend
 
@@ -208,32 +201,22 @@ docker compose -f docker-compose.ml.yml build --build-arg GITHUB_TOKEN=ghp_xxxxx
 ## Project structure
 
 ```
-fashion_ai_clean/
-├── backend/
-│   ├── config/          # e.g. OpenRouter
-│   ├── middleware/      # Auth0 (requireAuth, getUserId)
-│   ├── models/          # MongoDB (Prenda, Outfit)
-│   ├── routes/          # prendas, outfits, classify, mirror, model
-│   ├── utils/           # e.g. Cloudinary
-│   ├── server.js
-│   └── .env             # PORT, MONGODB_URI, ML_SERVICE_URL, OpenRouter, Auth0, Cloudinary
-├── frontend/
-│   ├── src/
-│   │   ├── components/  # LoginGuard, navbar, modals, UI
-│   │   ├── pages/       # Dashboard, Garments, Outfits, Mirror, Metrics, Examples
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   ├── .env             # VITE_AUTH0_* for login
-│   ├── vite.config.js   # dev proxy to backend
-│   └── package.json
+fashion_ai/
+├── backend/             # Express API, MongoDB, Auth0, proxy to ML
+├── frontend/            # React + Vite
 ├── ml-service/
-│   ├── app.py           # Flask: classify, classify-vit, health, metrics
-│   ├── requirements.txt
-│   └── (model files)    # e.g. modelo_ropa.h5, vision_transformer_*.keras
-├── start-all.sh         # run backend + frontend + ML
-├── stop-all.sh
-└── README.md
+│   ├── app.py           # Flask entry (loads fashion_ml)
+│   ├── src/fashion_ml/  # inference, config, Flask routes
+│   ├── models/          # optional local weights (gitignored)
+│   └── requirements.txt
+├── hf-space/            # FastAPI wrapper for Hugging Face Spaces (Dockerfile)
+├── docs/                # deployment and env guides
+├── scripts/             # release models, Cloudflare, Render helpers
+├── start-all.sh
+└── stop-all.sh
 ```
+
+Model files (`.h5`, `.keras`) stay **out of git**; use a GitHub Release or Hugging Face file URL at Docker build time (see `docs/DEPLOY_CLOUDFLARE.md`).
 
 ## API overview
 
@@ -287,7 +270,7 @@ Static: `/uploads` serves uploaded images (or use Cloudinary); `/api/model/image
 
 - **Auth0:** Optional. When `AUTH0_DOMAIN` and `AUTH0_AUDIENCE` are set, `/api/prendas` and `/api/outfits` require a valid JWT. Each user's garments and outfits are stored with a `userId`; uploads go to `uploads/{userId}/`. See `backend/README-AUTH.md` and `frontend/AUTH0-CHECKLIST.md`.
 - **OpenRouter:** Required for Mirror AI. Set `OPENROUTER_API_KEY` (and optionally `OPENROUTER_BASE_URL`, `OPENROUTER_MODEL`) in `backend/.env`.
-- You must provide your own trained model file(s) and align class names in `ml-service/app.py` with your setup.
+- You must provide trained model weights; class names are in `ml-service/src/fashion_ml/labels.py` unless you change the training to match a different taxonomy.
 
 ## License
 

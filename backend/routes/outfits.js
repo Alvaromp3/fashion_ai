@@ -3,6 +3,7 @@ const router = express.Router();
 const Outfit = require('../models/Outfit');
 const Prenda = require('../models/Prenda');
 const { getUserId } = require('../middleware/auth');
+const { parseObjectId } = require('../utils/mongoSafe');
 
 function userFilter(userId) {
   if (userId === 'anonymous') {
@@ -283,9 +284,28 @@ router.post('/save', async (req, res) => {
   try {
     const { superior_id, inferior_id, zapatos_id, puntuacion, superior_secundario_id, abrigo_id } = req.body;
 
-    const superior = await Prenda.findOne({ _id: superior_id, userId });
-    const inferior = await Prenda.findOne({ _id: inferior_id, userId });
-    const zapatos = await Prenda.findOne({ _id: zapatos_id, userId });
+    const superiorOid = parseObjectId(superior_id);
+    const inferiorOid = parseObjectId(inferior_id);
+    const zapatosOid = parseObjectId(zapatos_id);
+    if (!superiorOid || !inferiorOid || !zapatosOid) {
+      return res.status(400).json({ error: 'Invalid garment id(s)' });
+    }
+
+    let secOid = null;
+    if (superior_secundario_id != null && superior_secundario_id !== '') {
+      secOid = parseObjectId(superior_secundario_id);
+      if (!secOid) return res.status(400).json({ error: 'Invalid superior_secundario_id' });
+    }
+
+    let abrigoOid = null;
+    if (abrigo_id != null && abrigo_id !== '') {
+      abrigoOid = parseObjectId(abrigo_id);
+      if (!abrigoOid) return res.status(400).json({ error: 'Invalid abrigo_id' });
+    }
+
+    const superior = await Prenda.findOne({ _id: superiorOid, userId });
+    const inferior = await Prenda.findOne({ _id: inferiorOid, userId });
+    const zapatos = await Prenda.findOne({ _id: zapatosOid, userId });
 
     if (!superior || !inferior || !zapatos) {
       return res.status(404).json({ error: 'One or more garments not found' });
@@ -293,12 +313,12 @@ router.post('/save', async (req, res) => {
 
     const outfit = new Outfit({
       userId,
-      superior_id,
-      inferior_id,
-      zapatos_id,
+      superior_id: superiorOid,
+      inferior_id: inferiorOid,
+      zapatos_id: zapatosOid,
       puntuacion: puntuacion || 50,
-      ...(superior_secundario_id && { superior_secundario_id }),
-      ...(abrigo_id && { abrigo_id })
+      ...(secOid && { superior_secundario_id: secOid }),
+      ...(abrigoOid && { abrigo_id: abrigoOid })
     });
 
     await outfit.save();
@@ -328,13 +348,13 @@ router.get('/', async (req, res) => {
 });
 
 router.get('/:id', async (req, res) => {
-  const mongoose = require('mongoose');
   const userId = getUserId(req);
-  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+  const oid = parseObjectId(req.params.id);
+  if (!oid) {
     return res.status(400).json({ error: 'Invalid outfit id' });
   }
   try {
-    const outfit = await Outfit.findOne({ _id: req.params.id, ...userFilter(userId) })
+    const outfit = await Outfit.findOne({ _id: oid, ...userFilter(userId) })
       .populate('superior_id')
       .populate('inferior_id')
       .populate('zapatos_id')
@@ -352,8 +372,12 @@ router.get('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   const userId = getUserId(req);
+  const oid = parseObjectId(req.params.id);
+  if (!oid) {
+    return res.status(400).json({ error: 'Invalid outfit id' });
+  }
   try {
-    const outfit = await Outfit.findOneAndDelete({ _id: req.params.id, ...userFilter(userId) });
+    const outfit = await Outfit.findOneAndDelete({ _id: oid, ...userFilter(userId) });
     if (!outfit) {
       return res.status(404).json({ error: 'Outfit not found' });
     }

@@ -8,6 +8,7 @@ const Prenda = require('../models/Prenda');
 const { uploadImage, deleteImage } = require('../utils/cloudinary');
 const { getUserId } = require('../middleware/auth');
 const { resolveUploadsPublicPath } = require('../utils/safePath');
+const { parseObjectId } = require('../utils/mongoSafe');
 
 const UPLOADS_ROOT = path.resolve(__dirname, '../uploads');
 
@@ -241,7 +242,10 @@ router.get('/filter', async (req, res) => {
   try {
     const { type } = req.query;
     const query = userFilter(userId);
-    if (type) query.tipo = type;
+    const tipoValidos = ['superior', 'inferior', 'zapatos', 'accesorio', 'abrigo', 'vestido'];
+    if (typeof type === 'string' && tipoValidos.includes(type.toLowerCase())) {
+      query.tipo = type.toLowerCase();
+    }
     const prendas = await Prenda.find(query).sort({ fecha_agregada: -1 });
     res.json(prendas);
   } catch (error) {
@@ -251,13 +255,13 @@ router.get('/filter', async (req, res) => {
 });
 
 router.get('/:id', async (req, res) => {
-  const mongoose = require('mongoose');
   const userId = getUserId(req);
-  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+  const oid = parseObjectId(req.params.id);
+  if (!oid) {
     return res.status(400).json({ error: 'Invalid garment id' });
   }
   try {
-    const prenda = await Prenda.findOne({ _id: req.params.id, ...userFilter(userId) }).lean();
+    const prenda = await Prenda.findOne({ _id: oid, ...userFilter(userId) }).lean();
     if (!prenda) {
       return res.status(404).json({ error: 'Garment not found' });
     }
@@ -270,9 +274,13 @@ router.get('/:id', async (req, res) => {
 
 router.put('/:id/ocasion', async (req, res) => {
   const userId = getUserId(req);
+  const oid = parseObjectId(req.params.id);
+  if (!oid) {
+    return res.status(400).json({ error: 'Invalid garment id' });
+  }
   try {
     const { ocasion } = req.body;
-    const prenda = await Prenda.findOne({ _id: req.params.id, ...userFilter(userId) });
+    const prenda = await Prenda.findOne({ _id: oid, ...userFilter(userId) });
     if (!prenda) {
       return res.status(404).json({ error: 'Garment not found' });
     }
@@ -297,8 +305,12 @@ router.put('/:id/ocasion', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   const userId = getUserId(req);
+  const oid = parseObjectId(req.params.id);
+  if (!oid) {
+    return res.status(400).json({ error: 'Invalid garment id' });
+  }
   try {
-    const prenda = await Prenda.findOne({ _id: req.params.id, ...userFilter(userId) });
+    const prenda = await Prenda.findOneAndDelete({ _id: oid, ...userFilter(userId) });
     if (!prenda) {
       return res.status(404).json({ error: 'Garment not found' });
     }
@@ -311,7 +323,6 @@ router.delete('/:id', async (req, res) => {
       await deleteImage(prenda.imagen_url);
     }
 
-    await Prenda.findByIdAndDelete(req.params.id);
     res.json({ message: 'Garment deleted successfully' });
   } catch (error) {
     console.error('Error eliminando prenda:', error);

@@ -1,5 +1,9 @@
+# Fashion AI ML — pinned for TensorFlow 2.16 + Keras 3
 flask==3.0.0
 flask-cors==4.0.0
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
 tensorflow==2.16.2
 tensorflow-text==2.16.1
 keras==3.13.2

@@ -17,7 +17,7 @@
     "cloudflare:pages-env": "node scripts/cloudflare-pages-env.js",
     "start": "concurrently -n \"BACKEND,ML,FRONTEND\" -c \"blue,green,yellow\" \"npm run start:backend\" \"npm run start:ml\" \"npm run start:frontend\"",
     "start:backend": "cd backend && npm run dev",
-    "start:ml": "cd ml-service && ./start.sh",
+    "start:ml": "cd ml-service && bash ./start.sh",
     "start:frontend": "cd frontend && npm run dev",
     "stop": "pkill -f 'node.*server.js' && pkill -f nodemon && pkill -f vite && pkill -f 'python.*app.py' && for p in 3000 4000 6001; do lsof -ti :$p | xargs kill -9 2>/dev/null; done; true"
   },
