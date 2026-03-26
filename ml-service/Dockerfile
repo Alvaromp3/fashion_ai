@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir -U pip && pip install --no-cache-dir -r /app/requ
 
 COPY src /app/src
 COPY app.py /app/app.py
+# Before deployment, place best_model_17_marzo.keras in ml-service/models/
 COPY models /app/models
 
 EXPOSE 6001
