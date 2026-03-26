@@ -14,6 +14,9 @@ ML_SERVICE_ROOT = Path(_env_root).resolve() if _env_root else _default_root
 HF_VIT_REPO_ID = os.environ.get("HF_VIT_REPO_ID", "").strip()  # e.g. Alvaro05/vit-fashion
 HF_VIT_FILENAME = os.environ.get("HF_VIT_FILENAME", "best_model_17_marzo.keras").strip()
 
+# Single classification artifact (ViT, Keras .keras)
+DEFAULT_VIT_FILENAME = "best_model_17_marzo.keras"
+
 # Max upload body (align with backend multer 10MB)
 MAX_UPLOAD_BYTES = int(os.environ.get("ML_MAX_UPLOAD_MB", "12")) * 1024 * 1024
 
@@ -24,38 +27,12 @@ ALLOWED_EXTENSIONS = frozenset(
 )
 
 
-def _first_existing(*candidates: Path) -> Path | None:
-    for p in candidates:
-        if p.is_file():
-            return p
-    return None
-
-
-def resolve_cnn_path() -> Path:
-    env = os.environ.get("ML_CNN_PATH")
-    if env:
-        return Path(env).resolve()
-    default = ML_SERVICE_ROOT / "modelo_ropa.h5"
-    if default.is_file():
-        return default
-    return default
-
-
 def resolve_vit_path() -> Path:
-    """ViT weights: ML_VIT_PATH, then models/, then legacy filenames in ml-service root."""
+    """ViT weights: ML_VIT_PATH, then ml-service/models/best_model_17_marzo.keras."""
     env = os.environ.get("ML_VIT_PATH")
     if env:
         return Path(env).resolve()
-    found = _first_existing(
-        ML_SERVICE_ROOT / "models" / "best_model_17_marzo.keras",
-        ML_SERVICE_ROOT / "models" / "vision_transformer_moda_modelo.keras",
-        ML_SERVICE_ROOT / "vision_transformer_fashion_model.keras",
-        ML_SERVICE_ROOT / "vision_transformer_moda_modelo.keras",
-    )
-    if found is not None:
-        return found
-    return ML_SERVICE_ROOT / "models" / "best_model_17_marzo.keras"
+    return ML_SERVICE_ROOT / "models" / DEFAULT_VIT_FILENAME
 
 
-CNN_MODEL_PATH = resolve_cnn_path()
 VIT_MODEL_PATH = resolve_vit_path()

@@ -22,7 +22,7 @@ services:
       # CLOUDINARY_*, ML_SERVICE_URL=<your-ml-service-url>, OPENROUTER_API_KEY,
       # CORS_ORIGINS=https://your-frontend.pages.dev
 
-  # --- 2. Python ML service (Flask + TensorFlow/CNN/ViT) ---
+  # --- 2. Python ML service (Flask + TensorFlow; modelo ViT: best_model_17_marzo.keras) ---
   - type: web
     name: fashion-ai-ml
     plan: free

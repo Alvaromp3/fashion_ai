@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
-# Publish ML model files as a GitHub release so Docker (or others) can download them.
+# Publish the ViT model as a GitHub release asset so Docker (or others) can download it.
 # Requires: gh CLI (brew install gh), and you must be logged in (gh auth login).
 #
 # Usage:
 #   ./scripts/publish-models-release.sh [RELEASE_TAG]
 #   RELEASE_TAG defaults to "models-v1.0". Example: ./scripts/publish-models-release.sh models-v1.0
 #
-# Model files must exist in ml-service/:
-#   - modelo_ropa.h5 (CNN)
-#   - vision_transformer_moda_modelo.keras (ViT)
+# Model file must exist at:
+#   ml-service/models/best_model_17_marzo.keras
 
 set -e
 
@@ -17,8 +16,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ML_DIR="$REPO_ROOT/ml-service"
 
-CNN_FILE="$ML_DIR/modelo_ropa.h5"
-VIT_FILE="$ML_DIR/vision_transformer_moda_modelo.keras"
+VIT_FILE="$ML_DIR/models/best_model_17_marzo.keras"
 
 if ! command -v gh &>/dev/null; then
   echo "Error: GitHub CLI (gh) is not installed. Install it with: brew install gh"
@@ -30,13 +28,9 @@ if ! gh auth status &>/dev/null; then
   exit 1
 fi
 
-MISSING=""
-[ ! -f "$CNN_FILE" ] && MISSING="$MISSING modelo_ropa.h5"
-[ ! -f "$VIT_FILE" ] && MISSING="$MISSING vision_transformer_moda_modelo.keras"
-
-if [ -n "$MISSING" ]; then
-  echo "Error: Model file(s) not found in ml-service/:$MISSING"
-  echo "Place the files in $ML_DIR and run this script again."
+if [ ! -f "$VIT_FILE" ]; then
+  echo "Error: Model not found: $VIT_FILE"
+  echo "Place best_model_17_marzo.keras in ml-service/models/ and run this script again."
   exit 1
 fi
 
@@ -48,21 +42,21 @@ if gh release view "$RELEASE_TAG" &>/dev/null; then
   gh release delete "$RELEASE_TAG" --yes
 fi
 
-echo "Creating release $RELEASE_TAG and uploading model files..."
+echo "Creating release $RELEASE_TAG and uploading model..."
+OWNER_REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
 gh release create "$RELEASE_TAG" \
-  "$CNN_FILE" \
   "$VIT_FILE" \
-  --title "ML models ($RELEASE_TAG)" \
-  --notes "Fashion classification models for Fashion AI.
+  --title "ML model ($RELEASE_TAG)" \
+  --notes "Fashion classification — Vision Transformer (ViT) only.
 
-- **modelo_ropa.h5**: CNN model (~87% accuracy).
-- **vision_transformer_moda_modelo.keras**: Vision Transformer model (~94% accuracy).
+- **best_model_17_marzo.keras**: ViT classifier (10 classes).
 
-Used by the ml-service Docker image. Download URLs:
+Used by the ml-service and HF Space Dockerfiles. Download URL:
 \`\`\`
-https://github.com/$(gh repo view --json nameWithOwner -q .nameWithOwner)/releases/download/$RELEASE_TAG/modelo_ropa.h5
-https://github.com/$(gh repo view --json nameWithOwner -q .nameWithOwner)/releases/download/$RELEASE_TAG/vision_transformer_moda_modelo.keras
+https://github.com/${OWNER_REPO}/releases/download/${RELEASE_TAG}/best_model_17_marzo.keras
 \`\`\`
+
+Optional zip name for legacy scripts: **vit_model_v1.zip** (must contain a \`.keras\` file).
 "
 
 echo "Done. Release: $(gh release view "$RELEASE_TAG" --json url -q .url)"

@@ -20,17 +20,17 @@ You already use **MongoDB Atlas** (free M0), **Auth0** (free), and **Cloudinary*
 
 | Item | Value |
 |------|--------|
-| **Framework** | **Keras / TensorFlow** (TF 2.x). CNN is legacy Keras `.h5`; ViT is `.keras` (Keras 3 / TF backend). Optional dependency: `keras_hub` for ViT custom layers. |
-| **Models** | **CNN:** `modelo_ropa.h5` — **~22 MB** on disk.<br>**ViT:** `vision_transformer_moda_modelo.keras` — typically **~50–200+ MB** on disk (depends on architecture). |
+| **Framework** | **Keras / TensorFlow** (TF 2.x). Classification uses a single ViT saved as **`best_model_17_marzo.keras`**. Optional dependency: `keras_hub` for ViT custom layers. |
+| **Models** | **`best_model_17_marzo.keras`** — size depends on architecture (often hundreds of MB). |
 | **Input image size** | **224×224** pixels (RGB). The app resizes/crops uploads to this before inference. |
 | **Max upload size** | **10 MB** per image (backend `classify` route limit). Accepted formats: JPEG, PNG, GIF, WebP, HEIC, HEIF, BMP, TIFF. |
-| **Expected requests/day** | **Free tier (demo / light use):** on the order of **tens to low hundreds** of classification requests per day. Render free ML service spins down after ~15 min idle, so bursty usage is fine; sustained high volume will hit 750 hrs/month and memory limits. For **hundreds per day** with both models loaded, 512 MB RAM may be tight; consider CNN-only or a paid instance. |
+| **Expected requests/day** | **Free tier (demo / light use):** on the order of **tens to low hundreds** of classification requests per day. Render free ML service spins down after ~15 min idle. If TensorFlow + ViT OOMs on 512 MB, use a paid instance with more RAM. |
 
 ---
 
 ## 1. Deploy ML service (Render)
 
-The ML service runs your CNN + ViT models. Render free tier has **512 MB RAM**; TensorFlow + both models may need more. If the ML service crashes with OOM, use **one model** (e.g. CNN only) or consider a small paid instance.
+The ML service runs the ViT classifier (`best_model_17_marzo.keras`). Render free tier has **512 MB RAM**; TensorFlow + ViT can be tight. If the service OOMs, use a paid instance with more RAM.
 
 1. Go to [Render Dashboard](https://dashboard.render.com) → **New** → **Blueprint**.
 2. Connect your Git repo and select the repo that contains this project.
@@ -40,9 +40,9 @@ The ML service runs your CNN + ViT models. Render free tier has **512 MB RAM**; 
    - **Root Directory:** `ml-service` (already set in blueprint).
    - **Docker:** Render uses `ml-service/Dockerfile`. The Dockerfile downloads model files from a GitHub Release. Set:
      - **GITHUB_REPO:** `your-username/fashion_ai` (or your repo).
-     - **MODELS_RELEASE_TAG:** e.g. `models-v1.0` (the release where you attached `modelo_ropa.h5` and `vision_transformer_moda_modelo.keras`).
+     - **MODELS_RELEASE_TAG:** e.g. `models-v1.0` (the release where you attached **`best_model_17_marzo.keras`** or **`vit_model_v1.zip`** containing a `.keras` file).
      - If the repo is **private**, add **GITHUB_TOKEN** (GitHub Personal Access Token with `repo`).
-   - The Dockerfile copies `model_metrics.json`, `model_metrics_vit.json`, `confusion_matrix.png`, `confusion_matrix_vit.png`, `data_audit.png` from `ml-service/`. If any are missing, the build will fail: either commit them or remove/comment out that `COPY` line in `ml-service/Dockerfile` (the admin metrics/confusion routes will then 404).
+   - The default `ml-service/Dockerfile` does **not** bundle optional metric images/JSON. If you add `COPY` lines for `model_metrics*.json` or confusion-matrix PNGs, ensure those files exist or the build will fail; otherwise admin routes for those assets return 404.
 5. Deploy. After deploy, note the **ML service URL**, e.g. `https://fashion-ai-ml.onrender.com`.
 
 ---
@@ -116,7 +116,7 @@ The frontend only talks to the backend. The backend talks to MongoDB Atlas, Clou
 
 - **Spindown:** Free web services sleep after ~15 minutes of no traffic. The first request after sleep can take 30–60 seconds (cold start).
 - **Hours:** 750 hours/month per service. Two services = 750 each; usually enough for a demo or light use.
-- **ML memory:** 512 MB can be tight for TensorFlow + ViT. If the ML service restarts or OOMs, try loading only the CNN in the app, or use a paid instance with more RAM.
+- **ML memory:** 512 MB can be tight for TensorFlow + ViT. If the ML service restarts or OOMs, use a paid instance with more RAM.
 
 ---
 

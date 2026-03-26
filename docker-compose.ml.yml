@@ -1,4 +1,4 @@
-# ML en Docker: publica modelos con ./scripts/publish-models-release.sh models-v1.0
+# ML en Docker: publica el modelo con ./scripts/publish-models-release.sh models-v1.0
 # Luego: export GITHUB_REPO=tu-usuario/repo && docker compose -f docker-compose.ml.yml build
 
 services:
@@ -8,11 +8,8 @@ services:
       context: ./ml-service
       dockerfile: Dockerfile
     environment:
-      # Forzar el modelo ViT nuevo (host -> container).
       ML_VIT_PATH: /app/models/best_model_17_marzo.keras
-      # CNN ya no se usa (se deja vacío / inexistente).
-      ML_CNN_PATH: /app/models/modelo_ropa.h5
-    # Optional: mount local weights (uncomment and place best_model_17_marzo.keras under ml-service/models/)
+    # Opcional: montar pesos locales (descomenta y coloca best_model_17_marzo.keras en ml-service/models/)
     # volumes:
     #   - ./ml-service/models/best_model_17_marzo.keras:/app/models/best_model_17_marzo.keras:ro
     ports:

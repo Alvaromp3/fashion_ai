@@ -1,4 +1,4 @@
-# ML en Docker (CNN + ViT)
+# ML en Docker (ViT: best_model_17_marzo.keras)
 
 ## Arrancar todo (ML en Docker + backend y frontend en local)
 
@@ -16,6 +16,8 @@ Abre http://localhost:3000. Para parar: Ctrl+C y luego `./stop-all.sh` si hace f
 docker build -t fashion-ml ./ml-service
 docker compose -f docker-compose.ml.yml up -d
 ```
+
+Monta **`ml-service/models/best_model_17_marzo.keras`** en el contenedor si no está en la imagen (ver `docker-compose.ml.yml`).
 
 Luego arranca backend (4000) y frontend (3000) en local.
 

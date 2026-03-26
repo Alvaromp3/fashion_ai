@@ -11,11 +11,8 @@ Choose one path. **Path A** is fastest (everything on Render + Pages). **Path B*
 ### 1. Push your code and create a GitHub Release (for model files)
 
 - Push the project to GitHub if you haven’t.
-- In `ml-service/` you need `modelo_ropa.h5` and `vision_transformer_moda_modelo.keras`. They’re in `.gitignore`, so the Render Dockerfile expects them from a **GitHub Release**:
-  - Repo → **Releases** → **Create a new release** → tag e.g. `models-v1.0`.
-  - Upload as assets: `modelo_ropa.h5`, `vision_transformer_moda_modelo.keras`.
-  - Publish.
-- Ensure these files exist in `ml-service/` for the Docker build (metrics/confusion images): `model_metrics.json`, `model_metrics_vit.json`, `confusion_matrix.png`, `confusion_matrix_vit.png`, `data_audit.png`. If any are missing, edit `ml-service/Dockerfile` and remove that line that `COPY`’s them (see [FREE_HOSTING.md](FREE_HOSTING.md)).
+- The classifier uses only **`best_model_17_marzo.keras`** (ViT). It is not committed to Git; publish it via **`./scripts/publish-models-release.sh`** or attach **`best_model_17_marzo.keras`** (or **`vit_model_v1.zip`** with a `.keras` inside) to a GitHub Release (e.g. tag `models-v1.0`).
+- Optional admin assets (`model_metrics*.json`, confusion-matrix PNGs, `data_audit.png`) are not required for inference; add them only if you extend the Dockerfile to `COPY` them.
 
 ### 2. Deploy ML + Backend on Render
 
@@ -98,27 +95,11 @@ Choose one path. **Path A** is fastest (everything on Render + Pages). **Path B*
 
 1. Go to [huggingface.co/spaces](https://huggingface.co/spaces) → **Create new Space**.
 2. **Space name:** e.g. `fashion-ai-ml`. **SDK:** **Docker**. **Create**.
-3. In the Space repo you’ll upload or add files. You need:
-   - A **Dockerfile** (see below).
-   - `app.py`, `space_app.py`, `requirements.txt` from your `ml-service/` folder.
-   - Model files: `modelo_ropa.h5` and `vision_transformer_moda_modelo.keras` (upload via “Files and versions” or download in Docker from a GitHub Release).
+3. In the Space repo you’ll upload or add files. Prefer the repo’s **`hf-space/Dockerfile`** (build context: **repository root**): it copies `ml-service/` and downloads **`best_model_17_marzo.keras`** from your GitHub Release or **`HF_VIT_URL`**.
 
-4. **Dockerfile** in the Space repo (adjust if you put models in a different path):
+4. **Environment:** `ML_VIT_PATH=/app/models/best_model_17_marzo.keras` (set by the Dockerfile).
 
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY app.py space_app.py ./
-# Upload modelo_ropa.h5 and vision_transformer_moda_modelo.keras via "Files and versions", or ADD/COPY them here
-ENV ML_CNN_PATH=/app/modelo_ropa.h5
-ENV ML_VIT_PATH=/app/vision_transformer_moda_modelo.keras
-EXPOSE 7860
-CMD ["uvicorn", "space_app:app", "--host", "0.0.0.0", "--port", "7860"]
-```
-
-5. In the Space, upload `modelo_ropa.h5` and `vision_transformer_moda_modelo.keras` under **Files and versions** so they’re in the image (or add a `RUN`/script to download from your GitHub Release).
+5. Ensure the build can obtain **`best_model_17_marzo.keras`** (release asset, zip, or public `HF_VIT_URL`).
 6. **Space → Settings → Variables:** `CORS_ORIGINS` = `*` for testing (or your Pages URL later).
 7. Wait for the Space to **build and run**. Copy the Space URL, e.g. `https://YOUR_USERNAME-fashion-ai-ml.hf.space`.
 

@@ -8,7 +8,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 BACKEND_ENV="$ROOT_DIR/backend/.env"
-MODEL_SOURCE="$ROOT_DIR/ml-service/vision_transformer_moda_modelo.keras"
+MODEL_SOURCE="$ROOT_DIR/ml-service/models/best_model_17_marzo.keras"
 REPO_NAME="fashion-ai-vit-model"
 
 echo "=============================================="
@@ -88,8 +88,8 @@ git add .gitattributes 2>/dev/null || true
 
 echo "STEP 6 — Add updated model"
 echo "----------------------------------------------"
-cp "$MODEL_SOURCE" "./vision_transformer_moda_modelo.keras"
-git add vision_transformer_moda_modelo.keras
+cp "$MODEL_SOURCE" "./best_model_17_marzo.keras"
+git add best_model_17_marzo.keras
 git add .gitattributes 2>/dev/null || true
 git status
 git commit -m "Update ViT model via Env Vault synced environment" || true
@@ -105,7 +105,7 @@ echo "=============================================="
 echo "SUCCESS — ViT model uploaded to Hugging Face"
 echo "=============================================="
 echo "  Model repo: $REPO_URL"
-echo "  File:       vision_transformer_moda_modelo.keras"
+echo "  File:       best_model_17_marzo.keras"
 echo ""
 echo "Production: set ML_SERVICE_URL or ML_VIT_SERVICE_URL to your HF Space or endpoint that serves this model, or ensure your ML Space uses this repo to load the ViT."
 echo "=============================================="

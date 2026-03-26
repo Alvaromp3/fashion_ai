@@ -10,16 +10,17 @@ Este monorepo no ejecuta TensorFlow en **Cloudflare Workers** (límite de CPU/me
 
 ---
 
-## 1. Modelos (`.keras` / `.h5`)
+## 1. Modelo ViT (`best_model_17_marzo.keras`)
 
-- **No** subas secretos al repo. Los pesos siguen en `.gitignore` (`*.keras`, `*.h5`).
+- **No** subas secretos al repo. Los pesos suelen estar en `.gitignore` (`*.keras`).
+- Clasificación: solo **`best_model_17_marzo.keras`**.
 - Opciones:
   - **GitHub Release** (ver `hf-space/Dockerfile` + `ARG GITHUB_REPO` / `MODELS_RELEASE_TAG`).
-  - **URL pública** (`HF_VIT_URL` en build Docker), p. ej. archivo en Hugging Face:
+  - **URL pública** (`HF_VIT_URL` en build Docker), p. ej.:
     `https://huggingface.co/USER/REPO/resolve/main/best_model_17_marzo.keras`
   - Copia local en `ml-service/models/` y monta volumen en Docker (ver `docker-compose.ml.yml` comentado).
 
-Variables útiles: `ml-service/.env.example` (`ML_VIT_PATH`, `ML_CNN_PATH`, `FASHION_ML_ROOT`).
+Variables útiles: `ML_VIT_PATH`, `FASHION_ML_ROOT` (si empaquetas el servicio en otra ruta).
 
 ---
 

@@ -2,9 +2,9 @@
 
 Guía rápida para poner en marcha el proyecto.
 
-## 🐳 Opción recomendada: ML en Docker (CNN + ViT)
+## 🐳 Opción recomendada: ML en Docker (ViT)
 
-Si quieres que **CNN y ViT funcionen siempre**, usa Docker solo para el ML:
+El clasificador usa solo **`best_model_17_marzo.keras`** (ViT). Para el ML en Docker:
 
 ```bash
 ./start-all-docker.sh
@@ -54,20 +54,9 @@ MONGODB_URI=mongodb://localhost:27017/fashion_ai
 MONGODB_URI=mongodb+srv://usuario:password@cluster.mongodb.net/fashion_ai
 ```
 
-### 3. Preparar el Modelo CNN
+### 3. Preparar el modelo ViT
 
-```bash
-cd ml-service
-
-# Opción 1: Usar el script de entrenamiento
-# (Ruta del dataset en tu Mac: /Users/alvaromartin-pena/Desktop/Proyectos/fashion_dataset — ver ml-service/INSTALL.md)
-# python train_model.py
-
-# Opción 2: Si ya tienes el modelo entrenado
-# Copia tu modelo_ropa.h5 a ml-service/
-```
-
-**Importante**: Actualiza `class_names` en `ml-service/app.py` según tus clases.
+Coloca **`best_model_17_marzo.keras`** en **`ml-service/models/`**, o define **`ML_VIT_PATH`** con la ruta absoluta al archivo.
 
 ### 4. Configurar Variables de Entorno
 
@@ -123,7 +112,7 @@ Luego abre **http://localhost:3000** en el navegador. Para parar todo: `Ctrl+C` 
 ## ✅ Verificar que Todo Funciona
 
 1. **Backend**: `http://localhost:4000/api/health` → Debe responder `{"status":"OK"}` o `{"status":"DEGRADED"}`
-2. **ML Service**: `http://localhost:6001/health` → Debe responder con estado del modelo
+2. **ML Service**: `http://localhost:6001/health` → Debe responder con estado del modelo ViT
 3. **Frontend**: `http://localhost:3000` → Debe cargar la página
 
 ## 🐛 Problemas Comunes
@@ -136,7 +125,7 @@ Luego abre **http://localhost:3000** en el navegador. Para parar todo: `Ctrl+C` 
 ### "ML Service not responding"
 
 - Verifica que el servicio ML esté en puerto 6001
-- Verifica que `modelo_ropa.h5` exista en `ml-service/`
+- Verifica que exista **`ml-service/models/best_model_17_marzo.keras`** (o que `ML_VIT_PATH` apunte al archivo)
 
 ### "Images not loading"
 

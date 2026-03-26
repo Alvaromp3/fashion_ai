@@ -6,14 +6,14 @@ This is the **recommended free architecture** for Fashion AI:
 |-------|---------|-----|
 | **Frontend** | **Cloudflare Pages** | Unlimited static assets, global CDN, no egress cost |
 | **Image storage** | **Cloudflare R2** | Free quota, **no egress charges** (unlike S3) |
-| **ML inference** | **Hugging Face Spaces** | ~2 vCPU, **16 GB RAM** — enough for CNN + ViT, no cold-start hours limit |
+| **ML inference** | **Hugging Face Spaces** | ~2 vCPU, **16 GB RAM** — enough for ViT (`best_model_17_marzo.keras`), no cold-start hours limit |
 | **Backend API** | **Render** (or optional minimal Worker) | Auth, MongoDB, proxies to Space; or use a tiny serverless proxy |
 
 ---
 
 ## Why this trio wins
 
-- **Models fit in RAM:** 16 GB on the Space handles your CNN (~22 MB) and ViT (~50–200 MB) without OOM.
+- **Models fit in RAM:** 16 GB on the Space handles the ViT weights without OOM.
 - **No Render ML cold starts** — the Space stays warm; no 512 MB limit.
 - **No monthly “hours” bucket** — Spaces free tier is always-on for the session.
 - **~100s of requests/day** for free; R2 free tier is generous and has **zero egress**.
@@ -23,7 +23,7 @@ This is the **recommended free architecture** for Fashion AI:
 
 ## 1. Hugging Face Space (ML inference)
 
-Your repo already has a **FastAPI** app for Spaces in `ml-service/space_app.py`. It exposes the same contract as the Flask app (`/classify`, `/classify-vit`, `/health`) so the backend only needs to point `ML_SERVICE_URL` at the Space.
+Your repo has **`hf-space/space_app.py`** (FastAPI) used by **`hf-space/Dockerfile`**. It exposes `/classify`, `/classify-vit`, `/health` (all use the same ViT: `best_model_17_marzo.keras`). Point `ML_SERVICE_URL` at the Space.
 
 ### Option A: Deploy from this repo (Space in same repo)
 
@@ -35,7 +35,7 @@ Your repo already has a **FastAPI** app for Spaces in `ml-service/space_app.py`.
      - Copies `ml-service/` (or at least `app.py`, `space_app.py`, and model files or a download step).
      - Runs `uvicorn space_app:app --host 0.0.0.0 --port 7860`.
    - HF Spaces use port **7860** by default.
-4. **Model files:** put `modelo_ropa.h5` and `vision_transformer_moda_modelo.keras` in the Space (e.g. upload to “Files and versions” or download in Docker from your GitHub Release). Same as for Render: use `ML_CNN_PATH` / `ML_VIT_PATH` if you place them in a custom path.
+4. **Model file:** **`best_model_17_marzo.keras`** — supply via GitHub Release, `HF_VIT_URL`, or “Files and versions”. Set **`ML_VIT_PATH`** if you use a non-default path.
 5. **Environment variables** (Space → Settings → Variables):  
    `CORS_ORIGINS` = your frontend origin (e.g. `https://your-app.pages.dev`) or `*` for testing.
 
@@ -49,18 +49,7 @@ Your repo already has a **FastAPI** app for Spaces in `ml-service/space_app.py`.
    - Model files (or a script to download from GitHub Release)
 3. Dockerfile example:
 
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY app.py space_app.py ./
-# Copy or download model files to /app (e.g. modelo_ropa.h5, vision_transformer_moda_modelo.keras)
-ENV ML_CNN_PATH=/app/modelo_ropa.h5
-ENV ML_VIT_PATH=/app/vision_transformer_moda_modelo.keras
-EXPOSE 7860
-CMD ["uvicorn", "space_app:app", "--host", "0.0.0.0", "--port", "7860"]
-```
+Use **`hf-space/Dockerfile`** from the repo root (see `docs/DEPLOY_CLOUDFLARE.md`). It sets `ML_VIT_PATH=/app/models/best_model_17_marzo.keras` and downloads the weights at build time.
 
 4. **Space URL:** after build, your API base is  
    `https://<your-username>-<space-name>.hf.space`  

@@ -14,33 +14,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 import app as ml_app
-from fashion_ml.config import CNN_MODEL_PATH, VIT_MODEL_PATH
+from fashion_ml.config import VIT_MODEL_PATH
 from fashion_ml.image_ops import detect_color
 from fashion_ml.model_loader import build_classification_response, models
 
 ALLOWED_ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "*").split(",") if o.strip()] or ["*"]
 
 
-def _cnn_name() -> str:
-    return Path(CNN_MODEL_PATH).name
-
-
 def _vit_name() -> str:
     return Path(VIT_MODEL_PATH).name
-
-
-def _classify_cnn(image_bytes: bytes) -> dict:
-    from PIL import Image
-
-    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    color = detect_color(image)
-    if models.cnn is None:
-        return JSONResponse(
-            status_code=503,
-            content={"error": "Models still loading", "loading": True},
-        )
-    probs, _ = models.predict_cnn(image)
-    return build_classification_response(probs, color, "cnn", _cnn_name())
 
 
 def _classify_vit(image_bytes: bytes) -> dict:
@@ -49,9 +31,9 @@ def _classify_vit(image_bytes: bytes) -> dict:
     image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     color = detect_color(image)
     if models.vit is None:
-        raise HTTPException(
+        return JSONResponse(
             status_code=503,
-            detail={"error": "Vision Transformer model not available", "model_loaded": False},
+            content={"error": "Models still loading", "loading": True},
         )
     probs, _ = models.predict_vit(image)
     return build_classification_response(probs, color, "vision_transformer", _vit_name())
@@ -65,7 +47,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="Fashion AI ML",
-    description="CNN + ViT garment classification",
+    description="ViT garment classification (best_model_17_marzo.keras)",
     lifespan=lifespan,
 )
 app.add_middleware(
@@ -83,20 +65,22 @@ def root():
         "message": "Fashion AI ML API",
         "docs": "/docs",
         "health": "/health",
-        "classify": "POST /classify (CNN)",
+        "classify": "POST /classify (ViT)",
         "classify_vit": "POST /classify-vit (ViT)",
     }
 
 
 @app.get("/health")
 def health():
-    cnn_p, vit_p = Path(CNN_MODEL_PATH), Path(VIT_MODEL_PATH)
+    vit_p = Path(VIT_MODEL_PATH)
+    vit_ok = models.vit is not None
     return {
         "status": "OK",
-        "model_loaded": models.cnn is not None,
-        "model_file_exists": cnn_p.is_file(),
-        "model_path": str(cnn_p.resolve()) if cnn_p.is_file() else None,
-        "vit_model_loaded": models.vit is not None,
+        "model_loaded": vit_ok,
+        "model_file": vit_p.name,
+        "model_file_exists": vit_p.is_file(),
+        "model_path": str(vit_p.resolve()) if vit_p.is_file() else None,
+        "vit_model_loaded": vit_ok,
         "vit_model_file_exists": vit_p.is_file(),
         "vit_model_path": str(vit_p.resolve()) if vit_p.is_file() else None,
         "classes_count": len(ml_app.class_names) if ml_app.class_names else 0,
@@ -111,7 +95,7 @@ async def classify(imagen: UploadFile = File(..., alias="imagen")):
     if not contents:
         raise HTTPException(status_code=400, detail="No image provided")
     try:
-        return _classify_cnn(contents)
+        return _classify_vit(contents)
     except HTTPException:
         raise
     except Exception as e:

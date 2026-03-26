@@ -1,43 +1,33 @@
----
-title: Fashion AI ML
-emoji: 👗
-colorFrom: pink
-colorTo: blue
-sdk: docker
-pinned: false
----
-
-# Fashion AI — Garment classification (CNN + ViT)
+# Fashion AI — Garment classification (ViT)
 
 HTTP API for classifying clothing images. Used by the [Fashion AI](https://github.com/Alvaromp3/fashion_ai) app.
 
-## API
+## Model
 
-- **GET /health** — Model status
-- **POST /classify** — CNN classification (form field `imagen`: image file)
-- **POST /classify-vit** — ViT classification (form field `imagen`)
-- **POST /predict** — Alias for `/classify`
+- Single classifier: **`best_model_17_marzo.keras`** (Vision Transformer via TensorFlow/Keras).
+- Environment: **`ML_VIT_PATH`** (default `/app/models/best_model_17_marzo.keras` in Docker).
 
-## Setup (one-time)
+## Endpoints
 
-1. **GitHub Release:** Create a release (e.g. tag `models-v1.0`) and attach:
-   - `modelo_ropa.h5`
-   - `vision_transformer_moda_modelo.keras`
+- **POST `/classify`** — ViT classification (form field `imagen`: image file)
+- **POST `/classify-vit`** — Same ViT classifier (form field `imagen`)
+- **POST `/predict`** — Alias for `/classify-vit` (same as FastAPI `run_fastapi.py`)
+- **GET `/health`** — Status and model load
 
-2. **Space Settings → Repository secrets:** Add
-   - `GITHUB_REPO` = `your-username/fashion_ai`
-   - `MODELS_RELEASE_TAG` = `models-v1.0` (optional)
-   - `GITHUB_TOKEN` = (only if the repo is private)
+## Deploy (Docker)
 
-3. **Rebuild** the Space. Models download at build time; inference runs on CPU (16 GB RAM).
+Build from **repository root**:
 
-## ViT in a separate Space (optional)
+```bash
+docker build -f hf-space/Dockerfile .
+```
 
-If you call ViT rarely, run ViT in a **second Space** so the main Space stays CNN-only (faster, less RAM). Use **Dockerfile.vit** in the new Space (only downloads the ViT model). In your backend set:
-- `ML_SERVICE_URL` = main Space (CNN)
-- `ML_VIT_SERVICE_URL` = ViT-only Space URL  
-The backend will call the ViT Space only for `/classify-vit` and `/vit-base64`.
+The Dockerfile downloads **`best_model_17_marzo.keras`** from your GitHub Release (`models-v1.0` by default) or from **`HF_VIT_URL`**.
 
-## CORS
+Release asset: run `./scripts/publish-models-release.sh` from the repo root (expects `ml-service/models/best_model_17_marzo.keras`).
 
-Set **Variables** → `CORS_ORIGINS` to your frontend URL (e.g. `https://your-app.pages.dev`) or `*` for testing.
+## Backend
+
+Set **`ML_SERVICE_URL`** to this Space URL (no trailing slash). The backend calls **`/classify-vit`** for garment classification.
+
+Optional **`ML_VIT_SERVICE_URL`**: separate Space URL if you split traffic; otherwise the same URL as `ML_SERVICE_URL` is enough.

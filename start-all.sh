@@ -56,8 +56,6 @@ fi
 
 ML_VENV_PYTHON="$ML_DIR/venv/bin/python3.11"
 [ ! -x "$ML_VENV_PYTHON" ] && ML_VENV_PYTHON="$ML_DIR/venv/bin/python"
-export ML_CNN_PATH="${ML_CNN_PATH:-$ML_DIR/modelo_ropa.h5}"
-
 # ViT: prefer repo-local copy, then legacy Desktop path.
 DEFAULT_REPO_VIT="$ML_DIR/models/best_model_17_marzo.keras"
 LEGACY_USER_VIT="${ML_VIT_PATH:-/Users/alvaromartin-pena/Desktop/vit_fashion_outputs/best_model_17_marzo.keras}"
@@ -82,7 +80,7 @@ else
     echo -e "${GREEN}  ML: dependencias listas.${NC}"
   fi
   : > "$SCRIPT_DIR/logs/ml-service.log"
-  cd "$ML_DIR" && nohup env ML_CNN_PATH="$ML_CNN_PATH" ML_VIT_PATH="$ML_VIT_PATH" "$ML_VENV_PYTHON" app.py >> "$SCRIPT_DIR/logs/ml-service.log" 2>&1 </dev/null &
+  cd "$ML_DIR" && nohup env ML_VIT_PATH="$ML_VIT_PATH" "$ML_VENV_PYTHON" app.py >> "$SCRIPT_DIR/logs/ml-service.log" 2>&1 </dev/null &
   cd "$SCRIPT_DIR"
 fi
 
@@ -108,16 +106,16 @@ for i in $(seq 1 90); do
 done
 if [ "$code" != "200" ]; then echo -e "${YELLOW}  ✗ ML no respondió (ver logs/ml-service.log)${NC}"; OK=0; fi
 
-# Comprobar que ambos modelos (CNN y ViT) están cargados según /health
+# Comprobar que el modelo ViT está cargado según /health
 if [ "$code" = "200" ]; then
-  echo -e "${BLUE}Checking ML models (CNN + ViT)...${NC}"
+  echo -e "${BLUE}Checking ML model (ViT)...${NC}"
   models_ok=0
   for i in $(seq 1 60); do
     health_json=$(curl -s --connect-timeout 3 http://127.0.0.1:6001/health 2>/dev/null || echo "")
     echo "$health_json" | grep -q '"model_loaded": true' && \
     echo "$health_json" | grep -q '"vit_model_loaded": true'
     if [ "$?" = "0" ]; then
-      echo -e "${GREEN}  ✓ ML models loaded (CNN + ViT)${NC}"
+      echo -e "${GREEN}  ✓ ML ViT loaded (best_model_17_marzo.keras)${NC}"
       models_ok=1
       break
     fi

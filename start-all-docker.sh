@@ -1,5 +1,5 @@
 #!/bin/bash
-# Arranca Fashion AI con el ML Service en Docker (CNN + ViT estables). Backend y frontend en local.
+# Arranca Fashion AI con el ML Service en Docker (ViT: best_model_17_marzo.keras). Backend y frontend en local.
 
 set -e
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -43,9 +43,9 @@ npm run dev >> "$SCRIPT_DIR/logs/frontend.log" 2>&1 &
 (sleep 15; if command -v curl >/dev/null 2>&1; then
   HEALTH=$(curl -s --connect-timeout 3 --max-time 5 http://localhost:6001/health 2>/dev/null)
   if echo "$HEALTH" | grep -q '"vit_model_loaded":true'; then
-    echo -e "${GREEN}  ✓ CNN y ViT cargados (Docker)${NC}"
+    echo -e "${GREEN}  ✓ ViT cargado (Docker)${NC}"
   elif echo "$HEALTH" | grep -q '"model_loaded":true'; then
-    echo -e "${YELLOW}  ⚠ Solo CNN cargado. Revisa: docker logs fashion-ml${NC}"
+    echo -e "${GREEN}  ✓ Modelo de clasificación cargado (Docker)${NC}"
   fi
 fi) &
 

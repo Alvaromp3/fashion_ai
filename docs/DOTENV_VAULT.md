@@ -82,4 +82,4 @@ To push the Vision Transformer model to Hugging Face using the token stored in t
    ./scripts/upload-vit-to-hf.sh
    ```
 
-   The script will: pull the latest env from the vault, authenticate HF with `HF_TOKEN`, create or reuse the repo `fashion-ai-vit-model`, and push `ml-service/vision_transformer_moda_modelo.keras` via Git LFS. Production can then load the model from that Hugging Face repo or a Space that uses it.
+   The script will: pull the latest env from the vault, authenticate HF with `HF_TOKEN`, create or reuse the repo `fashion-ai-vit-model`, and push **`ml-service/models/best_model_17_marzo.keras`** via Git LFS. Production can then load the model from that Hugging Face repo or a Space that uses it.

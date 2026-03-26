@@ -1,19 +1,5 @@
----
-title: Fashion AI ML (ViT only)
-emoji: 👗
-colorFrom: blue
-colorTo: indigo
-sdk: docker
-pinned: false
----
+# ViT Space (best_model_17_marzo.keras)
 
-# Fashion AI — ViT classification only
+Same as the main HF Space: **`hf-space/Dockerfile`** and **`hf-space/Dockerfile.vit`** both build a ViT-only image that loads **`best_model_17_marzo.keras`**.
 
-Vision Transformer model for garment classification. Used when the main Space (CNN) is separate; backend calls this for `/classify-vit`.
-
-## API
-
-- **GET /health** — Model status
-- **POST /classify-vit** — ViT classification (form field `imagen`: image file)
-
-Set your backend **ML_VIT_SERVICE_URL** to this Space's URL.
+The backend uses **`ML_SERVICE_URL`** / **`ML_VIT_SERVICE_URL`** with **`POST /classify-vit`** (or **`POST /classify`**, same model).

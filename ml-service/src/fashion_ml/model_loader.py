@@ -28,25 +28,21 @@ def configure_tensorflow_runtime() -> None:
 
 
 class MLModels:
-    """Holds CNN + ViT weights and metadata. Lazy full load via load_all()."""
+    """Holds ViT weights and metadata. Lazy full load via load_classification_model()."""
 
     __slots__ = (
         "_lock",
         "vit_input_size",
-        "cnn",
         "vit",
         "keras_hub_available",
-        "load_error_cnn",
         "load_error_vit",
     )
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self.vit_input_size = 224
-        self.cnn: Any = None
         self.vit: Any = None
         self.keras_hub_available = False
-        self.load_error_cnn: str | None = None
         self.load_error_vit: str | None = None
 
     def _import_keras_hub_custom_objects(self) -> dict:
@@ -92,25 +88,6 @@ class MLModels:
             self.keras_hub_available = False
             return {}
         return vit_custom_objects
-
-    def load_cnn(self, cnn_path: Path) -> None:
-        import tensorflow as tf
-
-        self.load_error_cnn = None
-        if not cnn_path.is_file():
-            self.cnn = None
-            return
-        try:
-            self.cnn = tf.keras.models.load_model(str(cnn_path), compile=False)
-            print(f"✅ CNN loaded ({cnn_path.stat().st_size / (1024*1024):.1f} MB)", flush=True)
-        except Exception as e1:
-            try:
-                self.cnn = tf.keras.models.load_model(str(cnn_path))
-                print(f"✅ CNN loaded ({cnn_path.stat().st_size / (1024*1024):.1f} MB)", flush=True)
-            except Exception as e2:
-                self.load_error_cnn = str(e2)
-                self.cnn = None
-                print(f"CNN load error: {e1}", flush=True)
 
     def load_vit(self, vit_path: Path) -> None:
         import tensorflow as tf
@@ -179,13 +156,8 @@ class MLModels:
             if not self.keras_hub_available:
                 print("   Tip: pip install keras-hub (si tu .keras lo necesita)", flush=True)
 
-    def load_all(self, cnn_path: Path, vit_path: Path) -> None:
+    def load_classification_model(self, vit_path: Path) -> None:
         configure_tensorflow_runtime()
-        print(f"   Loading CNN (optional): {cnn_path}", flush=True)
-        self.load_cnn(cnn_path)
-        if self.cnn is None:
-            print("   CNN not found (ok): running ViT-only mode.", flush=True)
-
         print(f"   Loading ViT: {vit_path}", flush=True)
         self.load_vit(vit_path)
 
@@ -196,23 +168,6 @@ class MLModels:
         arr = preprocess_image(image, target_size=self.vit_input_size, normalize=False)
         with self._lock:
             pred = self.vit.predict(arr, verbose=0)
-        out = pred[0] if isinstance(pred, (list, tuple)) else pred
-        logits = np.asarray(out).ravel()
-        if len(logits) != 10:
-            logits = np.asarray(pred).ravel()[:10]
-        if len(logits) < 10:
-            z = np.zeros(10, dtype=np.float64)
-            z[0] = 1.0
-            logits = z
-        probs = logits_to_probs(logits)
-        return probs, logits
-
-    def predict_cnn(self, image: Image.Image) -> tuple[np.ndarray, np.ndarray]:
-        if self.cnn is None:
-            raise RuntimeError("CNN model not loaded")
-        arr = preprocess_image(image, target_size=224, normalize=True)
-        with self._lock:
-            pred = self.cnn.predict(arr, verbose=0)
         out = pred[0] if isinstance(pred, (list, tuple)) else pred
         logits = np.asarray(out).ravel()
         if len(logits) != 10:

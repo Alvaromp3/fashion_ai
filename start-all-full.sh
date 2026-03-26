@@ -48,20 +48,17 @@ if [ ! -x "$ML_DIR/venv/bin/python" ]; then
     ( cd "$ML_DIR" && python3.11 -m venv venv ) || true
   fi
 fi
-export ML_CNN_PATH="${ML_CNN_PATH:-$SCRIPT_DIR/ml-service/modelo_ropa.h5}"
 if [ -z "${ML_VIT_PATH:-}" ]; then
   if [ -f "$SCRIPT_DIR/ml-service/models/best_model_17_marzo.keras" ]; then
     export ML_VIT_PATH="$SCRIPT_DIR/ml-service/models/best_model_17_marzo.keras"
   elif [ -f "/Users/alvaromartin-pena/Desktop/vit_fashion_outputs/best_model_17_marzo.keras" ]; then
     export ML_VIT_PATH="/Users/alvaromartin-pena/Desktop/vit_fashion_outputs/best_model_17_marzo.keras"
-  else
-    export ML_VIT_PATH="$SCRIPT_DIR/ml-service/vision_transformer_fashion_model.keras"
   fi
 fi
 export ML_VIT_REAL_PATH="${ML_VIT_REAL_PATH:-$SCRIPT_DIR/ml-service/vit_real_pictures/best_model_real_pictures.keras}"
 if [ -x venv/bin/python ]; then
   : > "$SCRIPT_DIR/logs/ml-service.log"
-  nohup env ML_CNN_PATH="$ML_CNN_PATH" ML_VIT_PATH="$ML_VIT_PATH" venv/bin/python app.py >> "$SCRIPT_DIR/logs/ml-service.log" 2>&1 </dev/null &
+  nohup env ML_VIT_PATH="$ML_VIT_PATH" venv/bin/python app.py >> "$SCRIPT_DIR/logs/ml-service.log" 2>&1 </dev/null &
 fi
 sleep 20
 

@@ -11,7 +11,7 @@ from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 from PIL import Image
 
-from fashion_ml.config import CNN_MODEL_PATH, MAX_UPLOAD_BYTES, ML_SERVICE_ROOT, VIT_MODEL_PATH
+from fashion_ml.config import MAX_UPLOAD_BYTES, ML_SERVICE_ROOT, VIT_MODEL_PATH
 from fashion_ml.image_ops import allowed_file, detect_color
 from fashion_ml.model_loader import build_classification_response, models
 
@@ -78,15 +78,18 @@ def serve_training_curves_vit():
 
 @app.route("/health", methods=["GET"])
 def health():
+    vit_ok = models.vit is not None
+    vit_path = VIT_MODEL_PATH
     return jsonify(
         {
             "status": "OK",
-            "model_loaded": models.cnn is not None,
-            "model_file_exists": CNN_MODEL_PATH.is_file(),
-            "model_path": str(CNN_MODEL_PATH.resolve()) if CNN_MODEL_PATH.is_file() else None,
-            "vit_model_loaded": models.vit is not None,
-            "vit_model_file_exists": VIT_MODEL_PATH.is_file(),
-            "vit_model_path": str(VIT_MODEL_PATH.resolve()) if VIT_MODEL_PATH.is_file() else None,
+            "model_loaded": vit_ok,
+            "model_file": Path(vit_path).name,
+            "model_file_exists": vit_path.is_file(),
+            "model_path": str(vit_path.resolve()) if vit_path.is_file() else None,
+            "vit_model_loaded": vit_ok,
+            "vit_model_file_exists": vit_path.is_file(),
+            "vit_model_path": str(vit_path.resolve()) if vit_path.is_file() else None,
             "classes_count": 10,
         }
     )
@@ -106,6 +109,7 @@ def _validate_upload():
 
 @app.route("/classify", methods=["POST"])
 def classify():
+    """Same ViT classifier as /classify-vit (single supported model)."""
     try:
         raw, err = _validate_upload()
         if err:
@@ -114,11 +118,11 @@ def classify():
         if image.mode != "RGB":
             image = image.convert("RGB")
         color = detect_color(image)
-        if models.cnn is None:
-            return jsonify({"error": "CNN model not available", "model_loaded": False}), 503
-        probs, _ = models.predict_cnn(image)
+        if models.vit is None:
+            return jsonify({"error": "Vision Transformer model not available", "model_loaded": False}), 503
+        probs, _ = models.predict_vit(image)
         body = build_classification_response(
-            probs, color, "cnn", Path(CNN_MODEL_PATH).name
+            probs, color, "vision_transformer", Path(VIT_MODEL_PATH).name
         )
         return jsonify(body)
     except Exception as e:

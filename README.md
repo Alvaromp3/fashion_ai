@@ -1,17 +1,17 @@
 # Fashion AI
 
-A full-stack web application for uploading clothing images, classifying them with CNN or Vision Transformer (ViT) models, and generating outfit recommendations from the user's wardrobe. Includes **Mirror**: real-time outfit feedback via camera and AI (OpenRouter), with optional Auth0 login and per-user wardrobe.
+A full-stack web application for uploading clothing images, classifying them with a **Vision Transformer (ViT)** model (`best_model_17_marzo.keras`), and generating outfit recommendations from the user's wardrobe. Includes **Mirror**: real-time outfit feedback via camera and AI (OpenRouter), with optional Auth0 login and per-user wardrobe.
 
 ## Summary
 
-Fashion AI lets users build a digital wardrobe by uploading garment photos. The system classifies each item (type and colour) via a machine learning service (CNN and ViT). Users can filter garments by category, set preferences (occasion, style, colours), and receive outfit suggestions. **Mirror** uses the camera and OpenRouter to analyse the current outfit and give preparation-focused tips for the chosen occasion (e.g. business casual). Optional Auth0 login scopes data per user; images can be stored locally or in Cloudinary.
+Fashion AI lets users build a digital wardrobe by uploading garment photos. The system classifies each item (type and colour) via a machine learning service (**ViT only**: `best_model_17_marzo.keras`). Users can filter garments by category, set preferences (occasion, style, colours), and receive outfit suggestions. **Mirror** uses the camera and OpenRouter to analyse the current outfit and give preparation-focused tips for the chosen occasion (e.g. business casual). Optional Auth0 login scopes data per user; images can be stored locally or in Cloudinary.
 
 ## Tech Stack
 
 - **Frontend:** React, Vite, Tailwind CSS
 - **Backend:** Node.js, Express
 - **Database:** MongoDB
-- **ML service:** Python, Flask; CNN (e.g. Keras/TensorFlow) and optional ViT for image classification
+- **ML service:** Python, Flask; TensorFlow/Keras ViT (`.keras`) for image classification
 
 ## Prerequisites
 
@@ -87,7 +87,7 @@ source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Place CNN weights (e.g. `modelo_ropa.h5`) and ViT weights under `ml-service/` or `ml-service/models/`, or set `ML_CNN_PATH` / `ML_VIT_PATH` (see `ml-service/.env.example`). Class labels are defined in `ml-service/src/fashion_ml/labels.py`.
+Place **`ml-service/models/best_model_17_marzo.keras`** (ViT classifier), or set **`ML_VIT_PATH`** to the file’s absolute path. Class labels are defined in `ml-service/src/fashion_ml/labels.py`.
 
 ### 4. Frontend
 
@@ -162,14 +162,11 @@ To host the app for free: **ML** on Hugging Face Spaces, **frontend** on Cloudfl
 
 ## Publishing models as a GitHub release and building Docker
 
-The ML models (CNN and ViT) are not stored in the repo. You can publish them once as a GitHub release so that the Docker image can download them at build time.
+The trained ViT weights are not stored in the repo. Publish them once as a GitHub release so Docker can download **`best_model_17_marzo.keras`** at build time.
 
-### 1. Publish the models as a release
+### 1. Publish the model as a release
 
-Install the [GitHub CLI](https://cli.github.com/) and log in (`gh auth login`). Place the model files in `ml-service/`:
-
-- `modelo_ropa.h5` (CNN)
-- `vision_transformer_moda_modelo.keras` (ViT)
+Install the [GitHub CLI](https://cli.github.com/) and log in (`gh auth login`). Place the file at **`ml-service/models/best_model_17_marzo.keras`**.
 
 From the project root:
 
@@ -178,7 +175,7 @@ chmod +x scripts/publish-models-release.sh
 ./scripts/publish-models-release.sh models-v1.0
 ```
 
-This creates (or replaces) the release tag `models-v1.0` and uploads both files as assets. Use another tag if you prefer (e.g. `models-v1.1`).
+This creates (or replaces) the release tag `models-v1.0` and uploads the asset. Use another tag if you prefer (e.g. `models-v1.1`).
 
 ### 2. Build the Docker image using the release
 
@@ -192,7 +189,7 @@ docker compose -f docker-compose.ml.yml build
 docker compose -f docker-compose.ml.yml up -d ml
 ```
 
-The Dockerfile downloads the two model files from `https://github.com/<GITHUB_REPO>/releases/download/<MODELS_RELEASE_TAG>/...` during build. For a **private** repository, pass a token when building:
+The Hugging Face / Docker build downloads **`best_model_17_marzo.keras`** from `https://github.com/<GITHUB_REPO>/releases/download/<MODELS_RELEASE_TAG>/best_model_17_marzo.keras`, or unpacks **`vit_model_v1.zip`** if it contains a `.keras` file. For a **private** repository, pass a token when building:
 
 ```bash
 docker compose -f docker-compose.ml.yml build --build-arg GITHUB_TOKEN=ghp_xxxxxxxx
@@ -225,7 +222,7 @@ All endpoints are under the backend base URL (e.g. `http://localhost:4000`). Whe
 | Area           | Method | Endpoint | Description |
 |----------------|--------|----------|-------------|
 | Health         | GET    | `/api/health` | Backend and MongoDB status |
-| Health         | GET    | `/api/ml-health` | ML service (CNN/ViT) status |
+| Health         | GET    | `/api/ml-health` | ML service (ViT) status |
 | **Mirror**     | GET    | `/api/mirror/status` | OpenRouter config check |
 | **Mirror**     | POST   | `/api/mirror/analyze` | Text-only analysis (body: `userPrompt`) |
 | **Mirror**     | POST   | `/api/mirror/analyze-frame` | Image + context analysis (body: `imageDataUrl`, `context`, `userNotes`) |
@@ -235,27 +232,27 @@ All endpoints are under the backend base URL (e.g. `http://localhost:4000`). Whe
 | Garments       | GET    | `/api/prendas/filter?type=...` | Filter by type |
 | Garments       | PUT    | `/api/prendas/:id/ocasion` | Update garment occasions |
 | Garments       | DELETE | `/api/prendas/:id` | Delete a garment |
-| Classification | POST   | `/api/classify` | Classify image (CNN; multipart `imagen`) |
-| Classification | POST   | `/api/classify/vit` | Classify image (ViT; multipart) |
+| Classification | POST   | `/api/classify` | Classify image (ViT; multipart `imagen`) |
+| Classification | POST   | `/api/classify/vit` | Same ViT classifier (multipart) |
 | Classification | POST   | `/api/classify/vit-base64` | Classify from base64 (Mirror; body: `imageDataUrl`) |
 | Outfits        | GET    | `/api/outfits/recommend` | Get outfit recommendations (query params: preferences) |
 | Outfits        | POST   | `/api/outfits/save` | Save an outfit |
 | Outfits        | GET    | `/api/outfits` | List saved outfits |
 | Outfits        | DELETE | `/api/outfits/:id` | Delete an outfit |
-| Model          | GET    | `/api/model/metrics` | CNN metrics |
-| Model          | GET    | `/api/model/metrics-vit` | ViT metrics |
-| Model          | GET    | `/api/model/confusion-matrix` | CNN confusion matrix image |
-| Model          | GET    | `/api/model/confusion-matrix-vit` | ViT confusion matrix image |
+| Model          | GET    | `/api/model/metrics` | Training metrics JSON (if present in ML service) |
+| Model          | GET    | `/api/model/metrics-vit` | ViT metrics JSON (if present) |
+| Model          | GET    | `/api/model/confusion-matrix` | Confusion matrix image (if present) |
+| Model          | GET    | `/api/model/confusion-matrix-vit` | ViT confusion matrix image (if present) |
 | Model          | GET    | `/api/model/data-audit` | Dataset sample image |
 
 Static: `/uploads` serves uploaded images (or use Cloudinary); `/api/model/images` can serve ML-related assets.
 
 ## Features
 
-- **Garments:** Upload images; classify with CNN or ViT; view and filter by type; edit occasions; delete. With Auth0, each user has their own wardrobe; uploads can be stored in `backend/uploads/{userId}/` or Cloudinary.
+- **Garments:** Upload images; classify with ViT; view and filter by type; edit occasions; delete. With Auth0, each user has their own wardrobe; uploads can be stored in `backend/uploads/{userId}/` or Cloudinary.
 - **Outfits:** Generate outfit suggestions (with preferences); save and delete. Scoped per user when Auth0 is enabled.
 - **Mirror:** Use the camera to capture your outfit; get AI feedback (OpenRouter) focused on **preparing for the chosen occasion** (e.g. business casual). Tips are constructive and supportive. Optionally classify the frame with ViT and add the item to your wardrobe.
-- **Metrics:** Confusion matrices and classification reports for CNN and ViT.
+- **Metrics:** Optional confusion matrices and reports (JSON/images) if shipped with the ML service; not required at runtime for inference.
 - **Examples:** Garment categories and descriptions used by the models.
 
 ## Troubleshooting

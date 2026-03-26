@@ -11,7 +11,7 @@ $HF_SPACE_DIR = Split-Path -Parent $ScriptDir
 Write-Host "=== 1. GitHub: check release and assets ===" -ForegroundColor Cyan
 gh release view $TAG --repo $REPO
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "Release $TAG not found. Create it and upload cnn_model_v1.zip + vit_model_v1.zip (or the raw .h5 and .keras)." -ForegroundColor Red
+    Write-Host "Release $TAG not found. Create it and upload best_model_17_marzo.keras (or vit_model_v1.zip with a .keras inside)." -ForegroundColor Red
     exit 1
 }
 Write-Host "Release $TAG exists.`n" -ForegroundColor Green

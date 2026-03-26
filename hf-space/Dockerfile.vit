@@ -1,5 +1,6 @@
-# ViT-only Space — use when ViT is called rarely; keeps main (CNN) Space lighter.
-# Same app, only downloads Vision Transformer. Backend uses ML_VIT_SERVICE_URL for /classify-vit.
+# ViT-only Space — same as hf-space/Dockerfile (single model: best_model_17_marzo.keras).
+# Build from repository root:
+#   docker build -f hf-space/Dockerfile.vit .
 
 FROM python:3.11-slim
 
@@ -8,27 +9,38 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends curl unzip \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY ml-service/requirements.txt /app/ml-service/requirements.txt
+RUN pip install --no-cache-dir -U pip && pip install --no-cache-dir -r /app/ml-service/requirements.txt
 
-COPY app.py space_app.py ./
+COPY ml-service/src /app/ml-service/src
+COPY ml-service/app.py /app/ml-service/app.py
+COPY hf-space/space_app.py /app/ml-service/space_app.py
 
-# Download only ViT model from GitHub Release (no CNN)
 ARG GITHUB_REPO=Alvaromp3/fashion_ai
 ARG MODELS_RELEASE_TAG=models-v1.0
-RUN mkdir -p /app/models /tmp/model_dl && \
-    BASE="https://github.com/${GITHUB_REPO}/releases/download/${MODELS_RELEASE_TAG}" && \
-    echo "Downloading ViT only from ${GITHUB_REPO} @ ${MODELS_RELEASE_TAG}..." && \
-    (curl -sLf -o /app/models/vision_transformer_moda_modelo.keras "${BASE}/vision_transformer_moda_modelo.keras" && [ -s /app/models/vision_transformer_moda_modelo.keras ]) || \
-    (curl -sLf -o /tmp/model_dl/vit.zip "${BASE}/vit_model_v1.zip" && unzip -o -q /tmp/model_dl/vit.zip -d /tmp/model_dl && \
-     find /tmp/model_dl -name "*.keras" -exec cp {} /app/models/vision_transformer_moda_modelo.keras \;) && \
-    [ -s /app/models/vision_transformer_moda_modelo.keras ] || (echo "ViT model required"; exit 1) && \
-    rm -rf /tmp/model_dl && \
-    echo "ViT model ready."
+ARG HF_VIT_URL=
 
-ENV ML_VIT_PATH=/app/models/vision_transformer_moda_modelo.keras
-# No CNN in this image; app will have model=None, only vit_model loaded
-ENV ML_CNN_PATH=/app/models/nonexistent_cnn.h5
+ENV FASHION_ML_ROOT=/app/ml-service \
+    ML_VIT_PATH=/app/models/best_model_17_marzo.keras
+
+RUN mkdir -p /app/models /tmp/model_dl && \
+    if [ -n "$HF_VIT_URL" ]; then \
+      echo "Downloading ViT from HF_VIT_URL..." && \
+      curl -sLf -o /app/models/best_model_17_marzo.keras "$HF_VIT_URL" && \
+      [ -s /app/models/best_model_17_marzo.keras ] || (echo "ViT download failed"; exit 1); \
+    else \
+      BASE="https://github.com/${GITHUB_REPO}/releases/download/${MODELS_RELEASE_TAG}" && \
+      echo "Downloading ViT from ${GITHUB_REPO} @ ${MODELS_RELEASE_TAG}..." && \
+      (curl -sLf -o /app/models/best_model_17_marzo.keras "${BASE}/best_model_17_marzo.keras" && [ -s /app/models/best_model_17_marzo.keras ]) || \
+      (curl -sLf -o /tmp/model_dl/vit.zip "${BASE}/vit_model_v1.zip" && unzip -o -q /tmp/model_dl/vit.zip -d /tmp/model_dl 2>/dev/null; \
+       f="$(find /tmp/model_dl -name '*.keras' 2>/dev/null | head -1)" && \
+       [ -n "$f" ] && cp "$f" /app/models/best_model_17_marzo.keras); \
+    fi && \
+    [ -s /app/models/best_model_17_marzo.keras ] || (echo "ViT model required"; exit 1) && \
+    rm -rf /tmp/model_dl && \
+    echo "Model ready."
+
+WORKDIR /app/ml-service
 
 EXPOSE 7860
 CMD ["uvicorn", "space_app:app", "--host", "0.0.0.0", "--port", "7860"]

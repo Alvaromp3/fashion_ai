@@ -11,13 +11,13 @@ _SRC = os.path.join(_ML_DIR, "src")
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
-from fashion_ml.config import CNN_MODEL_PATH, VIT_MODEL_PATH
+from fashion_ml.config import VIT_MODEL_PATH
 from fashion_ml.model_loader import models
 from fashion_ml.fastapi_app import app as fastapi_app
 
 
 def main():
-    models.load_all(CNN_MODEL_PATH, VIT_MODEL_PATH)
+    models.load_classification_model(VIT_MODEL_PATH)
     import uvicorn
 
     port = int(os.environ.get("PORT", 6001))

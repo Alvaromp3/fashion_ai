@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HF_SPACE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 echo "=== 1. GitHub: check release and assets ==="
-gh release view "$TAG" --repo "$REPO" || { echo "Release $TAG not found. Create it and upload cnn_model_v1.zip + vit_model_v1.zip (or modelo_ropa.h5 + vision_transformer_moda_modelo.keras)."; exit 1; }
+gh release view "$TAG" --repo "$REPO" || { echo "Release $TAG not found. Create it and upload best_model_17_marzo.keras (or vit_model_v1.zip containing a .keras file)."; exit 1; }
 echo "Release $TAG exists."
 echo ""
 

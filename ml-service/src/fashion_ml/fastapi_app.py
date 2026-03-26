@@ -10,7 +10,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 
-from fashion_ml.config import CNN_MODEL_PATH, MAX_UPLOAD_BYTES, VIT_MODEL_PATH
+from fashion_ml.config import MAX_UPLOAD_BYTES, VIT_MODEL_PATH
 from fashion_ml.image_ops import allowed_file, detect_color
 from fashion_ml.model_loader import build_classification_response, models
 
@@ -31,12 +31,15 @@ app.add_middleware(
 
 @app.get("/health")
 def health():
+    vit_ok = models.vit is not None
+    p = VIT_MODEL_PATH
     return {
         "status": "OK",
-        "model_loaded": models.cnn is not None,
-        "model_file_exists": CNN_MODEL_PATH.is_file(),
-        "vit_model_loaded": models.vit is not None,
-        "vit_model_file_exists": VIT_MODEL_PATH.is_file(),
+        "model_loaded": vit_ok,
+        "model_file": p.name,
+        "model_file_exists": p.is_file(),
+        "vit_model_loaded": vit_ok,
+        "vit_model_file_exists": p.is_file(),
         "classes_count": 10,
     }
 

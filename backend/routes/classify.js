@@ -99,7 +99,7 @@ async function processAndClassify(req, res, endpoint) {
         clase_nombre: response.data.clase_nombre || 'desconocido',
         top3: response.data.top3 || [],
         model: response.data.model || 'vision_transformer',
-        model_file: response.data.model_file || (response.data.model === 'vision_transformer' ? 'best_model_17_marzo.keras' : 'best_model_17_marzo.keras'),
+        model_file: response.data.model_file || 'best_model_17_marzo.keras',
         yolo_detection: response.data.yolo_detection || null,
         pipeline_steps: response.data.pipeline_steps || []
       });

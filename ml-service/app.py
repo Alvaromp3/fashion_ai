@@ -11,7 +11,7 @@ if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
 from fashion_ml import labels
-from fashion_ml.config import CNN_MODEL_PATH, VIT_MODEL_PATH
+from fashion_ml.config import VIT_MODEL_PATH
 from fashion_ml.flask_app import app
 from fashion_ml.image_ops import allowed_file, detect_color, logits_to_probs, preprocess_image
 from fashion_ml.model_loader import models
@@ -31,10 +31,10 @@ def preprocess_image_vit(image):
 
 
 def load_model():
-    """Load CNN + ViT weights into process memory (call once)."""
+    """Load ViT weights into process memory (call once)."""
     global model, vit_model, vit_input_size, KERAS_HUB_AVAILABLE
-    models.load_all(CNN_MODEL_PATH, VIT_MODEL_PATH)
-    model = models.cnn
+    models.load_classification_model(VIT_MODEL_PATH)
+    model = models.vit
     vit_model = models.vit
     vit_input_size = models.vit_input_size
     KERAS_HUB_AVAILABLE = models.keras_hub_available
@@ -46,14 +46,11 @@ def _load_models_background():
         print("✅ ViT listo para clasificar.", flush=True)
     else:
         print("❌ ViT no está listo (revisa ML_VIT_PATH y logs).", flush=True)
-    if models.cnn is not None:
-        print("✅ CNN listo para clasificar.", flush=True)
 
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 6001))
     print("Fashion AI ML Service", flush=True)
-    print(f"   CNN (optional): {CNN_MODEL_PATH}", flush=True)
     print(f"   ViT: {VIT_MODEL_PATH}", flush=True)
     print(f"Binding to http://0.0.0.0:{port} (models loading in background)...", flush=True)
     t = threading.Thread(target=_load_models_background, daemon=True)
