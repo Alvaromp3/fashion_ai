@@ -6,6 +6,7 @@ import sys
 import threading
 from pathlib import Path
 
+import requests
 _ML_DIR = os.path.dirname(os.path.abspath(__file__))
 _SRC = os.path.join(_ML_DIR, "src")
 if _SRC not in sys.path:
@@ -42,6 +43,7 @@ def load_model():
 
 
 def _load_models_background():
+    _ensure_vit_model_available()
     _log_model_diagnostics()
     load_model()
     if models.vit is not None:
@@ -98,6 +100,96 @@ def _log_model_diagnostics() -> None:
 
     if _is_git_lfs_pointer(resolved):
         print(f"[diag] WARNING: {resolved} is a Git LFS pointer file, not real model bytes.", flush=True)
+
+
+def _github_release_download_url(repo: str, tag: str, asset_name: str) -> str:
+    return f"https://github.com/{repo}/releases/download/{tag}/{asset_name}"
+
+
+def _headers_for_github(token: str) -> dict[str, str]:
+    headers: dict[str, str] = {"User-Agent": "fashion-ai-ml/1.0"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
+
+
+def _download_model_direct(url: str, dest: Path, token: str) -> None:
+    with requests.get(url, headers=_headers_for_github(token), stream=True, timeout=120) as r:
+        r.raise_for_status()
+        with dest.open("wb") as f:
+            for chunk in r.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    f.write(chunk)
+
+
+def _download_model_via_api(repo: str, tag: str, asset_name: str, dest: Path, token: str) -> None:
+    if not token:
+        raise RuntimeError("GITHUB_TOKEN requerido para fallback API en releases privados")
+    release_url = f"https://api.github.com/repos/{repo}/releases/tags/{tag}"
+    release = requests.get(release_url, headers=_headers_for_github(token), timeout=30)
+    release.raise_for_status()
+    assets = release.json().get("assets", [])
+    asset = next((a for a in assets if a.get("name") == asset_name), None)
+    if not asset:
+        raise FileNotFoundError(f"Asset no encontrado en release: {asset_name}")
+    asset_api_url = asset["url"]
+    headers = _headers_for_github(token)
+    headers["Accept"] = "application/octet-stream"
+    with requests.get(asset_api_url, headers=headers, stream=True, timeout=120) as r:
+        r.raise_for_status()
+        with dest.open("wb") as f:
+            for chunk in r.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    f.write(chunk)
+
+
+def _ensure_vit_model_available() -> None:
+    target = Path(VIT_MODEL_PATH)
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    repo = os.environ.get("GITHUB_REPO", "Alvaromp3/fashion_ai").strip() or "Alvaromp3/fashion_ai"
+    tag = os.environ.get("MODELS_RELEASE_TAG", "models-v1.0").strip() or "models-v1.0"
+    asset_name = os.environ.get("MODEL_ASSET_NAME", "best_model_17_marzo.keras").strip() or "best_model_17_marzo.keras"
+    token = os.environ.get("GITHUB_TOKEN", "").strip()
+    direct_url = _github_release_download_url(repo, tag, asset_name)
+
+    print(f"[model] GITHUB_REPO={repo}", flush=True)
+    print(f"[model] MODELS_RELEASE_TAG={tag}", flush=True)
+    print(f"[model] expected_asset={asset_name}", flush=True)
+    print(f"[model] download_url={direct_url}", flush=True)
+    print(f"[model] local_path={target}", flush=True)
+
+    # Skip download if we already have non-empty, non-LFS file.
+    if target.is_file() and target.stat().st_size > 0 and not _is_git_lfs_pointer(target):
+        print(f"[model] file already present, skipping download ({target.stat().st_size} bytes)", flush=True)
+        return
+
+    tmp = target.with_suffix(target.suffix + ".part")
+    if tmp.exists():
+        tmp.unlink()
+
+    try:
+        print("[model] downloading from GitHub release direct URL...", flush=True)
+        _download_model_direct(direct_url, tmp, token)
+    except Exception as direct_err:
+        print(f"[model] direct download failed: {direct_err}", flush=True)
+        try:
+            print("[model] trying GitHub API asset download fallback...", flush=True)
+            _download_model_via_api(repo, tag, asset_name, tmp, token)
+        except Exception as api_err:
+            if tmp.exists():
+                tmp.unlink()
+            print(f"[model] ERROR: failed to download model via direct URL and API fallback: {api_err}", flush=True)
+            return
+
+    tmp.replace(target)
+    exists = target.exists()
+    size = target.stat().st_size if exists else 0
+    print(f"[model] download complete: exists={exists}", flush=True)
+    if exists:
+        print(f"[model] local_size={size} bytes", flush=True)
+    if _is_git_lfs_pointer(target):
+        print("[model] ERROR: downloaded file is a Git LFS pointer, not model bytes.", flush=True)
 
 
 if __name__ == "__main__":

@@ -87,7 +87,7 @@ source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Place **`ml-service/models/best_model_17_marzo.keras`** (ViT classifier), or set **`ML_VIT_PATH`** to the file’s absolute path. Class labels are defined in `ml-service/src/fashion_ml/labels.py`.
+By default, the ML service downloads **`best_model_17_marzo.keras`** from GitHub Releases at startup (`GITHUB_REPO` + `MODELS_RELEASE_TAG`). You can still override with **`ML_VIT_PATH`** to a local absolute path if needed. Class labels are defined in `ml-service/src/fashion_ml/labels.py`.
 
 ### 4. Frontend
 

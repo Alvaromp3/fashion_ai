@@ -8,4 +8,3 @@ logs/
 *.h5
 *.hdf5
 *.keras
-!models/best_model_17_marzo.keras
