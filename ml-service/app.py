@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import sys
 import threading
+from pathlib import Path
 
 _ML_DIR = os.path.dirname(os.path.abspath(__file__))
 _SRC = os.path.join(_ML_DIR, "src")
@@ -41,11 +42,62 @@ def load_model():
 
 
 def _load_models_background():
+    _log_model_diagnostics()
     load_model()
     if models.vit is not None:
         print("✅ ViT listo para clasificar.", flush=True)
     else:
         print("❌ ViT no está listo (revisa ML_VIT_PATH y logs).", flush=True)
+
+
+def _is_git_lfs_pointer(path: Path) -> bool:
+    try:
+        if not path.is_file():
+            return False
+        with path.open("r", encoding="utf-8", errors="ignore") as f:
+            first = f.readline().strip()
+            second = f.readline().strip()
+        return first == "version https://git-lfs.github.com/spec/v1" and second.startswith("oid sha256:")
+    except Exception:
+        return False
+
+
+def _log_model_diagnostics() -> None:
+    model_env = os.environ.get("ML_VIT_PATH", "").strip()
+    resolved = Path(VIT_MODEL_PATH)
+    expected = Path("/app/models/best_model_17_marzo.keras")
+
+    print(f"[diag] ML_VIT_PATH={model_env or '<unset>'}", flush=True)
+    print(f"[diag] resolved_model_path={resolved}", flush=True)
+    print(f"[diag] exists(resolved)={resolved.exists()}", flush=True)
+    if resolved.exists():
+        try:
+            print(f"[diag] size(resolved)={resolved.stat().st_size} bytes", flush=True)
+        except Exception as e:
+            print(f"[diag] size(resolved)=<error: {e}>", flush=True)
+    print(f"[diag] exists(/app/models/best_model_17_marzo.keras)={expected.exists()}", flush=True)
+    if expected.exists():
+        try:
+            print(f"[diag] size(/app/models/best_model_17_marzo.keras)={expected.stat().st_size} bytes", flush=True)
+        except Exception as e:
+            print(f"[diag] size(/app/models/best_model_17_marzo.keras)=<error: {e}>", flush=True)
+
+    app_dir = Path("/app")
+    models_dir = Path("/app/models")
+    try:
+        print(f"[diag] /app entries={sorted(p.name for p in app_dir.iterdir())}", flush=True)
+    except Exception as e:
+        print(f"[diag] /app entries=<error: {e}>", flush=True)
+    try:
+        if models_dir.is_dir():
+            print(f"[diag] /app/models entries={sorted(p.name for p in models_dir.iterdir())}", flush=True)
+        else:
+            print("[diag] /app/models entries=<dir missing>", flush=True)
+    except Exception as e:
+        print(f"[diag] /app/models entries=<error: {e}>", flush=True)
+
+    if _is_git_lfs_pointer(resolved):
+        print(f"[diag] WARNING: {resolved} is a Git LFS pointer file, not real model bytes.", flush=True)
 
 
 if __name__ == "__main__":
