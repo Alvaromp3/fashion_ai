@@ -233,8 +233,6 @@ async function processAndClassify(req, res, endpoint) {
         timeout: 30000
       });
 
-      [req.file.path, convertedFilePath].forEach(p => p && fs.existsSync(p) && fs.unlinkSync(p));
-
       const raw = response.data || {};
       const top3 = Array.isArray(raw.top3) ? raw.top3 : [];
       const top1 = (top3[0] && typeof top3[0] === 'object') ? top3[0] : null;
@@ -254,7 +252,7 @@ async function processAndClassify(req, res, endpoint) {
       const inferredTipo = vitClassToTipo(top1ClassName);
       const inferredColor = isUnknown(raw.color) ? await detectColorFromFile(filePath) : raw.color;
 
-      res.json({
+      const payload = {
         tipo: isUnknown(raw.tipo) ? inferredTipo : raw.tipo,
         color: isUnknown(raw.color) ? inferredColor : raw.color,
         confianza: looksLikePlaceholderConfidence && typeof top1Confidence === 'number' ? top1Confidence : (raw.confianza ?? 0.5),
@@ -265,7 +263,10 @@ async function processAndClassify(req, res, endpoint) {
         model_file: raw.model_file || 'best_model_17_marzo.keras',
         yolo_detection: raw.yolo_detection || null,
         pipeline_steps: raw.pipeline_steps || []
-      });
+      };
+
+      [req.file.path, convertedFilePath].forEach(p => p && fs.existsSync(p) && fs.unlinkSync(p));
+      res.json(payload);
     } catch (mlError) {
       [req.file.path, convertedFilePath].forEach(p => p && fs.existsSync(p) && fs.unlinkSync(p));
       const status = mlError.response?.status;
