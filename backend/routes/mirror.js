@@ -164,6 +164,12 @@ router.post('/analyze-frame', async (req, res) => {
     return res.status(400).json({ error: 'imageDataUrl must be a data:image/... URL or http(s) URL' });
   }
 
+  const urlCheck = validateMirrorImageUrl(imageDataUrl);
+  if (!urlCheck.ok) {
+    return res.status(400).json({ error: urlCheck.reason });
+  }
+  const safeImageUrl = urlCheck.url;
+
   // Límite simple para evitar payloads enormes (base64).
   if (isDataImage && imageDataUrl.length > 8_000_000) {
     return res.status(413).json({ error: 'imageDataUrl too large (max ~8MB string)' });
