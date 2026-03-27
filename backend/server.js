@@ -50,7 +50,10 @@ async function checkMlServiceReachability() {
       const rootRes = await axios.get(mlUrl.replace(/\/$/, ''), { timeout: timeoutMs });
       const root = rootRes.data;
       if (root && (root.health === '/health' || root.message === 'Fashion AI ML API')) {
-        return { ok: true, data: { status: 'OK', model_loaded: true, woke_from_root: true } };
+        return {
+          ok: true,
+          data: { status: 'OK', model_loaded: true, vit_model_loaded: true, woke_from_root: true }
+        };
       }
       throw healthErr;
     }

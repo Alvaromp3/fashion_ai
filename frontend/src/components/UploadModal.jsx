@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { FaTimes, FaUpload, FaSpinner, FaCalendar, FaBrain, FaCamera } from 'react-icons/fa'
 import axios from 'axios'
+import { API_BASE_URL } from '../api/client'
 import heic2any from 'heic2any'
 import { typeToEnglish, colorToEnglish, garmentClassLabel } from '../lib/classificationDisplay'
 
@@ -49,6 +50,10 @@ const UploadModal = ({ onClose, onSuccess }) => {
   const mlUnavailableHint = (mlHint != null && mlHint !== '') ? mlHint : ((mlHosted || !isLocalhost) ? ML_UNAVAILABLE_HINT_PROD : ML_UNAVAILABLE_HINT_LOCAL)
   const showTerminalTip = isLocalhost && !mlHosted
 
+  /** True if ML reports any loaded model flag (ViT and /health shapes differ across hosts). */
+  const mlReportsModelReady = (data) =>
+    Boolean(data?.vit_model_loaded ?? data?.model_loaded)
+
   const checkMlHealth = () => {
     setMlStatus('checking')
     setMlHint(null)
@@ -58,7 +63,7 @@ const UploadModal = ({ onClose, onSuccess }) => {
       .then((res) => {
         if (res?.data?.available) {
           setMlStatus('available')
-          setVitReady(Boolean(res?.data?.vit_model_loaded))
+          setVitReady(mlReportsModelReady(res.data))
           setError((prev) => (prev && prev.includes('ML service not available')) ? null : prev)
         } else {
           setMlStatus('unavailable')
@@ -83,7 +88,7 @@ const UploadModal = ({ onClose, onSuccess }) => {
         if (cancelled) return
         if (res?.data?.available) {
           setMlStatus('available')
-          setVitReady(Boolean(res?.data?.vit_model_loaded))
+          setVitReady(mlReportsModelReady(res.data))
           setError((prev) => (prev && prev.includes('ML service not available')) ? null : prev)
         } else {
           setMlStatus('unavailable')
@@ -108,8 +113,8 @@ const UploadModal = ({ onClose, onSuccess }) => {
     const t = setInterval(() => {
       axios.get('/api/ml-health', { timeout: 10000 })
         .then((res) => {
-          if (res?.data?.available && res?.data?.vit_model_loaded) {
-            setVitReady(Boolean(res?.data?.vit_model_loaded))
+          if (res?.data?.available && mlReportsModelReady(res.data)) {
+            setVitReady(true)
           }
         })
         .catch(() => {})
@@ -223,6 +228,9 @@ const UploadModal = ({ onClose, onSuccess }) => {
       return
     }
 
+    const classifyUrl = `${API_BASE_URL || ''}/api/classify/vit`
+    console.log('[UploadModal] Classify (ViT) clicked', { fileName: file.name, fileSize: file.size, classifyUrl })
+
     setClassifyingVit(true)
     setError(null)
     setClassifyStep(SHOW_CLASSIFY_STEPS ? CLASSIFY_STEPS[0] : null)
@@ -261,19 +269,28 @@ const UploadModal = ({ onClose, onSuccess }) => {
 
     try {
       const endpoint = '/api/classify/vit'
-      const response = await axios.post(endpoint, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      })
+      // Do not set Content-Type manually: browser must send multipart boundary (multer needs it).
+      console.log('[UploadModal] POST', endpoint, 'field imagen →', uploadFile.name)
+      const response = await axios.post(endpoint, formData, { timeout: 60000 })
+      console.log('[UploadModal] classify response', response.status, response.data)
       setClassification(response.data)
       setUsedModel('vit')
     } catch (err) {
+      console.error('[UploadModal] classify error', err.response?.status, err.response?.data, err.message)
       const res = err.response?.data
+      if (typeof res === 'string') {
+        setError(`Classification failed: ${res.slice(0, 200)}`)
+        return
+      }
       if (err.response?.status === 503 && res?.loading) {
         setError('Models still loading. Wait about 1 minute and try again.')
         return
       }
-      const msg = res?.error || 'Classification failed. Please try again.'
-      setError(msg === 'ML service not available' ? `${msg} ${mlUnavailableHint}` : msg)
+      const msg =
+        (res && typeof res === 'object' && res.error) ||
+        err.message ||
+        'Classification failed. Please try again.'
+      setError(msg === 'ML service not available' ? `${msg} ${mlUnavailableHint}` : String(msg))
     } finally {
       clearClassifyState()
     }
@@ -584,9 +601,19 @@ const UploadModal = ({ onClose, onSuccess }) => {
             )}
             <div className="flex flex-col sm:flex-row sm:space-x-3 space-y-3 sm:space-y-0">
               <button
+                type="button"
                 onClick={handleClassify}
-                disabled={!file || classifyingVit || !vitReady}
+                disabled={!file || classifyingVit || (mlStatus === 'available' ? !vitReady : true)}
                 className="flex-1 sw-btn sw-btn-outline sw-btn-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                title={
+                  !file
+                    ? 'Select an image first'
+                    : mlStatus !== 'available'
+                      ? 'ML service not ready — use Check again or wait'
+                      : !vitReady
+                        ? 'Model still loading — wait or refresh ML status'
+                        : ''
+                }
               >
                 {classifyingVit ? <><FaSpinner className="animate-spin" /><span>Classifying...</span></> : <><FaBrain /><span>Classify (ViT)</span></>}
               </button>
