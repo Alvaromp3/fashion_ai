@@ -9,6 +9,92 @@ const heicConvert = require('heic-convert');
 const { buildMlClassifyUrl } = require('../utils/safeOutboundUrl');
 const { validateMirrorImageUrl } = require('../utils/safeMirrorImageUrl');
 
+const vitClassToTipo = (className) => {
+  if (!className) return 'desconocido';
+  const s = String(className).toLowerCase().trim().replace(/_/g, '-');
+  const map = {
+    't-shirt': 'superior',
+    tshirt: 'superior',
+    top: 'superior',
+    trouser: 'inferior',
+    pants: 'inferior',
+    pullover: 'superior',
+    dress: 'vestido',
+    coat: 'abrigo',
+    sandal: 'zapatos',
+    sneaker: 'zapatos',
+    boot: 'zapatos',
+    shoe: 'zapatos',
+    'ankle-boot': 'zapatos',
+    bag: 'bolso',
+    shirt: 'superior',
+  };
+  return map[s] || 'desconocido';
+};
+
+const isUnknown = (v) => v == null || String(v).trim() === '' || String(v).toLowerCase().trim() === 'desconocido';
+
+async function detectColorFromFile(filePath) {
+  try {
+    const { data, info } = await sharp(filePath)
+      .rotate()
+      .resize(96, 96, { fit: 'inside' })
+      .removeAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    const channels = info.channels || 3;
+    if (!data || channels < 3) return 'desconocido';
+
+    // Heuristic: ignore near-white pixels (background).
+    let rSum = 0, gSum = 0, bSum = 0, n = 0;
+    for (let i = 0; i < data.length; i += channels) {
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      if (max > 245 && (max - min) < 12) continue;
+      rSum += r; gSum += g; bSum += b; n++;
+    }
+    if (n < 50) return 'desconocido';
+
+    const r = rSum / n, g = gSum / n, b = bSum / n;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const delta = max - min;
+    const v = max / 255;
+    const sat = max === 0 ? 0 : (delta / max);
+
+    if (sat < 0.18) {
+      if (v < 0.18) return 'negro';
+      if (v > 0.88) return 'blanco';
+      return 'gris';
+    }
+
+    let h = 0;
+    if (delta !== 0) {
+      if (max === r) h = ((g - b) / delta) % 6;
+      else if (max === g) h = (b - r) / delta + 2;
+      else h = (r - g) / delta + 4;
+      h = Math.round(h * 60);
+      if (h < 0) h += 360;
+    }
+
+    if (v < 0.22) return 'negro';
+    if (v > 0.92 && sat < 0.35) return 'blanco';
+    if (h < 15 || h >= 345) return 'rojo';
+    if (h < 45) return 'naranja';
+    if (h < 70) return 'amarillo';
+    if (h < 165) return 'verde';
+    if (h < 255) return 'azul';
+    if (h < 290) return 'magenta';
+    if (h < 345) return 'rosa';
+    return 'desconocido';
+  } catch (e) {
+    console.warn('[classify] detectColorFromFile failed:', e?.message || e);
+    return 'desconocido';
+  }
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadDir = path.join(__dirname, '../temp');
@@ -91,17 +177,36 @@ async function processAndClassify(req, res, endpoint) {
 
       [req.file.path, convertedFilePath].forEach(p => p && fs.existsSync(p) && fs.unlinkSync(p));
 
+      const raw = response.data || {};
+      const top3 = Array.isArray(raw.top3) ? raw.top3 : [];
+      const top1 = (top3[0] && typeof top3[0] === 'object') ? top3[0] : null;
+
+      const top1ClassName = top1?.clase_nombre ?? top1?.class_name ?? null;
+      const top1Confidence =
+        (typeof top1?.confianza === 'number')
+          ? top1.confianza
+          : (typeof top1?.confidence === 'number' ? top1.confidence : null);
+
+      const looksLikePlaceholderConfidence =
+        typeof raw.confianza !== 'number'
+        || raw.confianza <= 0
+        || raw.confianza > 1
+        || (raw.confianza === 0.5 && isUnknown(raw.clase_nombre));
+
+      const inferredTipo = vitClassToTipo(top1ClassName);
+      const inferredColor = isUnknown(raw.color) ? await detectColorFromFile(filePath) : raw.color;
+
       res.json({
-        tipo: response.data.tipo || 'desconocido',
-        color: response.data.color || 'desconocido',
-        confianza: response.data.confianza || 0.5,
-        clase: response.data.clase || 0,
-        clase_nombre: response.data.clase_nombre || 'desconocido',
-        top3: response.data.top3 || [],
-        model: response.data.model || 'vision_transformer',
-        model_file: response.data.model_file || 'best_model_17_marzo.keras',
-        yolo_detection: response.data.yolo_detection || null,
-        pipeline_steps: response.data.pipeline_steps || []
+        tipo: isUnknown(raw.tipo) ? inferredTipo : raw.tipo,
+        color: isUnknown(raw.color) ? inferredColor : raw.color,
+        confianza: looksLikePlaceholderConfidence && typeof top1Confidence === 'number' ? top1Confidence : (raw.confianza ?? 0.5),
+        clase: (typeof raw.clase === 'number' && raw.clase !== 0) ? raw.clase : (top1?.clase ?? top1?.class_index ?? 0),
+        clase_nombre: isUnknown(raw.clase_nombre) ? (top1ClassName || 'desconocido') : raw.clase_nombre,
+        top3,
+        model: raw.model || 'vision_transformer',
+        model_file: raw.model_file || 'best_model_17_marzo.keras',
+        yolo_detection: raw.yolo_detection || null,
+        pipeline_steps: raw.pipeline_steps || []
       });
     } catch (mlError) {
       [req.file.path, convertedFilePath].forEach(p => p && fs.existsSync(p) && fs.unlinkSync(p));
