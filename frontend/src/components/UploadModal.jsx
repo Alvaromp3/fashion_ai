@@ -50,9 +50,13 @@ const UploadModal = ({ onClose, onSuccess }) => {
   const mlUnavailableHint = (mlHint != null && mlHint !== '') ? mlHint : ((mlHosted || !isLocalhost) ? ML_UNAVAILABLE_HINT_PROD : ML_UNAVAILABLE_HINT_LOCAL)
   const showTerminalTip = isLocalhost && !mlHosted
 
-  /** True if ML reports any loaded model flag (ViT and /health shapes differ across hosts). */
-  const mlReportsModelReady = (data) =>
-    Boolean(data?.vit_model_loaded ?? data?.model_loaded)
+  /** True if health confirms model readiness in any supported payload shape. */
+  const mlReportsModelReady = (data) => {
+    const hasVitModelLoaded = data?.vit_model_loaded === true
+    const hasModelLoaded = data?.model_loaded === true
+    const hasStatusAndClasses = data?.status === 'OK' && Number(data?.classes_count) > 0
+    return hasVitModelLoaded || hasModelLoaded || hasStatusAndClasses
+  }
 
   const checkMlHealth = () => {
     setMlStatus('checking')
@@ -61,9 +65,12 @@ const UploadModal = ({ onClose, onSuccess }) => {
     // Hosted ML (e.g. HF Space) can take 20+ s to wake; backend uses 20s timeout
     axios.get('/api/ml-health', { timeout: 25000 })
       .then((res) => {
+        console.log('[UploadModal] ml-health response', res?.data)
         if (res?.data?.available) {
+          const ready = mlReportsModelReady(res.data)
+          console.log('[UploadModal] computed vitReady', ready)
           setMlStatus('available')
-          setVitReady(mlReportsModelReady(res.data))
+          setVitReady(ready)
           setError((prev) => (prev && prev.includes('ML service not available')) ? null : prev)
         } else {
           setMlStatus('unavailable')
@@ -86,9 +93,12 @@ const UploadModal = ({ onClose, onSuccess }) => {
     axios.get('/api/ml-health', { timeout: 25000 })
       .then((res) => {
         if (cancelled) return
+        console.log('[UploadModal] ml-health response', res?.data)
         if (res?.data?.available) {
+          const ready = mlReportsModelReady(res.data)
+          console.log('[UploadModal] computed vitReady', ready)
           setMlStatus('available')
-          setVitReady(mlReportsModelReady(res.data))
+          setVitReady(ready)
           setError((prev) => (prev && prev.includes('ML service not available')) ? null : prev)
         } else {
           setMlStatus('unavailable')
@@ -113,7 +123,10 @@ const UploadModal = ({ onClose, onSuccess }) => {
     const t = setInterval(() => {
       axios.get('/api/ml-health', { timeout: 10000 })
         .then((res) => {
-          if (res?.data?.available && mlReportsModelReady(res.data)) {
+          console.log('[UploadModal] ml-health response', res?.data)
+          const ready = Boolean(res?.data?.available) && mlReportsModelReady(res.data)
+          console.log('[UploadModal] computed vitReady', ready)
+          if (ready) {
             setVitReady(true)
           }
         })
@@ -575,7 +588,7 @@ const UploadModal = ({ onClose, onSuccess }) => {
               <span>
                 {vitReady
                   ? 'ML service ready — ViT available.'
-                  : 'ML service ready — ViT still loading (wait ~1 min) or check logs/ml-service.log.'}
+                  : 'ML service ready — model not reported as ready yet. Click "Check again" in a few seconds.'}
               </span>
               {!vitReady && (
                 <button
