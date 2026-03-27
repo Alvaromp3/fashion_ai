@@ -38,7 +38,7 @@ async function detectColorFromFile(filePath) {
   try {
     const { data, info } = await sharp(filePath)
       .rotate()
-      .resize(96, 96, { fit: 'inside' })
+      .resize(160, 160, { fit: 'inside' })
       .removeAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true });
@@ -46,16 +46,67 @@ async function detectColorFromFile(filePath) {
     const channels = info.channels || 3;
     if (!data || channels < 3) return 'desconocido';
 
-    // Heuristic: ignore near-white pixels (background).
+    const width = info.width || 160;
+    const height = info.height || 160;
+
+    // Prefer center region (less background), then fallback to whole image.
+    const sampleRegions = [
+      // Central 60% box
+      {
+        x0: Math.floor(width * 0.2),
+        y0: Math.floor(height * 0.2),
+        x1: Math.ceil(width * 0.8),
+        y1: Math.ceil(height * 0.8),
+      },
+      // Whole image
+      { x0: 0, y0: 0, x1: width, y1: height },
+    ];
+
     let rSum = 0, gSum = 0, bSum = 0, n = 0;
-    for (let i = 0; i < data.length; i += channels) {
-      const r = data[i], g = data[i + 1], b = data[i + 2];
+    let r2 = 0, g2 = 0, b2 = 0; // for rough variance (multicolor heuristic)
+
+    const accumulate = (r, g, b) => {
+      rSum += r; gSum += g; bSum += b; n++;
+      r2 += r * r; g2 += g * g; b2 += b * b;
+    };
+
+    const isBgLike = (r, g, b) => {
       const max = Math.max(r, g, b);
       const min = Math.min(r, g, b);
-      if (max > 245 && (max - min) < 12) continue;
-      rSum += r; gSum += g; bSum += b; n++;
+      // very white / very light gray
+      if (max > 245 && (max - min) < 18) return true;
+      // very dark near-black (often background shadows)
+      if (max < 18 && (max - min) < 10) return true;
+      return false;
+    };
+
+    for (const region of sampleRegions) {
+      rSum = 0; gSum = 0; bSum = 0; n = 0; r2 = 0; g2 = 0; b2 = 0;
+      for (let y = region.y0; y < region.y1; y++) {
+        for (let x = region.x0; x < region.x1; x++) {
+          const idx = (y * width + x) * channels;
+          const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+          if (isBgLike(r, g, b)) continue;
+          accumulate(r, g, b);
+        }
+      }
+      // If we got enough non-background pixels, stop here.
+      if (n >= 120) break;
     }
-    if (n < 50) return 'desconocido';
+
+    // If still too few pixels, do a last-chance pass (center region) without bg filtering.
+    if (n < 80) {
+      const region = sampleRegions[0];
+      rSum = 0; gSum = 0; bSum = 0; n = 0; r2 = 0; g2 = 0; b2 = 0;
+      for (let y = region.y0; y < region.y1; y++) {
+        for (let x = region.x0; x < region.x1; x++) {
+          const idx = (y * width + x) * channels;
+          accumulate(data[idx], data[idx + 1], data[idx + 2]);
+        }
+      }
+    }
+
+    if (n < 20) return 'desconocido';
 
     const r = rSum / n, g = gSum / n, b = bSum / n;
     const max = Math.max(r, g, b);
@@ -69,6 +120,13 @@ async function detectColorFromFile(filePath) {
       if (v > 0.88) return 'blanco';
       return 'gris';
     }
+
+    // Rough "multicolor" heuristic: high variance after bg removal.
+    const vr = Math.max(0, (r2 / n) - r * r);
+    const vg = Math.max(0, (g2 / n) - g * g);
+    const vb = Math.max(0, (b2 / n) - b * b);
+    const variance = (vr + vg + vb) / 3;
+    if (variance > 2200 && sat > 0.35) return 'multicolor';
 
     let h = 0;
     if (delta !== 0) {
