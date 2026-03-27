@@ -135,7 +135,8 @@ const UploadModal = ({ onClose, onSuccess }) => {
     return () => clearInterval(t)
   }, [mlStatus, vitReady])
 
-  const isClassifyDisabled = !file || classifyingVit || (mlStatus === 'available' ? !vitReady : true)
+  // Allow classify click as soon as there's a file; backend remains source of truth for readiness.
+  const isClassifyDisabled = !file || classifyingVit
 
   useEffect(() => {
     console.log('[UploadModal] classify button disabled', isClassifyDisabled, {
@@ -247,6 +248,12 @@ const UploadModal = ({ onClose, onSuccess }) => {
   }
 
   const handleClassify = async () => {
+    console.log('[UploadModal] classify guard state', {
+      hasFile: Boolean(file),
+      classifyingVit,
+      mlStatus,
+      vitReady
+    })
     if (!file) {
       setError('Please select an image first')
       return
@@ -632,11 +639,9 @@ const UploadModal = ({ onClose, onSuccess }) => {
                 title={
                   !file
                     ? 'Select an image first'
-                    : mlStatus !== 'available'
-                      ? 'ML service not ready — use Check again or wait'
-                      : !vitReady
-                        ? 'Model still loading — wait or refresh ML status'
-                        : ''
+                    : classifyingVit
+                      ? 'Classification in progress'
+                      : ''
                 }
               >
                 {classifyingVit ? <><FaSpinner className="animate-spin" /><span>Classifying...</span></> : <><FaBrain /><span>Classify (ViT)</span></>}
