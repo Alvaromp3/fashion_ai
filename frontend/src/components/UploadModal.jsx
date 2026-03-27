@@ -17,6 +17,41 @@ const CLASSIFY_STEPS = [
   'Classifying with the model...'
 ]
 
+const normalizeVitResponse = (raw) => {
+  if (!raw || typeof raw !== 'object') return raw
+
+  const top3 = Array.isArray(raw.top3) ? raw.top3 : []
+  const normalizedTop3 = top3.map((pred) => {
+    if (!pred || typeof pred !== 'object') return pred
+    // Support both shapes:
+    // - New (Render): { class_name, class_index, confidence }
+    // - Old: { clase_nombre, clase, confianza, tipo }
+    if ('class_name' in pred || 'confidence' in pred || 'class_index' in pred) {
+      return {
+        ...pred,
+        clase_nombre: pred.clase_nombre ?? pred.class_name ?? 'desconocido',
+        clase: pred.clase ?? pred.class_index ?? 0,
+        confianza: pred.confianza ?? pred.confidence ?? 0,
+        tipo: pred.tipo ?? raw.tipo ?? 'desconocido',
+      }
+    }
+    return pred
+  })
+
+  const top1 = normalizedTop3[0]
+  const claseNombreFromTop1 = (top1 && typeof top1 === 'object') ? top1.clase_nombre : undefined
+  const confianzaFromTop1 = (top1 && typeof top1 === 'object') ? top1.confianza : undefined
+  const claseFromTop1 = (top1 && typeof top1 === 'object') ? top1.clase : undefined
+
+  return {
+    ...raw,
+    top3: normalizedTop3,
+    clase_nombre: (raw.clase_nombre && raw.clase_nombre !== 'desconocido') ? raw.clase_nombre : (claseNombreFromTop1 ?? raw.clase_nombre),
+    confianza: (typeof raw.confianza === 'number' && raw.confianza > 0 && raw.confianza <= 1) ? raw.confianza : (typeof confianzaFromTop1 === 'number' ? confianzaFromTop1 : raw.confianza),
+    clase: (typeof raw.clase === 'number' && raw.clase !== 0) ? raw.clase : (typeof claseFromTop1 === 'number' ? claseFromTop1 : raw.clase),
+  }
+}
+
 const UploadModal = ({ onClose, onSuccess }) => {
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState(null)
@@ -304,7 +339,7 @@ const UploadModal = ({ onClose, onSuccess }) => {
       console.log('[UploadModal] POST', endpoint, 'field imagen →', uploadFile.name)
       const response = await axios.post(endpoint, formData, { timeout: 60000 })
       console.log('[UploadModal] classify response', response.status, response.data)
-      setClassification(response.data)
+      setClassification(normalizeVitResponse(response.data))
       setUsedModel('vit')
     } catch (err) {
       console.error('[UploadModal] classify error', err.response?.status, err.response?.data, err.message)
@@ -533,7 +568,7 @@ const UploadModal = ({ onClose, onSuccess }) => {
                       <div className="space-y-1 text-xs text-[#888]">
                         {classification.top3.map((pred, idx) => (
                           <p key={idx} className={idx === 0 ? 'font-semibold text-[#0D0D0D]' : ''}>
-                            {idx + 1}. {garmentClassLabel(pred.clase_nombre)} ({typeToEnglish(pred.tipo)}) - {(pred.confianza * 100).toFixed(1)}%
+                            {idx + 1}. {garmentClassLabel(pred.clase_nombre)}{pred.tipo ? ` (${typeToEnglish(pred.tipo)})` : ''} - {(Number(pred.confianza || 0) * 100).toFixed(1)}%
                           </p>
                         ))}
                       </div>
