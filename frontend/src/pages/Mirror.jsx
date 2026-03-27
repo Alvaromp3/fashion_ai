@@ -571,9 +571,6 @@ export default function Mirror() {
                   </Link>
                 </div>
               )}
-              <p className="mt-3 text-xs text-[#888]">
-                Evaluate outfit uses vision (OpenRouter). Classify + stylist chat runs ViT on the frame, then sends that summary to your wardrobe chat (sign in required). Items are only saved when you click Add to wardrobe.
-              </p>
             </div>
           </section>
         </div>
