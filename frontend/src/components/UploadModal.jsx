@@ -135,6 +135,17 @@ const UploadModal = ({ onClose, onSuccess }) => {
     return () => clearInterval(t)
   }, [mlStatus, vitReady])
 
+  const isClassifyDisabled = !file || classifyingVit || (mlStatus === 'available' ? !vitReady : true)
+
+  useEffect(() => {
+    console.log('[UploadModal] classify button disabled', isClassifyDisabled, {
+      hasFile: Boolean(file),
+      classifyingVit,
+      mlStatus,
+      vitReady
+    })
+  }, [isClassifyDisabled, file, classifyingVit, mlStatus, vitReady])
+
   const occasions = [
     { value: 'casual', label: 'Casual', desc: 'Everyday wear' },
     { value: 'formal', label: 'Formal', desc: 'Important events' },
@@ -616,7 +627,7 @@ const UploadModal = ({ onClose, onSuccess }) => {
               <button
                 type="button"
                 onClick={handleClassify}
-                disabled={!file || classifyingVit || (mlStatus === 'available' ? !vitReady : true)}
+                disabled={isClassifyDisabled}
                 className="flex-1 sw-btn sw-btn-outline sw-btn-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                 title={
                   !file
