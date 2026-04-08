@@ -16,8 +16,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 4000
+      # Do NOT set PORT here. Render injects PORT automatically; the app must listen on
+      # process.env.PORT. Forcing 4000 can break routing (edge/521) if it mismatches the proxy.
       # Add in Render Dashboard: MONGODB_URI, AUTH0_DOMAIN, AUTH0_AUDIENCE,
       # CLOUDINARY_*, ML_SERVICE_URL=<your-ml-service-url>, OPENROUTER_API_KEY,
       # CORS_ORIGINS=https://your-frontend.pages.dev

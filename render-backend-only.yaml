@@ -15,8 +15,7 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 4000
+      # Do NOT set PORT — Render sets it; app listens on process.env.PORT (see server.js).
       # Add in Render Dashboard:
       # MONGODB_URI, AUTH0_DOMAIN, AUTH0_AUDIENCE, CORS_ORIGINS,
       # ML_SERVICE_URL=https://YOUR_USER-fashion-ai-ml.hf.space

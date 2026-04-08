@@ -8,7 +8,7 @@ import { typeToEnglish, colorToEnglish, garmentClassLabel } from '../lib/classif
 const ML_UNAVAILABLE_HINT_LOCAL = 'Run ./start-all.sh from the project root and wait ~1–2 min for models to load. If it still fails, check logs/ml-service.log.'
 const ML_UNAVAILABLE_HINT_PROD = 'ML is on a hosted Space (e.g. Hugging Face). The Space may be sleeping—open the Space URL in a browser to wake it, or ask the admin to check ML_SERVICE_URL.'
 
-// Cuando todo funcione bien, pon a false para que la clasificación corra en background sin mostrar pasos
+// Set to false to run classification in the background without step messages.
 const SHOW_CLASSIFY_STEPS = true
 
 const CLASSIFY_STEPS = [
@@ -225,8 +225,7 @@ const UploadModal = ({ onClose, onSuccess }) => {
     { value: 'trabajo', label: 'Work', desc: 'Professional office' }
   ]
 
-  // Convierte la imagen a JPEG en el navegador si no lo es ya.
-  // Para HEIC/HEIF usamos heic2any en el frontend (el backend ya no necesita convertir).
+  // Convert image to JPEG in the browser when needed. HEIC/HEIF uses heic2any on the client.
   const ensureJpegFile = async (inputFile) => {
     if (!inputFile) return null
     const nameLower = inputFile.name.toLowerCase()
@@ -248,7 +247,7 @@ const UploadModal = ({ onClose, onSuccess }) => {
         const baseName = inputFile.name.replace(/\.[^/.]+$/, '')
         return new File([jpegBlob], `${baseName}.jpg`, { type: 'image/jpeg' })
       } catch {
-        // Si la conversión falla (por compatibilidad del navegador), seguimos con el archivo original HEIC.
+        // If conversion fails (browser support), keep the original HEIC file.
         return inputFile
       }
     }
@@ -500,7 +499,7 @@ const UploadModal = ({ onClose, onSuccess }) => {
                 onChange={handleFileChange}
                 className="hidden"
                 id="camera-capture"
-                aria-label="Hacer foto con la cámara"
+                aria-label="Take a photo with the camera"
               />
               <div className="flex flex-col items-center gap-4">
                 <FaUpload className="text-4xl text-[#888]" aria-hidden />
@@ -508,7 +507,7 @@ const UploadModal = ({ onClose, onSuccess }) => {
                   {file ? (
                     <span className="font-medium break-all">{file.name}</span>
                   ) : (
-                    <>Elige un archivo o usa la cámara; la vista previa aparece abajo.</>
+                    <>Choose a file or use the camera — the preview appears below.</>
                   )}
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-3 w-full">
@@ -517,18 +516,18 @@ const UploadModal = ({ onClose, onSuccess }) => {
                     className="cursor-pointer sw-btn sw-btn-outline sw-btn-sm inline-flex items-center gap-2 justify-center"
                   >
                     <FaUpload className="opacity-80" aria-hidden />
-                    Elegir imagen
+                    Choose image
                   </label>
                   <label
                     htmlFor="camera-capture"
                     className="cursor-pointer sw-btn sw-btn-outline sw-btn-sm inline-flex items-center gap-2 justify-center"
                   >
                     <FaCamera className="opacity-80" aria-hidden />
-                    Usar cámara
+                    Use camera
                   </label>
                 </div>
                 <p className="text-xs text-[#888] max-w-md">
-                  En el móvil, «Usar cámara» abre la cámara (cámara trasera si el dispositivo lo permite). En escritorio depende del navegador: a veces verás el explorador de archivos o la opción de webcam.
+                  On mobile, “Use camera” opens the camera (rear camera when the device allows). On desktop, behavior depends on your browser — you may get a file picker or a webcam prompt.
                 </p>
               </div>
             </div>
@@ -685,7 +684,7 @@ const UploadModal = ({ onClose, onSuccess }) => {
                   disabled={mlStatus === 'checking'}
                   className="ml-auto sw-btn sw-btn-outline sw-btn-sm disabled:opacity-70"
                 >
-                  {mlStatus === 'checking' ? 'Comprobando…' : 'Comprobar ViT de nuevo'}
+                  {mlStatus === 'checking' ? 'Checking…' : 'Check ViT again'}
                 </button>
               )}
             </div>

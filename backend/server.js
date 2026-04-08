@@ -110,10 +110,10 @@ mongoose
   .then(() => console.log('Connected to MongoDB'))
   .catch((err) => console.error('Error connecting to MongoDB:', err));
 
-const PORT = process.env.PORT || 4000;
+const PORT = Number(process.env.PORT) || 4000;
 
 const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Listening on 0.0.0.0:${PORT} (PORT env: ${process.env.PORT ?? 'unset'})`);
   if (openrouter.isConfigured) {
     console.log('OpenRouter: configurado (apiKey cargada desde .env)');
   } else {
