@@ -58,3 +58,30 @@ export function garmentClassLabel(raw) {
   if (s === 'desconocido') return 'Unknown'
   return String(raw).replace(/_/g, ' ')
 }
+
+/** Stored occasion slugs (Spanish/English keys) → English labels for wardrobe UI. */
+export function occasionToEnglish(raw) {
+  if (raw == null || raw === '') return ''
+  const map = {
+    casual: 'Casual',
+    formal: 'Formal',
+    deportivo: 'Sporty',
+    fiesta: 'Party',
+    trabajo: 'Work',
+  }
+  const s = String(raw).toLowerCase().trim()
+  return map[s] || String(raw).replace(/_/g, ' ')
+}
+
+/** Join occasion list/array into a single English string. */
+export function formatOccasionsEnglish(raw) {
+  if (raw == null || raw === '') return '—'
+  const arr = Array.isArray(raw)
+    ? raw
+    : String(raw)
+        .split(',')
+        .map((x) => x.trim())
+        .filter(Boolean)
+  if (arr.length === 0) return '—'
+  return arr.map(occasionToEnglish).join(', ')
+}

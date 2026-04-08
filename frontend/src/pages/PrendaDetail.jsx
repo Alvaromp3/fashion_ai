@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { FaArrowLeft, FaTrash } from 'react-icons/fa'
 import axios from 'axios'
 import EditOcasionModal from '../components/EditOcasionModal'
+import { typeToEnglish, colorToEnglish, garmentClassLabel, formatOccasionsEnglish } from '../lib/classificationDisplay'
 
 const getImageUrl = (url) => {
   if (!url) return ''
@@ -76,7 +77,14 @@ const PrendaDetail = () => {
   }
 
   const imagenUrl = getImageUrl(prenda.imagen_url)
-  const ocasion = Array.isArray(prenda.ocasion) ? prenda.ocasion.join(', ') : prenda.ocasion || '—'
+  const titleName =
+    prenda.clase_nombre && prenda.clase_nombre !== 'desconocido'
+      ? garmentClassLabel(prenda.clase_nombre)
+      : typeToEnglish(prenda.tipo) || 'Unknown'
+  const typeDisplay = typeToEnglish(prenda.tipo) || '—'
+  const colorDisplay =
+    prenda.color && prenda.color !== 'desconocido' ? colorToEnglish(prenda.color) : null
+  const ocasionDisplay = formatOccasionsEnglish(prenda.ocasion)
 
   return (
     <div className="min-h-dvh sw-light" style={{ background: 'var(--sw-white)' }}>
@@ -92,22 +100,22 @@ const PrendaDetail = () => {
           <div className="p-6 border-t border-[#D0CEC8] space-y-3">
             <p className="sw-label text-[#FF3B00]">— GARMENT</p>
             <h1 className="sw-display" style={{ fontSize: 'clamp(1.75rem, 4vw, 2.5rem)' }}>
-              {prenda.clase_nombre && prenda.clase_nombre !== 'desconocido' ? prenda.clase_nombre : prenda.tipo}
+              {titleName}
             </h1>
             <dl className="grid gap-2 text-sm text-[#0D0D0D]">
               <div className="flex justify-between gap-4 border-b border-[#D0CEC8]/60 pb-2">
                 <dt className="text-[#888]">Type</dt>
-                <dd className="font-medium capitalize">{prenda.tipo || '—'}</dd>
+                <dd className="font-medium">{typeDisplay}</dd>
               </div>
               {prenda.color && prenda.color !== 'desconocido' && (
                 <div className="flex justify-between gap-4 border-b border-[#D0CEC8]/60 pb-2">
                   <dt className="text-[#888]">Color</dt>
-                  <dd className="font-medium capitalize">{prenda.color}</dd>
+                  <dd className="font-medium">{colorDisplay}</dd>
                 </div>
               )}
               <div className="flex justify-between gap-4 pb-2">
                 <dt className="text-[#888]">Occasion</dt>
-                <dd className="font-medium capitalize">{ocasion}</dd>
+                <dd className="font-medium">{ocasionDisplay}</dd>
               </div>
             </dl>
             <div className="flex flex-wrap gap-3 pt-2">
