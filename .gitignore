@@ -49,3 +49,9 @@ Thumbs.db
 !.env.project
 !.env.vault
 .env.vault
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
