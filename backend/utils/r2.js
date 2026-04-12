@@ -6,6 +6,7 @@
 const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const fs = require('fs');
 const path = require('path');
+const { randomFileSuffix } = require('./randomFileSuffix');
 
 const accountId = process.env.R2_ACCOUNT_ID;
 const accessKeyId = process.env.R2_ACCESS_KEY_ID;
@@ -44,7 +45,7 @@ function isConfigured() {
 async function uploadToR2(filePath, objectKey = null) {
   if (!isConfigured()) throw new Error('R2 is not configured');
   const ext = path.extname(filePath) || '.jpg';
-  const key = objectKey || `${folder}/${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+  const key = objectKey || `${folder}/${Date.now()}-${randomFileSuffix()}${ext}`;
   const body = fs.createReadStream(filePath);
   const s3 = getClient();
   await s3.send(

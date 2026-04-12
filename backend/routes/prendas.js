@@ -9,6 +9,7 @@ const { uploadImage, deleteImage } = require('../utils/cloudinary');
 const { getUserId } = require('../middleware/auth');
 const { resolveUploadsPublicPath } = require('../utils/safePath');
 const { parseObjectId } = require('../utils/mongoSafe');
+const { randomFileSuffix } = require('../utils/randomFileSuffix');
 
 const UPLOADS_ROOT = path.resolve(__dirname, '../uploads');
 
@@ -39,7 +40,7 @@ function copyToDataset(imagePath, clase_nombre, confianza) {
     if (!fs.existsSync(path.dirname(trainDir))) return false;
     fs.mkdirSync(trainDir, { recursive: true });
     const ext = path.extname(imagePath) || '.jpg';
-    const destPath = path.join(trainDir, `user_${Date.now()}_${Math.round(Math.random() * 1E9)}${ext}`);
+    const destPath = path.join(trainDir, `user_${Date.now()}_${randomFileSuffix()}${ext}`);
     fs.copyFileSync(imagePath, destPath);
     return true;
   } catch {
@@ -61,7 +62,7 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const uniqueSuffix = `${Date.now()}-${randomFileSuffix()}`;
     cb(null, 'prenda-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
@@ -345,7 +346,7 @@ router.post('/auto', async (req, res) => {
       fs.mkdirSync(userDir, { recursive: true });
     }
 
-    const filename = `auto-${Date.now()}-${Math.round(Math.random() * 1E9)}.jpg`;
+    const filename = `auto-${Date.now()}-${randomFileSuffix()}.jpg`;
     const filePath = path.join(userDir, filename);
 
     await sharp(imageBuffer).jpeg({ quality: 90 }).toFile(filePath);

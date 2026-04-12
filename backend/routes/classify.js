@@ -8,6 +8,7 @@ const sharp = require('sharp');
 const heicConvert = require('heic-convert');
 const { buildMlClassifyUrl } = require('../utils/safeOutboundUrl');
 const { validateMirrorImageUrl } = require('../utils/safeMirrorImageUrl');
+const { randomFileSuffix } = require('../utils/randomFileSuffix');
 
 const vitClassToTipo = (className) => {
   if (!className) return 'desconocido';
@@ -160,7 +161,7 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    cb(null, 'classify-' + Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname));
+    cb(null, `classify-${Date.now()}-${randomFileSuffix()}${path.extname(file.originalname)}`);
   }
 });
 
