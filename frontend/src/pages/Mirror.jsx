@@ -264,23 +264,9 @@ export default function Mirror() {
       }
       setVitResult(summary)
 
-      const topLines =
-        summary.top3.length > 0
-          ? summary.top3
-              .slice(0, 3)
-              .map((t, i) => {
-                const name = t.clase_nombre != null && String(t.clase_nombre).trim() !== '' ? garmentClassLabel(t.clase_nombre) : '?'
-                const pct = typeof t.confianza === 'number' ? (t.confianza * 100).toFixed(0) : '?'
-                return `  ${i + 1}. ${name} (${pct}% confidence, garment type: ${typeToEnglish(t.tipo)})`
-              })
-              .join('\n')
-          : '  (no alternative predictions)'
-
       const userMessage = [
         'I just captured a photo from the Mirror. Our outfit classifier analyzed the image. Here is what it detected:',
-        `Main prediction: ${garmentClassLabel(summary.clase_nombre)} — garment type: ${typeToEnglish(summary.tipo)}, color signal: ${colorToEnglish(summary.color)}, model confidence ${(summary.confianza * 100).toFixed(0)}%.`,
-        'Top predictions:',
-        topLines,
+        `Main prediction: ${garmentClassLabel(summary.clase_nombre)} — garment type: ${typeToEnglish(summary.tipo)}, color signal: ${colorToEnglish(summary.color)}.`,
         '',
         'Mirror context for what I am dressing for:',
         `- Occasion: ${event}`,
@@ -542,17 +528,8 @@ export default function Mirror() {
                   <p className="text-xs text-[#888] mb-1">Detected (ViT)</p>
                   <p className="text-base font-medium text-[#0D0D0D]">{garmentClassLabel(vitResult.clase_nombre)}</p>
                   <p className="text-sm text-[#888]">
-                    {typeToEnglish(vitResult.tipo)} · {colorToEnglish(vitResult.color)} · {(vitResult.confianza * 100).toFixed(0)}%
+                    {typeToEnglish(vitResult.tipo)} · {colorToEnglish(vitResult.color)}
                   </p>
-                  {Array.isArray(vitResult.top3) && vitResult.top3.length > 1 && (
-                    <ul className="mt-2 text-xs text-[#888] space-y-1 list-disc list-inside">
-                      {vitResult.top3.slice(0, 3).map((t, i) => (
-                        <li key={i}>
-                          {t.clase_nombre != null && String(t.clase_nombre).trim() !== '' ? garmentClassLabel(t.clase_nombre) : '?'} ({typeToEnglish(t.tipo)}) · {(typeof t.confianza === 'number' ? t.confianza * 100 : 0).toFixed(0)}%
-                        </li>
-                      ))}
-                    </ul>
-                  )}
                   <button onClick={handleAddToWardrobe} disabled={addToWardrobeLoading} className="mt-3 sw-btn sw-btn-accent sw-btn-sm flex items-center gap-2 disabled:opacity-50 transition-colors">
                     {addToWardrobeLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-4 w-4" />}
                     Add to wardrobe

@@ -594,20 +594,6 @@ const UploadModal = ({ onClose, onSuccess }) => {
                   <p className="text-[#0D0D0D]"><span className="font-medium text-[#0D0D0D]">Garment:</span> {garmentClassLabel(classification.clase_nombre)}</p>
                   <p className="text-[#0D0D0D]"><span className="font-medium text-[#0D0D0D]">Type:</span> {typeToEnglish(classification.tipo)}</p>
                   <p className="text-[#0D0D0D]"><span className="font-medium text-[#0D0D0D]">Color:</span> {colorToEnglish(classification.color)}</p>
-                  <p className="text-[#0D0D0D]"><span className="font-medium text-[#0D0D0D]">Confidence:</span> {(classification.confianza * 100).toFixed(1)}%</p>
-                  
-                  {classification.top3?.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-[#D0CEC8]">
-                      <p className="font-medium text-[#0D0D0D] mb-2 text-xs">Top 3 Predictions:</p>
-                      <div className="space-y-1 text-xs text-[#888]">
-                        {classification.top3.map((pred, idx) => (
-                          <p key={idx} className={idx === 0 ? 'font-semibold text-[#0D0D0D]' : ''}>
-                            {idx + 1}. {garmentClassLabel(pred.clase_nombre)}{pred.tipo ? ` (${typeToEnglish(pred.tipo)})` : ''} - {(Number(pred.confianza || 0) * 100).toFixed(1)}%
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
 
