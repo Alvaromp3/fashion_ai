@@ -2,6 +2,8 @@
 
 Guía rápida para poner en marcha el proyecto.
 
+**Demo (interfaz en la nube):** [https://fashion-ai-d9p.pages.dev/](https://fashion-ai-d9p.pages.dev/) — para usar todas las funciones (subir prendas, clasificar, etc.) necesitas backend y servicio ML configurados (local o desplegados).
+
 ## 🐳 Opción recomendada: ML en Docker (ViT)
 
 El clasificador usa solo **`best_model_17_marzo.keras`** (ViT). Para el ML en Docker:

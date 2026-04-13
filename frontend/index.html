@@ -11,12 +11,15 @@
     <div id="root">
       <div style="padding:2rem;text-align:center;background:#1e293b;color:#f8fafc;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;font-family:system-ui,sans-serif;">
         <p style="margin:0;font-size:1.25rem;">Cargando Fashion AI…</p>
-        <p style="margin:0;font-size:0.875rem;color:#94a3b8;">Abre <a href="http://localhost:3000" style="color:#38bdf8;">http://localhost:3000</a> (no uses file://)</p>
+        <p style="margin:0;font-size:0.875rem;color:#94a3b8;max-width:28rem;line-height:1.5;">
+          Prueba la demo en <a href="https://fashion-ai-d9p.pages.dev/" style="color:#38bdf8;">fashion-ai-d9p.pages.dev</a>.
+          En tu máquina: <a href="http://localhost:3000" style="color:#38bdf8;">localhost:3000</a> (no abras este HTML con file://).
+        </p>
       </div>
     </div>
     <script>
       if (window.location.protocol === 'file:') {
-        document.getElementById('root').innerHTML = '<div style="padding:2rem;text-align:center;background:#fef3c7;color:#92400e;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;font-family:system-ui,sans-serif;"><p style="margin:0;font-size:1.25rem;font-weight:600;">No abras el HTML como archivo</p><p style="margin:0;font-size:0.95rem;">Ejecuta en la terminal: <code style="background:#fff;padding:0.25rem 0.5rem;border-radius:4px;">./start-all.sh</code></p><a href="http://localhost:3000" style="font-size:1.1rem;color:#0ea5e9;font-weight:600;">http://localhost:3000</a></div>';
+        document.getElementById('root').innerHTML = '<div style="padding:2rem;text-align:center;background:#fef3c7;color:#92400e;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;font-family:system-ui,sans-serif;max-width:26rem;margin:0 auto;"><p style="margin:0;font-size:1.25rem;font-weight:600;">No abras el HTML como archivo</p><p style="margin:0;font-size:0.95rem;line-height:1.5;">Puedes probar la <a href="https://fashion-ai-d9p.pages.dev/" style="color:#0c4a6e;font-weight:600;">demo en línea</a>, o levantar el proyecto y abrir <a href="http://localhost:3000" style="color:#0c4a6e;font-weight:600;">localhost:3000</a>.</p><p style="margin:0;font-size:0.9rem;">En local: <code style="background:#fff;padding:0.25rem 0.5rem;border-radius:4px;">./start-all.sh</code></p></div>';
       }
     </script>
     <script type="module" src="/src/main.jsx"></script>

@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
-    include: ['framer-motion', 'react-icons/fa'],
+    include: ['react-icons/fa'],
   },
   resolve: {
     dedupe: ['react', 'react-dom'],

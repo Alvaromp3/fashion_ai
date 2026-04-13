@@ -67,7 +67,7 @@ function preferencesPayloadFromDoc(profile) {
 }
 
 /**
- * GET /api/me — current user info and roles (for frontend useIsAdmin)
+ * GET /api/me — current user info and roles (optional admin tooling)
  */
 router.get('/', (req, res) => {
   const payload = req.auth && req.auth.payload;

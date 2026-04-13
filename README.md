@@ -2,6 +2,11 @@
 
 A full-stack web application for uploading clothing images, classifying them with a **Vision Transformer (ViT)** model (`best_model_17_marzo.keras`), and generating outfit recommendations from the user's wardrobe. Includes **Mirror**: real-time outfit feedback via camera and AI (OpenRouter), with optional Auth0 login and per-user wardrobe.
 
+## Demo
+
+You can try the hosted frontend here: **[https://fashion-ai-d9p.pages.dev/](https://fashion-ai-d9p.pages.dev/)**  
+(You still need a running backend, ML service, and configured env for full features—see deployment docs below.)
+
 ## Summary
 
 Fashion AI lets users build a digital wardrobe by uploading garment photos. The system classifies each item (type and colour) via a machine learning service (**ViT only**: `best_model_17_marzo.keras`). Users can filter garments by category, set preferences (occasion, style, colours), and receive outfit suggestions. **Mirror** uses the camera and OpenRouter to analyse the current outfit and give preparation-focused tips for the chosen occasion (e.g. business casual). Optional Auth0 login scopes data per user; images can be stored locally or in Cloudinary.
@@ -76,7 +81,7 @@ If Cloudinary is not set, images are stored under `backend/uploads/`.
 
 **Team — Env Vault (push/pull all keys):** We use [Env Vault](docs/ENV_VAULT_QUICK.md) instead of emailing passwords. From repo root: **`npm run env:vault-pull`** to get the latest keys; **`npm run env:vault-push`** to save your keys to the vault. See [docs/DOTENV_VAULT.md](docs/DOTENV_VAULT.md) for setup.
 
-**Admin dashboard:** The Metrics and Examples views are in the Admin area (`/admin`), restricted to users with an `admin` role. Add a custom claim to your access token (e.g. `https://fashion-ai-api/roles` or set `AUTH0_ROLES_CLAIM` in backend `.env`) containing a `roles` array with `"admin"` for users who should see the Admin link and access model metrics/examples. Configure this in Auth0 via Actions or Rules that add `app_metadata.roles` to the token.
+**Roles:** `GET /api/me` returns `isAdmin` when the JWT includes an `admin` role (see `AUTH0_ROLES_CLAIM` in backend `.env`). Useful if you extend the UI with staff-only views.
 
 ### 3. ML service
 
