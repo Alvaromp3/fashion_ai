@@ -1,13 +1,24 @@
+# Fashion AI — lint, unit/integration tests (backend, frontend, ML), and Playwright E2E.
+# Enable in GitHub: Settings → Branches → Branch protection → Require status checks → select jobs below.
+
 name: CI
 
 on:
   push:
     branches: [main, master]
   pull_request:
-    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   backend:
+    name: Backend (lint + test)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,7 +27,7 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: backend/package-lock.json
-      - name: Install and test backend
+      - name: Install, lint, test
         working-directory: backend
         run: |
           npm ci
@@ -24,6 +35,7 @@ jobs:
           npm test
 
   frontend:
+    name: Frontend (lint + test)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,22 +44,26 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: Install and test frontend
+      - name: Install, lint, test, build
         working-directory: frontend
         run: |
           npm ci
           npm run lint
           npm test
+          npm run build
 
-  ml-service:
+  ml:
+    name: ML service (pytest)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install minimal test deps (no TensorFlow)
-        run: pip install pytest flask==3.0.0 flask-cors==4.0.0 pillow numpy werkzeug
+          cache: pip
+          cache-dependency-path: ml-service/requirements-dev.txt
+      - name: Install test dependencies (no TensorFlow)
+        run: pip install -r ml-service/requirements-dev.txt flask==3.0.0 flask-cors==4.0.0 pillow numpy werkzeug
       - name: Pytest
         working-directory: ml-service
         env:
@@ -56,6 +72,7 @@ jobs:
         run: python -m pytest tests -q
 
   e2e:
+    name: E2E (Playwright)
     runs-on: ubuntu-latest
     services:
       mongodb:
@@ -67,18 +84,44 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+            package-lock.json
       - name: Install backend deps
         working-directory: backend
         run: npm ci
       - name: Install frontend deps
         working-directory: frontend
         run: npm ci
-      - name: Install root + Playwright
-        run: |
-          npm ci
-          npx playwright install chromium --with-deps
-      - name: E2E
+      - name: Install root deps (Playwright + concurrently)
+        run: npm ci
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+      - name: Run E2E
         env:
           CI: true
           MONGODB_URI: mongodb://127.0.0.1:27017/fashion_ai_ci
         run: npm run test:e2e
+
+  # Single status check for branch protection (fails if any job failed or was skipped due to failure).
+  ci:
+    name: CI (all green)
+    runs-on: ubuntu-latest
+    needs: [backend, frontend, ml, e2e]
+    if: always()
+    steps:
+      - name: Verify all jobs succeeded
+        env:
+          BACKEND: ${{ needs.backend.result }}
+          FRONTEND: ${{ needs.frontend.result }}
+          ML: ${{ needs.ml.result }}
+          E2E: ${{ needs.e2e.result }}
+        run: |
+          echo "backend=$BACKEND frontend=$FRONTEND ml=$ML e2e=$E2E"
+          if [ "$BACKEND" != "success" ] || [ "$FRONTEND" != "success" ] || [ "$ML" != "success" ] || [ "$E2E" != "success" ]; then
+            echo "One or more CI jobs did not succeed."
+            exit 1
+          fi
+          echo "All CI jobs succeeded."
