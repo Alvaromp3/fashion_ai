@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install and test backend
+        working-directory: backend
+        run: |
+          npm ci
+          npm run lint
+          npm test
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install and test frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run lint
+          npm test
+
+  ml-service:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install minimal test deps (no TensorFlow)
+        run: pip install pytest flask==3.0.0 flask-cors==4.0.0 pillow numpy werkzeug
+      - name: Pytest
+        working-directory: ml-service
+        env:
+          PYTHONPATH: src
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+        run: python -m pytest tests -q
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+      - name: Install root + Playwright
+        run: |
+          npm ci
+          npx playwright install chromium --with-deps
+      - name: E2E
+        env:
+          CI: true
+          MONGODB_URI: mongodb://127.0.0.1:27017/fashion_ai_ci
+        run: npm run test:e2e

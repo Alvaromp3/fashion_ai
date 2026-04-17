@@ -9,29 +9,7 @@ const heicConvert = require('heic-convert');
 const { buildMlClassifyUrl } = require('../utils/safeOutboundUrl');
 const { validateMirrorImageUrl } = require('../utils/safeMirrorImageUrl');
 const { randomFileSuffix } = require('../utils/randomFileSuffix');
-
-const vitClassToTipo = (className) => {
-  if (!className) return 'desconocido';
-  const s = String(className).toLowerCase().trim().replace(/_/g, '-');
-  const map = {
-    't-shirt': 'superior',
-    tshirt: 'superior',
-    top: 'superior',
-    trouser: 'inferior',
-    pants: 'inferior',
-    pullover: 'superior',
-    dress: 'vestido',
-    coat: 'abrigo',
-    sandal: 'zapatos',
-    sneaker: 'zapatos',
-    boot: 'zapatos',
-    shoe: 'zapatos',
-    'ankle-boot': 'zapatos',
-    bag: 'bolso',
-    shirt: 'superior',
-  };
-  return map[s] || 'desconocido';
-};
+const { vitClassToTipo } = require('../utils/vitClassToTipo');
 
 const isUnknown = (v) => v == null || String(v).trim() === '' || String(v).toLowerCase().trim() === 'desconocido';
 
@@ -322,7 +300,13 @@ router.post('/vit-base64', async (req, res) => {
     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
     res.status(500).json({ error: e.message || 'Error processing image' });
   } finally {
-    if (fs.existsSync(tempPath)) try { fs.unlinkSync(tempPath); } catch (_) {}
+    if (fs.existsSync(tempPath)) {
+      try {
+        fs.unlinkSync(tempPath);
+      } catch {
+        /* file may already be removed */
+      }
+    }
   }
 });
 

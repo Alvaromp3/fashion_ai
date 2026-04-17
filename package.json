@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "Fashion AI - Recomendador de Outfits",
   "scripts": {
+    "test": "npm test --prefix backend && npm test --prefix frontend",
+    "test:ml": "node scripts/run-ml-tests.js",
+    "test:all": "npm test && npm run test:ml",
+    "test:e2e": "playwright test",
     "build": "cd frontend && npm run build",
     "render:validate": "node scripts/render-validate.js",
     "render:deploy": "node scripts/render-deploy.js",
@@ -22,6 +26,7 @@
     "stop": "pkill -f 'node.*server.js' && pkill -f nodemon && pkill -f vite && pkill -f 'python.*app.py' && for p in 3000 4000 6001; do lsof -ti :$p | xargs kill -9 2>/dev/null; done; true"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.1",
     "concurrently": "^8.2.2"
   }
 }

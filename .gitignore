@@ -9,6 +9,14 @@ __pycache__/
 .env.local
 .pages-env-bulk.json
 
+# Playwright
+playwright-report/
+test-results/
+blob-report/
+
+# Test coverage
+backend/coverage/
+
 # Build outputs
 dist/
 build/
