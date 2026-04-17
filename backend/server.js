@@ -7,6 +7,7 @@ const mongoose = require('mongoose');
 const { app, checkMlServiceReachability } = require('./app');
 const openrouter = require('./config/openrouter');
 const { isAuthEnabled } = require('./middleware/auth');
+const { getImageStorageTarget, hasR2CoreConfig, hasR2PublicUrl } = require('./utils/storageTarget');
 const { sanitizeLog } = require('./utils/sanitizeLog');
 
 mongoose
@@ -21,19 +22,26 @@ const PORT = Number(process.env.PORT) || 4000;
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Listening on 0.0.0.0:${PORT} (PORT env: ${sanitizeLog(process.env.PORT ?? 'unset', 32)})`);
   if (openrouter.isConfigured) {
-    console.log('OpenRouter: configurado (apiKey cargada desde .env)');
+    console.log('OpenRouter: configured (apiKey loaded from .env)');
   } else {
-    console.warn('OpenRouter: OPENROUTER_API_KEY no definida en .env');
+    console.warn('OpenRouter: OPENROUTER_API_KEY not set in .env');
   }
   if (isAuthEnabled) {
     console.log('Auth0: login required for /api/prendas and /api/outfits (per-user wardrobe)');
   } else {
-    console.log('Auth0: not configured — using anonymous user; set AUTH0_DOMAIN and AUTH0_AUDIENCE for login');
+    console.log('Auth0: not configured; using anonymous user. Set AUTH0_DOMAIN and AUTH0_AUDIENCE to enable login.');
   }
-  if (process.env.CLOUDINARY_CLOUD_NAME) {
-    console.log('Cloudinary: configured — uploads will go to cloud');
+
+  const storageTarget = getImageStorageTarget(process.env);
+  if (storageTarget === 'r2') {
+    console.log('Image storage: Cloudflare R2 (public URL mode)');
+  } else if (storageTarget === 'cloudinary') {
+    console.log('Image storage: Cloudinary');
   } else {
-    console.log('Cloudinary: not set — uploads saved to backend/uploads/');
+    console.log('Image storage: local filesystem (backend/uploads)');
+  }
+  if (hasR2CoreConfig(process.env) && !hasR2PublicUrl(process.env)) {
+    console.warn('R2 credentials are set but R2_PUBLIC_URL is missing; falling back to non-R2 image storage.');
   }
 
   (async () => {
@@ -44,7 +52,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
       console.log('AI/ML server: reachable', result.data?.model_loaded ? '(model loaded)' : '');
     } else {
       console.warn(
-        `AI/ML server: not reachable — ${sanitizeLog(result.message)}. Endpoints that need ML (e.g. /api/classify) may fail until the service is running.`
+        `AI/ML server: not reachable - ${sanitizeLog(result.message)}. Endpoints that need ML (for example /api/classify) may fail until the service is running.`
       );
     }
   })();

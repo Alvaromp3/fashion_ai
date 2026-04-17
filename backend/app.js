@@ -12,6 +12,11 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 const helmet = require('helmet');
 const openrouter = require('./config/openrouter');
 const { requireAuth } = require('./middleware/auth');
+const {
+  apiLimiter,
+  classifyLimiter,
+  uploadLimiterConditional,
+} = require('./middleware/freeTierLimits');
 const app = express();
 app.locals.openrouter = openrouter;
 app.use(
@@ -34,6 +39,9 @@ app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/model/images', express.static(path.join(__dirname, '../ml-service')));
+app.use('/api', apiLimiter);
+app.use('/api/classify', classifyLimiter);
+app.use('/api/prendas', uploadLimiterConditional);
 
 app.get('/api/health', (req, res) => {
   const mongoose = global.__mongoose;

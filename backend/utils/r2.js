@@ -8,32 +8,41 @@ const fs = require('fs');
 const path = require('path');
 const { randomFileSuffix } = require('./randomFileSuffix');
 
-const accountId = process.env.R2_ACCOUNT_ID;
-const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-const bucketName = process.env.R2_BUCKET_NAME;
-const publicUrl = process.env.R2_PUBLIC_URL || ''; // e.g. https://pub-xxx.r2.dev (no trailing slash)
-const folder = process.env.R2_FOLDER || 'fashion_ai';
+function getConfig() {
+  return {
+    accountId: (process.env.R2_ACCOUNT_ID || '').trim(),
+    accessKeyId: (process.env.R2_ACCESS_KEY_ID || '').trim(),
+    secretAccessKey: (process.env.R2_SECRET_ACCESS_KEY || '').trim(),
+    bucketName: (process.env.R2_BUCKET_NAME || '').trim(),
+    publicUrl: (process.env.R2_PUBLIC_URL || '').trim(),
+    folder: (process.env.R2_FOLDER || 'fashion_ai').trim(),
+  };
+}
 
 let client = null;
+let clientCacheKey = '';
 
 function getClient() {
-  if (!client) {
-    if (!accountId || !accessKeyId || !secretAccessKey) {
+  const cfg = getConfig();
+  const cacheKey = `${cfg.accountId}|${cfg.accessKeyId}|${cfg.secretAccessKey}`;
+  if (!client || cacheKey !== clientCacheKey) {
+    if (!cfg.accountId || !cfg.accessKeyId || !cfg.secretAccessKey) {
       throw new Error('R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY required for R2');
     }
     client = new S3Client({
       region: 'auto',
-      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-      credentials: { accessKeyId, secretAccessKey },
+      endpoint: `https://${cfg.accountId}.r2.cloudflarestorage.com`,
+      credentials: { accessKeyId: cfg.accessKeyId, secretAccessKey: cfg.secretAccessKey },
       forcePathStyle: true,
     });
+    clientCacheKey = cacheKey;
   }
   return client;
 }
 
 function isConfigured() {
-  return !!(accountId && accessKeyId && secretAccessKey && bucketName);
+  const cfg = getConfig();
+  return !!(cfg.accountId && cfg.accessKeyId && cfg.secretAccessKey && cfg.bucketName);
 }
 
 /**
@@ -44,19 +53,20 @@ function isConfigured() {
  */
 async function uploadToR2(filePath, objectKey = null) {
   if (!isConfigured()) throw new Error('R2 is not configured');
+  const cfg = getConfig();
   const ext = path.extname(filePath) || '.jpg';
-  const key = objectKey || `${folder}/${Date.now()}-${randomFileSuffix()}${ext}`;
+  const key = objectKey || `${cfg.folder || 'fashion_ai'}/${Date.now()}-${randomFileSuffix()}${ext}`;
   const body = fs.createReadStream(filePath);
   const s3 = getClient();
   await s3.send(
     new PutObjectCommand({
-      Bucket: bucketName,
+      Bucket: cfg.bucketName,
       Key: key,
       Body: body,
       ContentType: ext === '.png' ? 'image/png' : 'image/jpeg',
     })
   );
-  const url = publicUrl ? `${publicUrl.replace(/\/$/, '')}/${key}` : key;
+  const url = cfg.publicUrl ? `${cfg.publicUrl.replace(/\/$/, '')}/${key}` : key;
   return { url, key };
 }
 
@@ -66,16 +76,17 @@ async function uploadToR2(filePath, objectKey = null) {
  */
 async function deleteFromR2(urlOrKey) {
   if (!isConfigured()) return;
+  const cfg = getConfig();
   let key = urlOrKey;
   if (urlOrKey.startsWith('http')) {
-    if (publicUrl && urlOrKey.startsWith(publicUrl)) {
-      key = urlOrKey.slice(publicUrl.replace(/\/$/, '').length).replace(/^\//, '');
+    if (cfg.publicUrl && urlOrKey.startsWith(cfg.publicUrl)) {
+      key = urlOrKey.slice(cfg.publicUrl.replace(/\/$/, '').length).replace(/^\//, '');
     } else {
       return; // can't derive key without R2_PUBLIC_URL
     }
   }
   const s3 = getClient();
-  await s3.send(new DeleteObjectCommand({ Bucket: bucketName, Key: key }));
+  await s3.send(new DeleteObjectCommand({ Bucket: cfg.bucketName, Key: key }));
 }
 
 module.exports = {

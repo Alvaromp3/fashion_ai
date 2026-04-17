@@ -6,6 +6,9 @@ const fs = require('fs');
 const sharp = require('sharp');
 const Prenda = require('../models/Prenda');
 const { uploadImage, deleteImage } = require('../utils/cloudinary');
+const { isConfigured: isR2Configured, uploadToR2, deleteFromR2 } = require('../utils/r2');
+const { checkR2StorageLimit } = require('../utils/cloudflareUsage');
+const { getImageStorageTarget } = require('../utils/storageTarget');
 const { getUserId } = require('../middleware/auth');
 const { resolveUploadsPublicPath } = require('../utils/safePath');
 const { parseObjectId } = require('../utils/mongoSafe');
@@ -32,6 +35,10 @@ const CLASS_TO_FOLDER = {
   'T-shirt': 'T-shirt', Trouser: 'Trouser'
 };
 
+function getPrendasMaxPerUser() {
+  return Math.max(parseInt(process.env.PRENDAS_MAX_PER_USER, 10) || 200, 1);
+}
+
 function copyToDataset(imagePath, clase_nombre, confianza) {
   if (!DATASET_PATH || confianza < MIN_CONFIDENCE_FOR_DATASET) return false;
   if (!clase_nombre || !CLASS_TO_FOLDER[clase_nombre]) return false;
@@ -46,6 +53,33 @@ function copyToDataset(imagePath, clase_nombre, confianza) {
   } catch {
     return false;
   }
+}
+
+async function enforcePrendasCountLimit(res, userId) {
+  const prendasMaxPerUser = getPrendasMaxPerUser();
+  const currentCount = await Prenda.countDocuments(userFilter(userId));
+  if (currentCount >= prendasMaxPerUser) {
+    res.status(429).json({
+      error: 'Wardrobe item limit reached for free tier.',
+      limit: prendasMaxPerUser,
+      currentCount
+    });
+    return false;
+  }
+  return true;
+}
+
+async function enforceR2SoftLimit(res, filePath) {
+  if (getImageStorageTarget(process.env) !== 'r2') return true;
+  const stat = fs.statSync(filePath);
+  const check = await checkR2StorageLimit(stat.size);
+  if (check.allowed) return true;
+  res.status(429).json({
+    error: 'R2 storage soft limit reached. Upload blocked to stay in free tier.',
+    limitBytes: check.limitBytes,
+    currentBytes: check.currentBytes
+  });
+  return false;
 }
 
 /** Per-user upload folder: uploads/{userId}/ so each user has their own images and DB matches. */
@@ -96,14 +130,20 @@ router.post('/upload', upload.single('imagen'), async (req, res) => {
       return res.status(400).json({ error: 'No image provided' });
     }
 
+    const canAddMorePrendas = await enforcePrendasCountLimit(res, userId);
+    if (!canAddMorePrendas) {
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      return;
+    }
+
     let filePath = req.file.path;
     const fileExt = path.extname(req.file.originalname).toLowerCase();
-    const isHeic = fileExt === '.heic' || fileExt === '.heif' || 
-                   req.file.mimetype === 'image/heic' || 
-                   req.file.mimetype === 'image/heif' ||
-                   req.file.mimetype === 'image/x-heic' ||
-                   req.file.mimetype === 'image/x-heif';
-    
+    const isHeic = fileExt === '.heic' || fileExt === '.heif' ||
+      req.file.mimetype === 'image/heic' ||
+      req.file.mimetype === 'image/heif' ||
+      req.file.mimetype === 'image/x-heic' ||
+      req.file.mimetype === 'image/x-heif';
+
     if (isHeic) {
       try {
         convertedFilePath = path.join(path.dirname(filePath), `converted-${Date.now()}.jpg`);
@@ -118,16 +158,48 @@ router.post('/upload', upload.single('imagen'), async (req, res) => {
       }
     }
 
+    const { tipo, color, confianza, clase_nombre } = req.body;
+    let confianzaValue = confianza != null && confianza !== '' ? parseFloat(confianza) : 0.5;
+    if (Number.isNaN(confianzaValue) || confianzaValue < 0) confianzaValue = 0;
+    if (confianzaValue > 1) confianzaValue = 1;
+
+    const tipoValidos = ['superior', 'inferior', 'zapatos', 'accesorio', 'abrigo', 'vestido'];
+    const tipoFinal = tipo && tipoValidos.includes(String(tipo).toLowerCase()) ? String(tipo).toLowerCase() : 'superior';
+
+    let ocasionArray = [];
+    if (req.body.ocasion) {
+      ocasionArray = Array.isArray(req.body.ocasion)
+        ? req.body.ocasion
+        : [req.body.ocasion];
+    }
+    const ocasionesValidas = ['casual', 'formal', 'deportivo', 'fiesta', 'trabajo'];
+    ocasionArray = ocasionArray.filter((oc) => ocasionesValidas.includes(oc));
+
+    const storageTarget = getImageStorageTarget(process.env);
+    const canStoreInR2 = await enforceR2SoftLimit(res, filePath);
+    if (!canStoreInR2) {
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      if (convertedFilePath && fs.existsSync(convertedFilePath)) fs.unlinkSync(convertedFilePath);
+      return;
+    }
+
     let imagen_url;
-    if (process.env.CLOUDINARY_CLOUD_NAME) {
+    if (storageTarget === 'r2') {
+      if (clase_nombre && confianzaValue >= MIN_CONFIDENCE_FOR_DATASET) {
+        copyToDataset(filePath, clase_nombre, confianzaValue);
+      }
+      const result = await uploadToR2(filePath);
+      imagen_url = result.url;
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      if (convertedFilePath && fs.existsSync(convertedFilePath)) fs.unlinkSync(convertedFilePath);
+    } else if (storageTarget === 'cloudinary') {
+      if (clase_nombre && confianzaValue >= MIN_CONFIDENCE_FOR_DATASET) {
+        copyToDataset(filePath, clase_nombre, confianzaValue);
+      }
       const result = await uploadImage(filePath);
       imagen_url = result.secure_url;
-      if (fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-      if (convertedFilePath && fs.existsSync(convertedFilePath)) {
-        fs.unlinkSync(convertedFilePath);
-      }
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      if (convertedFilePath && fs.existsSync(convertedFilePath)) fs.unlinkSync(convertedFilePath);
     } else {
       const userDir = path.join(__dirname, '../uploads', userId);
       if (!fs.existsSync(userDir)) {
@@ -145,24 +217,10 @@ router.post('/upload', upload.single('imagen'), async (req, res) => {
         fs.renameSync(req.file.path, finalPath);
         imagen_url = `/uploads/${userId}/${req.file.filename}`;
       }
+      if (clase_nombre && confianzaValue >= MIN_CONFIDENCE_FOR_DATASET) {
+        copyToDataset(finalPath, clase_nombre, confianzaValue);
+      }
     }
-
-    const { tipo, color, confianza, clase_nombre } = req.body;
-    let confianzaValue = confianza != null && confianza !== '' ? parseFloat(confianza) : 0.5;
-    if (Number.isNaN(confianzaValue) || confianzaValue < 0) confianzaValue = 0;
-    if (confianzaValue > 1) confianzaValue = 1;
-
-    const tipoValidos = ['superior', 'inferior', 'zapatos', 'accesorio', 'abrigo', 'vestido'];
-    const tipoFinal = tipo && tipoValidos.includes(String(tipo).toLowerCase()) ? String(tipo).toLowerCase() : 'superior';
-
-    let ocasionArray = [];
-    if (req.body.ocasion) {
-      ocasionArray = Array.isArray(req.body.ocasion) 
-        ? req.body.ocasion 
-        : [req.body.ocasion];
-    }
-    const ocasionesValidas = ['casual', 'formal', 'deportivo', 'fiesta', 'trabajo'];
-    ocasionArray = ocasionArray.filter(oc => ocasionesValidas.includes(oc));
 
     const prenda = new Prenda({
       userId,
@@ -175,27 +233,10 @@ router.post('/upload', upload.single('imagen'), async (req, res) => {
     });
 
     await prenda.save();
-
-    let imagePathForDataset = null;
-    if (convertedFilePath && fs.existsSync(convertedFilePath)) {
-      imagePathForDataset = convertedFilePath;
-    } else if (req.file && fs.existsSync(req.file.path)) {
-      imagePathForDataset = req.file.path;
-    } else {
-      const uploadsPath = path.join(__dirname, '../uploads', userId, req.file.filename);
-      if (fs.existsSync(uploadsPath)) {
-        imagePathForDataset = uploadsPath;
-      }
-    }
-
-    if (imagePathForDataset && clase_nombre && confianzaValue >= MIN_CONFIDENCE_FOR_DATASET) {
-      copyToDataset(imagePathForDataset, clase_nombre, confianzaValue);
-    }
-
     res.status(201).json(prenda);
   } catch (error) {
     console.error('Error subiendo prenda:', error);
-    
+
     if (req.file && fs.existsSync(req.file.path)) {
       try {
         fs.unlinkSync(req.file.path);
@@ -210,12 +251,12 @@ router.post('/upload', upload.single('imagen'), async (req, res) => {
         console.error('Error deleting converted file:', e);
       }
     }
-    
+
     const message = error.message || 'Error uploading the garment';
     const isValidation = error.name === 'ValidationError';
-    res.status(500).json({ 
+    res.status(500).json({
       error: isValidation ? message : 'Error uploading the garment',
-      details: message 
+      details: message
     });
   }
 });
@@ -322,6 +363,8 @@ router.delete('/:id', async (req, res) => {
       }
     } else if (prenda.imagen_url.includes('cloudinary')) {
       await deleteImage(prenda.imagen_url);
+    } else if (isR2Configured()) {
+      await deleteFromR2(prenda.imagen_url);
     }
 
     res.json({ message: 'Garment deleted successfully' });
@@ -334,10 +377,15 @@ router.delete('/:id', async (req, res) => {
 router.post('/auto', async (req, res) => {
   const userId = getUserId(req);
   try {
-    const { nombre, tipo, color, imagen_base64, clase_nombre, confianza, ocasion } = req.body;
+    const { tipo, color, imagen_base64, clase_nombre, confianza, ocasion } = req.body;
 
     if (!imagen_base64 || !tipo || !color) {
       return res.status(400).json({ error: 'Missing required data' });
+    }
+
+    const canAddMorePrendas = await enforcePrendasCountLimit(res, userId);
+    if (!canAddMorePrendas) {
+      return;
     }
 
     const imageBuffer = Buffer.from(imagen_base64, 'base64');
@@ -350,9 +398,34 @@ router.post('/auto', async (req, res) => {
     const filePath = path.join(userDir, filename);
 
     await sharp(imageBuffer).jpeg({ quality: 90 }).toFile(filePath);
-    const imagen_url = `/uploads/${userId}/${filename}`;
+    const storageTarget = getImageStorageTarget(process.env);
+    const canStoreInR2 = await enforceR2SoftLimit(res, filePath);
+    if (!canStoreInR2) {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      return;
+    }
 
-    const confianzaValue = confianza || 0.5;
+    let confianzaValue = confianza != null && confianza !== '' ? parseFloat(confianza) : 0.5;
+    if (Number.isNaN(confianzaValue) || confianzaValue < 0) confianzaValue = 0;
+    if (confianzaValue > 1) confianzaValue = 1;
+
+    let imagen_url = `/uploads/${userId}/${filename}`;
+    if (storageTarget === 'r2') {
+      if (clase_nombre && confianzaValue >= MIN_CONFIDENCE_FOR_DATASET) {
+        copyToDataset(filePath, clase_nombre, confianzaValue);
+      }
+      const uploaded = await uploadToR2(filePath);
+      imagen_url = uploaded.url;
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    } else if (storageTarget === 'cloudinary') {
+      if (clase_nombre && confianzaValue >= MIN_CONFIDENCE_FOR_DATASET) {
+        copyToDataset(filePath, clase_nombre, confianzaValue);
+      }
+      const uploaded = await uploadImage(filePath);
+      imagen_url = uploaded.secure_url;
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }
+
     let ocasionArray = [];
     if (ocasion) {
       ocasionArray = Array.isArray(ocasion) ? ocasion : [ocasion];
@@ -372,7 +445,7 @@ router.post('/auto', async (req, res) => {
 
     await prenda.save();
 
-    if (clase_nombre && confianzaValue >= MIN_CONFIDENCE_FOR_DATASET) {
+    if (storageTarget === 'local' && clase_nombre && confianzaValue >= MIN_CONFIDENCE_FOR_DATASET) {
         copyToDataset(filePath, clase_nombre, confianzaValue);
     }
 

@@ -9,7 +9,7 @@ You can try the hosted frontend here: **[https://fashion-ai-d9p.pages.dev/](http
 
 ## Summary
 
-Fashion AI lets users build a digital wardrobe by uploading garment photos. The system classifies each item (type and colour) via a machine learning service (**ViT only**: `best_model_17_marzo.keras`). Users can filter garments by category, set preferences (occasion, style, colours), and receive outfit suggestions. **Mirror** uses the camera and OpenRouter to analyse the current outfit and give preparation-focused tips for the chosen occasion (e.g. business casual). Optional Auth0 login scopes data per user; images can be stored locally or in Cloudinary.
+Fashion AI lets users build a digital wardrobe by uploading garment photos. The system classifies each item (type and colour) via a machine learning service (**ViT only**: `best_model_17_marzo.keras`). Users can filter garments by category, set preferences (occasion, style, colours), and receive outfit suggestions. **Mirror** uses the camera and OpenRouter to analyse the current outfit and give preparation-focused tips for the chosen occasion (e.g. business casual). Optional Auth0 login scopes data per user; images can be stored locally, on Cloudinary, or on Cloudflare R2.
 
 ## Tech Stack
 
@@ -78,6 +78,18 @@ CLOUDINARY_API_SECRET=your_api_secret
 ```
 
 If Cloudinary is not set, images are stored under `backend/uploads/`.
+
+**Cloudflare R2 (optional; preferred for Path B):**
+
+```env
+R2_ACCOUNT_ID=your_cloudflare_account_id
+R2_ACCESS_KEY_ID=your_r2_access_key_id
+R2_SECRET_ACCESS_KEY=your_r2_secret_access_key
+R2_BUCKET_NAME=fashion-ai-uploads
+R2_PUBLIC_URL=https://pub-xxxx.r2.dev
+```
+
+R2 is used only when all `R2_*` credentials are set, including `R2_PUBLIC_URL` for browser-accessible image URLs.
 
 **Team — Env Vault (push/pull all keys):** We use [Env Vault](docs/ENV_VAULT_QUICK.md) instead of emailing passwords. From repo root: **`npm run env:vault-pull`** to get the latest keys; **`npm run env:vault-push`** to save your keys to the vault. See [docs/DOTENV_VAULT.md](docs/DOTENV_VAULT.md) for setup.
 
@@ -250,11 +262,11 @@ All endpoints are under the backend base URL (e.g. `http://localhost:4000`). Whe
 | Model          | GET    | `/api/model/confusion-matrix-vit` | ViT confusion matrix image (if present) |
 | Model          | GET    | `/api/model/data-audit` | Dataset sample image |
 
-Static: `/uploads` serves uploaded images (or use Cloudinary); `/api/model/images` can serve ML-related assets.
+Static: `/uploads` serves uploaded images for local mode; cloud mode can use Cloudinary or R2. `/api/model/images` can serve ML-related assets.
 
 ## Features
 
-- **Garments:** Upload images; classify with ViT; view and filter by type; edit occasions; delete. With Auth0, each user has their own wardrobe; uploads can be stored in `backend/uploads/{userId}/` or Cloudinary.
+- **Garments:** Upload images; classify with ViT; view and filter by type; edit occasions; delete. With Auth0, each user has their own wardrobe; uploads can be stored in `backend/uploads/{userId}/`, Cloudinary, or Cloudflare R2.
 - **Outfits:** Generate outfit suggestions (with preferences); save and delete. Scoped per user when Auth0 is enabled.
 - **Mirror:** Use the camera to capture your outfit; get AI feedback (OpenRouter) focused on **preparing for the chosen occasion** (e.g. business casual). Tips are constructive and supportive. Optionally classify the frame with ViT and add the item to your wardrobe.
 - **Metrics:** Optional confusion matrices and reports (JSON/images) if shipped with the ML service; not required at runtime for inference.
@@ -266,7 +278,7 @@ Static: `/uploads` serves uploaded images (or use Cloudinary); `/api/model/image
 - **MongoDB errors:** Confirm MongoDB is running and `MONGODB_URI` in `.env` is correct.
 - **Mirror "Service not found":** Create an API in Auth0 with Identifier equal to `AUTH0_AUDIENCE` (e.g. `https://fashion-classifier-api`). See `frontend/AUTH0-CHECKLIST.md`.
 - **Camera not showing:** Ensure the browser has camera permission for localhost; if you see "Stop" but no image, a fix ensures the stream is attached after the video element is in the DOM.
-- **Images not loading:** If not using Cloudinary, ensure `backend/uploads/` exists and the backend serves `/uploads`.
+- **Images not loading:** For local storage, ensure `backend/uploads/` exists and the backend serves `/uploads`. For R2, ensure `R2_PUBLIC_URL` is configured correctly.
 
 ## Notes
 

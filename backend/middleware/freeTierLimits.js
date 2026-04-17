@@ -1,12 +1,16 @@
 /**
  * Safeguards to stay within free tier: rate limits and optional storage/count caps.
- * Configure via env: RATE_LIMIT_* , PRENDAS_MAX_PER_USER, R2_SOFT_LIMIT_GB
+ * Configure via env: RATE_LIMIT_*, PRENDAS_MAX_PER_USER, R2_SOFT_LIMIT_BYTES
  */
 
 const rateLimit = require('express-rate-limit');
 
 const windowMs = 60 * 1000; // 1 minute
-const keyGenerator = (req) => req.user?.sub || req.ip || 'anonymous';
+const keyGenerator = (req) => {
+  const userKey = req.auth?.payload?.sub || req.user?.sub;
+  if (userKey) return userKey;
+  return rateLimit.ipKeyGenerator(req.ip || req.socket?.remoteAddress || 'anonymous');
+};
 
 function skipFreeTierLimit(req) {
   const p = (req.path || '') + (req.originalUrl || '');
