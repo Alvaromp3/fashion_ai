@@ -1,5 +1,10 @@
 'use strict';
 
+/**
+ * buildMlClassifyUrl — integration: test/integration/classify.test.js, classify-vit-base64-flow.test.js
+ * buildMlProxyGetUrl — production: routes/model.js (no Supertest file in test/integration yet)
+ */
+
 const {
   buildMlClassifyUrl,
   buildMlProxyGetUrl,

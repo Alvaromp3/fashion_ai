@@ -1,5 +1,7 @@
 'use strict';
 
+/** Traceability: Mongo wiring only; no matching test/unit/*.test.js for this route. */
+
 const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');

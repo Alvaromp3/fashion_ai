@@ -1,5 +1,7 @@
 'use strict';
 
+/** Traceability: ML reachability in app.js (axios to ML_SERVICE_URL); no test/unit/*.test.js overlap. */
+
 const request = require('supertest');
 const axios = require('axios');
 const mongoose = require('mongoose');

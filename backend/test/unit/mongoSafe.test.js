@@ -1,5 +1,10 @@
 'use strict';
 
+/**
+ * parseAuthSubject — integration: test/integration/me.test.js
+ * parseObjectId / filterEqString — routes/prendas.js, outfits.js (no dedicated integration test yet)
+ */
+
 const { parseObjectId, parseAuthSubject, filterEqString } = require('../../utils/mongoSafe');
 
 describe('mongoSafe.parseObjectId', () => {

@@ -1,5 +1,7 @@
 'use strict';
 
+/** Integration: test/integration/classify-vit-base64-flow.test.js */
+
 const { validateMirrorImageUrl, MAX_DATA_URL_LEN } = require('../../utils/safeMirrorImageUrl');
 
 describe('validateMirrorImageUrl', () => {

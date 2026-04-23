@@ -1,5 +1,7 @@
 'use strict';
 
+/** Integration: test/integration/classify.test.js, test/integration/classify-vit-base64-flow.test.js */
+
 const { vitClassToTipo } = require('../../utils/vitClassToTipo');
 
 describe('vitClassToTipo', () => {
